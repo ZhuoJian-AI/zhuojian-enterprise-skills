@@ -32,6 +32,7 @@
 9. Runtime 档案和登记凭证已经落盘后，把 `assets/admin-runtime/host/` 传到 ECS 并以 root 在该目录运行 `sh ./install.sh`，安装 `zhuojian-runtime` 受控直接部署入口。标准 SSH `22` 已验证时不得传 443 参数；只有管理员已另外安装并实测 SSH/HTTPS 复用后，才运行 `sh ./install.sh --enable-ssh-https-multiplex --public-address <ECS公网地址>`。入口只能在固定目录内创建/更新指定 `applicationSlug`，分配回环端口、建立固定文件目录、构建不可变镜像、生成 Nginx 虚拟主机、检查 HTTPS/健康和回滚本次发布；不得运行全局 Docker prune、删除未知卷或重启无关服务。
 10. 管理员选择 OSS 时，再按 [文件存储与 OSS 迁移](object-storage.md) 安装 `assets/admin-runtime/gateway/`，写入企业级 root-only 凭证，并运行 `zhuojian-runtime configure-oss-gateway`。只有匿名读取拒绝、`apps/*` 外的列举/读/写/删全部拒绝、真实 PUT/GET/DELETE、双应用隔离和临时身份撤销全部通过后，尚未初始化的新系统默认存储才切换成 `oss-gateway`；已有 release 不迁移。
 11. 用两个独立的最小测试应用验证域名隔离、HTTPS、`/health`、Manifest、登记链路、本地上传/下载、目录隔离、磁盘阈值和重建容器后读取。OSS 模式必须额外完成网关重启复验、新应用自动分配独立网络/前缀/身份，以及另一应用和匿名请求均无法读取。测试资源使用独立名称和数据目录，不碰已有项目。
+12. Runtime 与最小应用验收完成后，立即执行 [企业交接 Skill 自动同步](managed-handoff-skills.md) 的“初始化后的强制收尾”。检查该 ECS 是否存在既有系统、专用数据通道、隧道、特殊网络、读写边界、固定业务口径或其他以后无法从通用 Runtime 自动推导的事实；有则自动创建或更新交接 Skill并发布稳定版，无则明确记录“不需要专属交接 Skill”。这一步完成或得到明确的发布阻塞结果前，不得结束管理员初始化任务。
 
 ## 环境档案
 
