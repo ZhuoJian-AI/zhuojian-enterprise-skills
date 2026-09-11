@@ -5,15 +5,15 @@ description: "在 Alphabet 的 8.218.208.205 ECS 上，通过既有反向隧道�
 
 # Alphabet 道讯数据子系统
 
-本 Skill 是当前企业环境的交接层。构建、部署、统一登录、角色授权、Manifest、Action、iframe Bridge、OSS 和 SaaS 登记必须同时使用 `$aifabei-subsystem-builder`；本 Skill 只补充道讯数据通道的真实入口、只读边界和验收方法。
+本 Skill 是当前企业环境的交接层。构建、部署、统一登录、角色授权、Manifest、Action、iframe Bridge、OSS 和 SaaS 登记必须同时使用 `$zhuojian-subsystem-builder`；本 Skill 只补充道讯数据通道的真实入口、只读边界和验收方法。
 
-本 Skill 由 `ZhuoJian-AI/zhuojian-enterprise-skills` 稳定目录托管。每次任务先让 `$aifabei-subsystem-builder` 更新总 Skill 和本机交接 Skills；若本 Skill 被安装或更新，立即重新读取本文件及本次任务需要的 references，不使用更新前的交接事实。
+本 Skill 由 `ZhuoJian-AI/zhuojian-enterprise-skills` 稳定目录托管。每次任务先让 `$zhuojian-subsystem-builder` 更新总 Skill 和本机交接 Skills；若本 Skill 被安装或更新，立即重新读取本文件及本次任务需要的 references，不使用更新前的交接事实。
 
 ## 版本声明
 
 此前发出的旧版 `alphabet-daoxun-data-bridge` 已作废，不再使用。旧版只记录了反向隧道和 TDS 握手，仍把数据库认证、只读账号与 Docker 查询写成待完成；这些状态已经过时，会导致后续 Codex 错误地再次索要数据库账号或报告“只能通隧道、不能查数据”。收到本包后应删除或覆盖旧版，并以本包记录的已验证状态为唯一交接依据。
 
-这里作废的是旧版道讯桥接 Skill，不是 `$aifabei-subsystem-builder`。前者负责道讯只读数据通道，后者负责业务系统开发、部署、OSS、权限与 SaaS 接入；涉及道讯的系统必须同时使用两者。
+这里作废的是旧版道讯桥接 Skill，不是 `$zhuojian-subsystem-builder`。前者负责道讯只读数据通道，后者负责业务系统开发、部署、OSS、权限与 SaaS 接入；涉及道讯的系统必须同时使用两者。
 
 ## 已知事实
 
@@ -27,7 +27,7 @@ description: "在 Alphabet 的 8.218.208.205 ECS 上，通过既有反向隧道�
 
 ## 工作流程
 
-1. 先按 `$aifabei-subsystem-builder` 登录 `8.218.208.205` 并运行 Runtime 健康检查。
+1. 先按 `$zhuojian-subsystem-builder` 登录 `8.218.208.205` 并运行 Runtime 健康检查。
 2. 在 ECS 宿主机复核 `127.0.0.1:11433`。需要确定性验证时，把 [check_tds_tunnel.py](scripts/check_tds_tunnel.py) 送入 ECS 的 `python3 -` 标准输入执行；该检查只做 SQL Server PRELOGIN 握手，不登录、不执行 SQL、不修改数据。
 3. 若握手成功，状态写为“网络隧道已通”。不得因为 ECS 无法直接访问 `10.0.0.181`、没有 VPN 或没有网络挂载而推翻该结论。
 4. 若握手失败，先检查 ECS 回环端口是否监听，再检查内网服务器上的专用隧道任务是否运行。只报告实际失败层级，不把传输失败说成数据库密码错误。
@@ -35,7 +35,7 @@ description: "在 Alphabet 的 8.218.208.205 ECS 上，通过既有反向隧道�
 6. 应用运行在 Docker 容器时，加入现有应用专属数据网络，并使用 [当前环境](references/environment.md) 中的 Docker 私网入口。不能把容器内的 `127.0.0.1` 当成 ECS 宿主机，也不得发布数据库端口到公网。
 7. 在最终应用镜像和实际 Docker 网络内再次完成认证查询；测试镜像成功不能替代最终应用验收。兼容 SQL Server 2008 R2 时使用 TDS `7.0` 或驱动的等价兼容设置。
 8. 道讯数据默认只读。查询、看板、统计和预警从道讯取数；子系统自己的配置、备注、流程状态、审计和缓存写入子系统自有数据库；业务附件使用 Runtime 当前 OSS 能力。
-9. 通过 `$aifabei-subsystem-builder` 完成页面、统一 SSO、角色数据范围、Manifest、查询 Action、iframe Bridge、部署、登记和真实员工端验收。SaaS 不直接连接道讯数据库，只调用已登记子系统的受权 Action。
+9. 通过 `$zhuojian-subsystem-builder` 完成页面、统一 SSO、角色数据范围、Manifest、查询 Action、iframe Bridge、部署、登记和真实员工端验收。SaaS 不直接连接道讯数据库，只调用已登记子系统的受权 Action。
 
 ## 写入边界
 

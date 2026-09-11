@@ -1,5 +1,9 @@
 # 更新记录
 
+## 1.1.0 - 2026-09-11
+
+- 将通用搭建入口从历史名称 `aifabei-subsystem-builder` 切换为 `zhuojian-subsystem-builder`；道讯只读边界和服务器匹配范围不变。
+
 ## 1.0.0 - 2026-09-11
 
 - 将已经过验证的 Alphabet 道讯 SQL Server 只读桥接交接规则纳入唯一企业 Skills 总仓库。
