@@ -1,0 +1,7 @@
+interface:
+  display_name: "Alphabet 商品动销看板交接"
+  short_description: "让业务负责人通过 AI 使用、维护和更新商品动销看板"
+  default_prompt: "使用 $alphabet-goods-dashboard-handover 检查商品动销看板，并帮我处理当前问题。"
+
+policy:
+  allow_implicit_invocation: true

@@ -26,6 +26,17 @@
       "hosts": [
         "8.218.208.205"
       ]
+    },
+    "alphabet-goods-dashboard-handover": {
+      "path": "skills/companies/alphabet/alphabet-goods-dashboard-handover",
+      "kind": "handoff",
+      "enterpriseKeys": [
+        "alphabet"
+      ],
+      "runtimeIds": [],
+      "hosts": [
+        "47.243.48.78"
+      ]
     }
   }
 }
