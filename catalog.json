@@ -37,6 +37,21 @@
       "hosts": [
         "47.243.48.78"
       ]
+    },
+    "alphabet-nas-data-bridge": {
+      "path": "skills/companies/alphabet/alphabet-nas-data-bridge",
+      "kind": "handoff",
+      "enterpriseKeys": [
+        "alphabet"
+      ],
+      "runtimeIds": [
+        "aifabei-hk-01",
+        "aifabei-hk-48"
+      ],
+      "hosts": [
+        "8.218.208.205",
+        "47.243.48.78"
+      ]
     }
   }
 }
