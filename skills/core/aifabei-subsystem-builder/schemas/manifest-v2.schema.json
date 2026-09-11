@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zhuojianai.com/schemas/subsystem/manifest-v2.schema.json",
+  "title": "ZhuoJian subsystem manifest v2.4-v2.5",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["protocol", "version", "contractRevision", "enterprise", "applicationSlug", "applicationName", "eventsUrl", "eventDeliveriesUrl", "auth", "modules"],
+  "properties": {
+    "protocol": {"const": "zhuojian-subsystem"},
+    "version": {"const": 2},
+    "contractRevision": {"enum": ["2.4", "2.5"]},
+    "enterprise": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "name"],
+      "properties": {"key": {"$ref": "#/$defs/stableKey"}, "name": {"type": "string", "minLength": 1, "maxLength": 255}}
+    },
+    "applicationSlug": {"$ref": "#/$defs/stableKey"},
+    "applicationName": {"type": "string", "minLength": 1, "maxLength": 255},
+    "team": false,
+    "teams": false,
+    "teamId": false,
+    "team_id": false,
+    "bridgeVersion": {"const": 1},
+    "eventsUrl": {"$ref": "#/$defs/sitePath"},
+    "eventDeliveriesUrl": {"const": "/api/integration/event-deliveries"},
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ssoPath"],
+      "properties": {
+        "ssoPath": {"const": "/api/integration/sso"},
+        "mode": {"const": "authorization_code"},
+        "algorithm": {"const": "HS256"}
+      }
+    },
+    "modules": {"type": "array", "minItems": 1, "maxItems": 500, "items": {"$ref": "#/$defs/module"}}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"contractRevision": {"const": "2.4"}}, "required": ["contractRevision"]},
+      "then": {
+        "properties": {
+          "auth": {
+            "required": ["ssoPath", "algorithm"],
+            "not": {"required": ["mode"]}
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"contractRevision": {"const": "2.5"}}, "required": ["contractRevision"]},
+      "then": {
+        "properties": {
+          "auth": {
+            "required": ["ssoPath", "mode"],
+            "not": {"required": ["algorithm"]}
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "stableKey": {"type": "string", "minLength": 1, "maxLength": 160, "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "sitePath": {"type": "string", "pattern": "^/(?!/).*$", "maxLength": 2000},
+    "schema": {"type": "object"},
+    "inputSchema": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {"type": {"const": "object"}}
+    },
+    "platformAiCapability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "inputKinds", "humanConfirmation"],
+      "properties": {
+        "type": {
+          "enum": [
+            "vision.ocr",
+            "vision.compare",
+            "vision.classify",
+            "speech.transcribe",
+            "text.extract",
+            "business.predict"
+          ]
+        },
+        "inputKinds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {"enum": ["image", "audio", "text", "json"]}
+        },
+        "humanConfirmation": {"const": "required"}
+      }
+    },
+    "aiSemantics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["purpose", "primaryEntities", "fieldSemantics", "supportedIntents", "relatedPages", "businessTerms", "defaultQueryActionKey"],
+      "properties": {
+        "purpose": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "primaryEntities": {"type": "array", "minItems": 1, "maxItems": 20, "uniqueItems": true, "items": {"$ref": "#/$defs/stableKey"}},
+        "fieldSemantics": {
+          "type": "array", "maxItems": 100,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["field", "meaning"],
+            "properties": {"field": {"type": "string", "minLength": 1, "maxLength": 120}, "meaning": {"type": "string", "minLength": 1, "maxLength": 500}}
+          }
+        },
+        "supportedIntents": {"type": "array", "minItems": 1, "maxItems": 30, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 160}},
+        "relatedPages": {
+          "type": "array", "maxItems": 30,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["moduleKey", "pageKey", "relationship"],
+            "properties": {
+              "moduleKey": {"$ref": "#/$defs/stableKey"},
+              "pageKey": {"$ref": "#/$defs/stableKey"},
+              "relationship": {"type": "string", "minLength": 1, "maxLength": 500}
+            }
+          }
+        },
+        "businessTerms": {
+          "type": "array", "maxItems": 100,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["term", "meaning"],
+            "properties": {"term": {"type": "string", "minLength": 1, "maxLength": 120}, "meaning": {"type": "string", "minLength": 1, "maxLength": 500}}
+          }
+        },
+        "defaultQueryActionKey": {"$ref": "#/$defs/stableKey"}
+      }
+    },
+    "department": {
+      "type": "object", "additionalProperties": true, "required": ["key", "name", "role"],
+      "properties": {
+        "key": {"$ref": "#/$defs/stableKey"}, "name": {"type": "string", "minLength": 1},
+        "role": {"enum": ["owner", "collaborator", "approver", "consumer"]},
+        "pageKeys": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/stableKey"}},
+        "actionKeys": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/stableKey"}}
+      }
+    },
+    "accessRole": {
+      "type": "object", "additionalProperties": false,
+      "required": ["roleKey", "name", "pageKeys", "actionKeys"],
+      "properties": {
+        "roleKey": {"$ref": "#/$defs/stableKey"},
+        "name": {"type": "string", "minLength": 1, "maxLength": 120},
+        "suggestedDepartmentKey": {"$ref": "#/$defs/stableKey"},
+        "description": {"type": "string", "maxLength": 500},
+        "pageKeys": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/stableKey"}},
+        "actionKeys": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/stableKey"}}
+      }
+    },
+    "page": {
+      "type": "object", "additionalProperties": true,
+      "required": ["pageKey", "name", "routePattern", "actionKeys", "contextSchema"],
+      "properties": {
+        "pageKey": {"$ref": "#/$defs/stableKey"}, "name": {"type": "string", "minLength": 1},
+        "routePattern": {"$ref": "#/$defs/sitePath"}, "queryActionKey": {"$ref": "#/$defs/stableKey"},
+        "actionKeys": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/stableKey"}},
+        "contextSchema": {"$ref": "#/$defs/schema"},
+        "aiSemantics": {"$ref": "#/$defs/aiSemantics"}
+      }
+    },
+    "action": {
+      "type": "object", "additionalProperties": true,
+      "required": ["actionKey", "name", "description", "operation", "aiEnabled", "requiresConfirmation", "inputSchema", "resultSchema"],
+      "properties": {
+        "actionKey": {"$ref": "#/$defs/stableKey"},
+        "name": {"type": "string", "minLength": 1, "maxLength": 120},
+        "description": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "operation": {"enum": ["query", "create", "update", "delete", "export", "approve"]},
+        "aiEnabled": {"type": "boolean"}, "requiresConfirmation": {"type": "boolean"},
+        "aiTool": {"description": "可选的 AI 工具增强说明；缺少或格式不完整不得阻断登记"},
+        "inputSchema": {"$ref": "#/$defs/inputSchema"},
+        "resultSchema": {"$ref": "#/$defs/schema"},
+        "platformAiCapability": {"$ref": "#/$defs/platformAiCapability"}
+      }
+    },
+    "events": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "publishes": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/stableKey"}},
+        "subscribes": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/stableKey"}}
+      }
+    },
+    "module": {
+      "type": "object", "additionalProperties": true,
+      "required": ["moduleKey", "name", "route", "departments", "accessRoles", "pages", "actions"],
+      "properties": {
+        "moduleKey": {"$ref": "#/$defs/stableKey"}, "name": {"type": "string", "minLength": 1}, "route": {"$ref": "#/$defs/sitePath"},
+        "team": false,
+        "teams": false,
+        "teamId": false,
+        "team_id": false,
+        "departments": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/department"}},
+        "accessRoles": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/accessRole"}},
+        "pages": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/page"}},
+        "actions": {"type": "array", "items": {"$ref": "#/$defs/action"}},
+        "events": {"$ref": "#/$defs/events"}
+      },
+      "allOf": [{"$comment": "Semantic validator enforces one owner department and validates role/page/action references. Departments express responsibility only; accessRoles are permission-bundle suggestions for existing SaaS roles, not subsystem roles or data scopes."}]
+    }
+  }
+}
