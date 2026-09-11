@@ -1,0 +1,7 @@
+interface:
+  display_name: "Alphabet 道讯数据桥接"
+  short_description: "复用既有反向隧道开发道讯数据子系统并嵌入灼见 SaaS"
+  default_prompt: "Use $alphabet-daoxun-data-bridge to verify the Daoxun data path, build the requested read-only subsystem, and integrate it into ZhuoJian SaaS."
+
+policy:
+  allow_implicit_invocation: true
