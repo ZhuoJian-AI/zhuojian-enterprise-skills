@@ -16,9 +16,11 @@ This is the canonical public monorepo for ZhuoJian enterprise Codex Skills. One 
 ## Commands
 
 ```text
-python -m pytest -q
-python C:/Users/王鑫涛/.codex/skills/.system/skill-creator/scripts/quick_validate.py .
+cd skills/core/zhuojian-subsystem-builder && python -m pytest -q
+cd skills/core/aifabei-subsystem-builder && python -m pytest -q
+python C:/Users/王鑫涛/.codex/skills/.system/skill-creator/scripts/quick_validate.py skills/core/zhuojian-subsystem-builder
+python C:/Users/王鑫涛/.codex/skills/.system/skill-creator/scripts/quick_validate.py skills/core/aifabei-subsystem-builder
 python scripts/build_release.py --tag <bundle-tag> --output-dir <temporary-directory>
 ```
 
-Run core tests from `skills/core/aifabei-subsystem-builder`. Validate every changed Skill directory separately.
+Run canonical core tests from `skills/core/zhuojian-subsystem-builder`. When compatibility behavior changes, also run the focused updater tests in `skills/core/aifabei-subsystem-builder`. Validate every changed Skill directory separately.

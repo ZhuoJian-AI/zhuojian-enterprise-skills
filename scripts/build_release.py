@@ -16,6 +16,8 @@ from pathlib import Path
 
 
 REPOSITORY = "ZhuoJian-AI/zhuojian-enterprise-skills"
+CANONICAL_CORE_NAME = "zhuojian-subsystem-builder"
+LEGACY_CORE_NAME = "aifabei-subsystem-builder"
 SEMVER_RE = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 TAG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
@@ -201,10 +203,12 @@ def main() -> int:
         releases[name] = release
         metadata_by_name[name] = metadata
 
-    core_name = "aifabei-subsystem-builder"
-    core = releases.get(core_name)
-    if core is None or core["kind"] != "core":
-        raise SystemExit("目录缺少 aifabei-subsystem-builder 总 Skill")
+    canonical_core = releases.get(CANONICAL_CORE_NAME)
+    legacy_core = releases.get(LEGACY_CORE_NAME)
+    if canonical_core is None or canonical_core["kind"] != "core":
+        raise SystemExit("目录缺少 zhuojian-subsystem-builder 总 Skill")
+    if legacy_core is None or legacy_core["kind"] != "core":
+        raise SystemExit("目录缺少 aifabei-subsystem-builder 兼容 Skill")
     released_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     release_catalog = {
         "schemaVersion": 1,
@@ -220,25 +224,33 @@ def main() -> int:
         encoding="utf-8",
     )
 
-    core_metadata = metadata_by_name[core_name]
-    update_manifest = {
-        "schemaVersion": 1,
-        "skillName": core_name,
-        "skillVersion": core["skillVersion"],
-        "channel": "stable",
-        "archiveUrl": core["archiveUrl"],
-        "archiveSha256": core["archiveSha256"],
-        "sourceCommit": source_commit,
-        "releasedAt": released_at,
-        "defaultContractRevision": core_metadata["defaultContractRevision"],
-        "supportedContractRevisions": core_metadata["supportedContractRevisions"],
-    }
-    (output / "update-manifest.json").write_text(
-        json.dumps(update_manifest, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
+    def write_update_manifest(name: str, filename: str) -> None:
+        release = releases[name]
+        metadata = metadata_by_name[name]
+        manifest = {
+            "schemaVersion": 1,
+            "skillName": name,
+            "skillVersion": release["skillVersion"],
+            "channel": "stable",
+            "archiveUrl": release["archiveUrl"],
+            "archiveSha256": release["archiveSha256"],
+            "sourceCommit": source_commit,
+            "releasedAt": released_at,
+            "defaultContractRevision": metadata["defaultContractRevision"],
+            "supportedContractRevisions": metadata["supportedContractRevisions"],
+        }
+        (output / filename).write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+
+    write_update_manifest(LEGACY_CORE_NAME, "update-manifest.json")
+    write_update_manifest(
+        CANONICAL_CORE_NAME,
+        "zhuojian-subsystem-builder-update-manifest.json",
     )
-    core_path = root / raw_skills[core_name]["path"]
-    shutil.copy2(core_path / "scripts" / "update_skill.py", output / "update_skill.py")
+    canonical_path = root / raw_skills[CANONICAL_CORE_NAME]["path"]
+    shutil.copy2(canonical_path / "scripts" / "update_skill.py", output / "update_skill.py")
     print(json.dumps({
         "tag": args.tag,
         "sourceCommit": source_commit,

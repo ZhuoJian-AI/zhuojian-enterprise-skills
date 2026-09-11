@@ -27,7 +27,7 @@ CATALOG_URL = (
     "releases/latest/download/catalog.json"
 )
 RELEASE_PATH_PREFIX = "/ZhuoJian-AI/zhuojian-enterprise-skills/releases/download/"
-CORE_SKILL_NAME = "aifabei-subsystem-builder"
+CORE_SKILL_NAME = "zhuojian-subsystem-builder"
 SEMVER_RE = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 MAX_CATALOG_BYTES = 512 * 1024
@@ -447,7 +447,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--allow-test-url", action="store_true", help=argparse.SUPPRESS)
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("installed", help="更新本机已经安装的企业交接 Skills")
-    install_core = subparsers.add_parser("install-core", help="安装新的正式总 Skill")
+    install_core = subparsers.add_parser("install-core", help="安装指定的正式总 Skill")
     install_core.add_argument("skill_name")
     resolve = subparsers.add_parser("resolve", help="按 ECS 企业与 Runtime 安装交接 Skills")
     resolve.add_argument("--enterprise-key")

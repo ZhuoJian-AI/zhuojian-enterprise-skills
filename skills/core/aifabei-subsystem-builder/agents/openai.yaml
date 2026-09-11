@@ -1,4 +1,4 @@
 interface:
-  display_name: "Alphabet 模块系统搭建"
-  short_description: "小白说业务，AI 建模块、管文件并安全接入灼见"
-  default_prompt: "使用 $aifabei-subsystem-builder 按我的业务描述搭建、部署或修改模块系统，配置参与部门、页面与 AI 共用操作，并输出灼见管理员接入回执。"
+  display_name: "旧版 Alphabet 搭建入口"
+  short_description: "兼容旧调用并自动迁移到灼见总 Skill"
+  default_prompt: "使用 $aifabei-subsystem-builder 迁移到 $zhuojian-subsystem-builder，并继续完成我的企业子系统需求。"

@@ -90,24 +90,11 @@ def base_catalog(tmp_path: Path, handoff: dict) -> Path:
 
 
 def test_install_core_installs_named_canonical_skill(tmp_path: Path, capsys) -> None:
-    target = "zhuojian-subsystem-builder"
-    current_archive = build_skill_archive(
-        tmp_path,
-        update_managed_skills.CORE_SKILL_NAME,
-        "1.2.0",
-        "legacy core",
-    )
-    target_archive = build_skill_archive(tmp_path, target, "1.0.0", "canonical core")
-    entries = {
-        update_managed_skills.CORE_SKILL_NAME: release_entry(
-            update_managed_skills.CORE_SKILL_NAME,
-            "1.2.0",
-            current_archive,
-            kind="core",
-        ),
-        target: release_entry(target, "1.0.0", target_archive, kind="core"),
-    }
-    catalog = write_catalog(tmp_path, entries)
+    target = update_managed_skills.CORE_SKILL_NAME
+    archive = build_skill_archive(tmp_path, target, "1.0.0", "canonical core")
+    catalog = write_catalog(tmp_path, {
+        target: release_entry(target, "1.0.0", archive, kind="core"),
+    })
 
     exit_code = update_managed_skills.main([
         "--catalog-url", catalog.as_uri(),
