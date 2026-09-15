@@ -44,6 +44,7 @@
 8. 构建 `zhuojian/<enterprise>/<applicationSlug>:<commitSHA>`。Runtime 先在 SaaS 记录候选版本，已生效的健康版本和员工入口继续可用；随后启动新容器并挂载固定数据目录，先从回环地址检查 `/health`，再原子切换 Nginx。新容器或候选校验失败时恢复旧容器并继续使用旧生效版本。
 9. 为 `https://<applicationSlug>.<domainSuffix>` 写入 Nginx Host 路由并签发/复用 HTTPS 证书。验证证书、`frame-ancestors`、Host 隔离、`/health` 和 Manifest。
 10. 运行 `validate_endpoint.py` 和 `e2e_acceptance.py`。它们只算登记前技术预检，不得冒充真实员工 SSO 验收；任一项失败都不得登记版本。
+    对实时会话或严格 Action 范围检查的系统，虚构身份不应获得业务数据。可显式使用 `e2e_acceptance.py --expect-query-denied` 验证 401/403 及不泄露数据；200、404、网络或服务错误仍失败。此模式不验证获权执行，发布后必须另做真实测试员工的成功查询、范围隔离和撤权检查，不得把拒绝探针当成业务验收，也不得放宽鉴权以满足旧脚本。无需导出时不传 `--export-action`。
 11. 使用 `scripts/publish_subsystem.py` 登记当前 Git commit、`baseUrl`、镜像引用和 Runtime 管理的当前契约凭证；脚本根据 Manifest 在 `2.4` 单凭证与 `2.5` 四凭证之间选择，从受控 Secret 文件读取且不打印。灼见检查域名、组织、健康与 Manifest 后自动激活合法候选并返回 `healthy`。新应用只自动授权“系统研发者”；普通业务角色仍需企业管理员首次配置。
 
 ## 后续更新
