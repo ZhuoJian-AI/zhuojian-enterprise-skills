@@ -1,6 +1,6 @@
 ---
 name: zhuojian-subsystem-builder
-description: "让 AI 用业务需求和服务器登录信息，在已接入灼见的企业 ECS 上新建、修改并部署业务子系统，自动处理统一登录、角色授权、业务操作、文件存储和公司专属交接规则。用户提到灼见 SaaS、企业子系统、ECS、跨部门模块、OSS 迁移或 iframe 接入时使用。"
+description: "让 AI 用业务需求和服务器登录信息，在已接入灼见的企业 ECS 上新建、修改并部署业务子系统，自动处理统一登录、角色授权、业务操作、文件存储和公司专属交接规则。用户提到灼见 SaaS、企业子系统、ECS、数据盘、跨部门模块、OSS 迁移或 iframe 接入时使用。"
 ---
 
 # 灼见企业子系统
@@ -58,11 +58,11 @@ python <skill>/scripts/e2e_acceptance.py --help
 
 ## 管理员模式
 
-管理员只需为每台 ECS 初始化一次。按 [管理员与服务器初始化](references/admin-bootstrap.md) 完成 Runtime、Docker、域名、数据目录、监控、备份和平台登记；网络问题按 [SSH、VPN 与代理访问](references/ssh-access.md) 排查。初始化不能以 Runtime 健康为结束：必须继续执行 [企业交接 Skill 自动同步](references/managed-handoff-skills.md) 的“初始化后的强制收尾”，检查既有系统、数据通道和服务器特例。有特殊事实时自动创建或更新独立交接 Skill，以 `enterpriseKey + runtimeId` 为主、当前公网地址为兜底登记到唯一企业 Skills 总仓库，完成 PR、稳定 Release 和无缓存解析验证；没有特殊事实时不创建空壳 Skill，并明确报告“不需要专属交接 Skill”。管理员明确要求初始化该 ECS，即授权完成这项不含秘密的配套登记，不再另问“是否登记”。发布未成功时不得把初始化任务报告为全部完成。
+管理员只需为每台 ECS 初始化一次。按 [管理员与服务器初始化](references/admin-bootstrap.md) 完成 Runtime、Docker、域名、数据目录、监控、备份和平台登记；发现未初始化数据盘、磁盘告警或需要调整宿主机容量布局时，必须再按 [ECS 数据盘与容量迁移](references/data-disk-capacity.md) 执行只读盘点、授权确认、精确迁移和持久化验证；网络问题按 [SSH、VPN 与代理访问](references/ssh-access.md) 排查。初始化不能以 Runtime 健康为结束：必须继续执行 [企业交接 Skill 自动同步](references/managed-handoff-skills.md) 的“初始化后的强制收尾”，检查既有系统、数据通道和服务器特例。有特殊事实时自动创建或更新独立交接 Skill，以 `enterpriseKey + runtimeId` 为主、当前公网地址为兜底登记到唯一企业 Skills 总仓库，完成 PR、稳定 Release 和无缓存解析验证；没有特殊事实时不创建空壳 Skill，并明确报告“不需要专属交接 Skill”。管理员明确要求初始化该 ECS，即授权完成这项不含秘密的配套登记，不再另问“是否登记”。发布未成功时不得把初始化任务报告为全部完成。
 
 完成后只向负责人提供本 Skill，以及首次连接所需的服务器 `IP + root + 密码`。业务 AI 会自动取得匹配的交接 Skill，负责人不需要 GitHub 账号或单独安装包。以后管理员只需按人员职责绑定“系统研发者”或业务角色，必要时可停用系统或 Action。
 
-OSS 不是前置条件。未配置时使用磁盘；以后由管理员按 [文件存储与 OSS 迁移](references/object-storage.md) 迁移，不在普通发布过程中暗中切换。
+OSS 不是前置条件。未配置时使用磁盘；以后由管理员按 [文件存储与 OSS 迁移](references/object-storage.md) 迁移，不在普通发布过程中暗中切换。挂载数据盘只是本地容量放置，不等于已迁移 OSS，也不得据此改变文件存储契约。
 
 ## 交付回复
 
