@@ -2,6 +2,8 @@
 
 本规范让不懂技术的负责人正常提出“上传 Excel”“保存 PDF”“导出文件”等需求。Runtime 首次登记先使用 ECS 固定数据盘；管理员一次性完成企业 OSS 网关并通过真实验收后，OSS 自动成为未来系统的默认后端。负责人不选择存储方案、不登录阿里云、不创建 RAM，也不接触 Bucket、AccessKey 或项目令牌。
 
+挂载云盘仍属于 `local-managed` 本地存储，只改变宿主机上的容量放置，不会自动获得 OSS 的私有对象、临时凭证、跨应用前缀隔离或对象版本能力。需要初始化云盘、迁移镜像仓库、构建目录或调整本地容量时，读取 [ECS 数据盘与容量迁移](data-disk-capacity.md)；不得把“文件位于独立云盘”报告成“已迁移 OSS”。
+
 ## 模式选择
 
 - `local-managed`：Runtime 尚未验收 OSS 时的安全初始模式。持久文件进入 `/srv/zhuojian/data/<applicationSlug>/files/`，由模块后端鉴权后读写。
