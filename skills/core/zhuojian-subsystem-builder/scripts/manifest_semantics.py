@@ -45,6 +45,31 @@ def _closed_object_schema(value: object) -> bool:
     )
 
 
+def validate_permission_policy(policy: object, operation: object) -> list[str]:
+    if policy is None:
+        return []
+    if not isinstance(policy, dict):
+        return ["permissionPolicy 必须是对象"]
+    if set(policy) - {"group", "mode", "supportedScopes"}:
+        return ["permissionPolicy 含未支持字段"]
+    mode = policy.get("mode")
+    groups = {"public_read": "public_read", "self": "personal", "configurable": "management"}
+    if not isinstance(mode, str) or mode not in groups or policy.get("group") != groups[mode]:
+        return ["permissionPolicy 分组与模式不匹配"]
+    scopes = policy.get("supportedScopes", [])
+    supported = {"self", "department", "department_and_children", "custom_departments", "all"}
+    if (not isinstance(scopes, list) or len(scopes) > 5
+            or any(not isinstance(s, str) or s not in supported for s in scopes)):
+        return ["permissionPolicy supportedScopes 无效"]
+    if len(scopes) != len(set(scopes)):
+        return ["permissionPolicy supportedScopes 不可重复"]
+    if (mode == "configurable") != bool(scopes):
+        return ["permissionPolicy 固定模式不得配置范围，管理模式必须声明支持范围"]
+    if mode == "public_read" and operation != "query":
+        return ["permissionPolicy 企业内公开读取仅允许 query"]
+    return []
+
+
 def validate_manifest_semantics(manifest: object, *, require_semantics: bool) -> list[str]:
     if not isinstance(manifest, dict):
         return ["subsystem.json 根节点必须是对象"]
@@ -167,6 +192,10 @@ def validate_manifest_semantics(manifest: object, *, require_semantics: bool) ->
                 failures.append(f"{label} defaultQueryActionKey 未指向本页 query Action")
 
         for action_key, action in actions.items():
+            failures.extend(
+                f"Action {action_key} {error}"
+                for error in validate_permission_policy(action.get("permissionPolicy"), action.get("operation"))
+            )
             platform_ai = action.get("platformAiCapability")
             if platform_ai is not None:
                 if not require_semantics:
