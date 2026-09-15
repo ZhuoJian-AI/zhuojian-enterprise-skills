@@ -171,6 +171,16 @@
         "description": {"type": "string", "minLength": 1, "maxLength": 1000},
         "operation": {"enum": ["query", "create", "update", "delete", "export", "approve"]},
         "aiEnabled": {"type": "boolean"}, "requiresConfirmation": {"type": "boolean"},
+        "permissionPolicy": {
+          "type": "object", "additionalProperties": false,
+          "required": ["group", "mode"],
+          "properties": {
+            "group": {"enum": ["public_read", "personal", "management"]},
+            "mode": {"enum": ["public_read", "self", "configurable"]},
+            "supportedScopes": {"type": "array", "maxItems": 5, "uniqueItems": true,
+              "items": {"enum": ["self", "department", "department_and_children", "custom_departments", "all"]}}
+          }
+        },
         "aiTool": {"description": "可选的 AI 工具增强说明；缺少或格式不完整不得阻断登记"},
         "inputSchema": {"$ref": "#/$defs/inputSchema"},
         "resultSchema": {"$ref": "#/$defs/schema"},

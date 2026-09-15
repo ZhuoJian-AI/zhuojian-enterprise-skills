@@ -2,6 +2,7 @@
 
 - 本系统属于 __COMPANY_NAME__ 企业，企业标识 `__COMPANY_SLUG__`，应用标识 `__APPLICATION_SLUG__`，当前子模块 `__MODULE_KEY__`。
 - 页面按钮和 AI Action 必须调用同一个业务服务函数，禁止两套业务规则。
+- 页面可打开、Action 获权与记录归属分开校验。公共读取仅返回当前企业已发布内容，本人操作绑定可信用户 ID，管理查询按同名 actionDataScopes；不按姓名认领历史记录，不以非全企业范围为由拒绝整页。permissionPolicy 可选且必须与真实实现一致，未声明时保留旧范围。
 - 数据只写本模块数据库；跨模块使用版本化事件，不直连其他数据库。
 - 修改、审批和删除要求 `expectedVersion`；Action 的 `requestId` 必须满足模板 schema，并绑定用户、参数和版本，业务提交、Outbox、确认消费与幂等结果必须同事务完成。
 - 页面高风险按钮与平台 Action 共用服务端确认校验；必须检查一次性 `confirmationId`、确认人、五分钟时效和规范 JSON 参数哈希。文件删除也不得提供绕过该流程的裸路由。
