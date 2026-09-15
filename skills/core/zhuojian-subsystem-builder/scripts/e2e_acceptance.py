@@ -200,12 +200,27 @@ def require_v25_credentials(values: dict[str, str]) -> dict[str, str]:
     return credentials
 
 
+def validate_query_probe(status: int, result: object, *, expect_denied: bool) -> str:
+    """A denial probe never counts as successful business execution."""
+    if expect_denied:
+        if (status not in {401, 403} or not isinstance(result, dict)
+                or not result or set(result) - {"detail", "error", "message", "code"}
+                or not any(isinstance(result.get(key), str) and result[key] for key in ("detail", "error", "message"))):
+            raise SystemExit("虚构身份拒绝探针失败：要求 401/403 且仅返回结构化错误，不能包含业务数据")
+        return "synthetic_identity_denied;authorized_execution_not_verified"
+    if status != 200:
+        raise SystemExit(f"页面感知 query Action 失败：HTTP {status}；需要真实授权的系统可使用拒绝探针并另做真实会话验收")
+    return "technical_path_executed_with_local_test_signature"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="按现有 2.4/2.5 契约验收 Manifest、SSO 与页面感知 Action")
     parser.add_argument("--base-url", required=True)
     parser.add_argument("--module-key", required=True)
     parser.add_argument("--page-key", required=True)
     parser.add_argument("--query-action", required=True)
+    parser.add_argument("--expect-query-denied", action="store_true",
+                        help="显式验证虚构身份被 401/403 拒绝；不代表获权查询或真实 SSO 通过")
     parser.add_argument("--export-action", help="可选：验收标准分页导出 Action")
     parser.add_argument("--export-page-limit", type=int, default=100)
     parser.add_argument(
@@ -219,6 +234,8 @@ def main() -> int:
     parser.add_argument("--organization-id-env", default="ZHUOJIAN_ORGANIZATION_ID")
     parser.add_argument("--legacy-secret-env", default="ZHUOJIAN_INTEGRATION_SECRET")
     args = parser.parse_args()
+    if args.expect_query_denied and args.export_action:
+        parser.error("拒绝探针不能同时验证导出；导出须使用获权会话单独验收")
 
     base = args.base_url.rstrip("/") + "/"
     hostname = urlsplit(base).hostname or ""
@@ -413,8 +430,7 @@ def main() -> int:
         method="POST",
         body=request_body,
     )
-    if status != 200:
-        raise SystemExit(f"页面感知 query Action 失败：HTTP {status}，{result.get('detail', '')}")
+    query_summary = validate_query_probe(status, result, expect_denied=args.expect_query_denied)
 
     export_summary = "not_requested"
     if export_action is not None:
@@ -493,7 +509,8 @@ def main() -> int:
             if contract_revision == "2.5"
             else "technical_ticket_verified"
         ),
-        "query": "technical_path_executed_with_local_test_signature",
+        "query": query_summary,
+        "authorized_query_pass": "not_run" if args.expect_query_denied else "synthetic_only",
         "export": export_summary,
         "subsystem_contract_pass": True,
         "saas_format_capability_pass": "not_run",
