@@ -199,6 +199,10 @@ def main() -> int:
             "name": f"{verb}{args.module_name}",
             "description": f"{verb}{args.module_name}业务数据，并返回可供页面和平台 AI 继续处理的结构化结果。",
             "operation": operation,
+            "permissionPolicy": {
+                "group": "management", "mode": "configurable",
+                "supportedScopes": ["self", "department", "department_and_children", "custom_departments", "all"],
+            },
             "aiEnabled": True,
             "requiresConfirmation": confirm,
             "aiTool": ai_tool,
@@ -266,6 +270,10 @@ def main() -> int:
                 "只返回可人工校正的草稿，不直接写业务数据。"
             ),
             "operation": "query",
+            "permissionPolicy": {
+                "group": "management", "mode": "configurable",
+                "supportedScopes": ["self", "department", "department_and_children", "custom_departments", "all"],
+            },
             "aiEnabled": True,
             "requiresConfirmation": False,
             "aiTool": {
