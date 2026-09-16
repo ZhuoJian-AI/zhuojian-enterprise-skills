@@ -52,6 +52,8 @@ def test_scaffold_uses_the_runtime_enterprise_identity(tmp_path: Path):
     app = (project / "app.py").read_text(encoding="utf-8")
     assert manifest["enterprise"] == {"key": "zhipu", "name": "质谱科技"}
     assert manifest["contractRevision"] == "2.5"
+    assert all(action.get("permissionPolicy", {}).get("mode") == "configurable"
+               for module in manifest["modules"] for action in module["actions"])
     manifest_page = manifest["modules"][0]["pages"][0]
     assert manifest_page["aiSemantics"]["defaultQueryActionKey"] == f"{manifest_page['pageKey'].rsplit('.', 1)[0]}.query"
     assert manifest_page["aiSemantics"]["primaryEntities"]
