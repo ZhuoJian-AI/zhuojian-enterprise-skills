@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] MOBILE-GRID-GUARD-20260917：本地规范与校验完成，待稳定 Release；不部署业务 ECS。状态及下游离开检查待办见 `docs/handoff/2026-09-17_mobile-grid-guard.md`。
+
 标准导航已发布 core 1.1.8 / bundle-v1.4.8；本轮任务释放，验收证据与下游待办见 `docs/handoff/2026-09-17_standard-navigation.md`。
 
 - [x] MOBILE-ACCEPTANCE-20260917 (@codex-mobile)：消除手机需求矛盾，明确真实页面验收与未测状态；用户追加授权后发布 core 1.1.7 / bundle-v1.4.7。
