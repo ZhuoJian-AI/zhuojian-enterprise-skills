@@ -1,5 +1,7 @@
 # Repository Guide
 
+Controlled module-navigation theming released in core 1.1.10 / bundle-v1.4.10. It allows four validated color tokens only, never arbitrary CSS, and does not rewrite or deploy downstream systems. Release evidence is in `docs/handoff/2026-09-17_navigation-theme.md`.
+
 Mobile module grid / truthful leave-state requirements released in core 1.1.9 / bundle-v1.4.9. Public install and local upgrade verified; no business ECS deployment. See `docs/handoff/2026-09-17_mobile-grid-guard.md`.
 
 Mobile acceptance release: core 1.1.7 / bundle-v1.4.7; evidence and remaining device-test limits in `docs/mobile-acceptance-20260917.md`.
