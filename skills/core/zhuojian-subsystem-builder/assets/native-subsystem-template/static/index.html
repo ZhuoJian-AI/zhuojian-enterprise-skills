@@ -20,7 +20,22 @@ function node(tag,className,text){const element=document.createElement(tag);if(c
 function replaceWithMessage(container,text,className='muted'){container.replaceChildren(node('div',`card ${className}`,text))}
 function setStatus(id,text,isError=false){const element=document.getElementById(id);element.textContent=String(text);element.className=isError?'error':'muted'}
 function actionBody(operation,params={},expectedVersion=null,confirmation){const body={requestId:newRequestId(),moduleKey,pageKey,operation,expectedVersion,params};if(confirmation)body.confirmation=confirmation;return body}
-async function loadBootstrap(){const params=new URLSearchParams({moduleKey,pageKey});const r=await fetch(`/api/ui/bootstrap?${params}`);const body=await r.json();if(!r.ok)throw new Error(body.detail||`HTTP ${r.status}`);pageName=String(body.pageName||'业务列表');applicationSlug=String(body.applicationSlug||'');launchNonce=String(body.launchNonce||'');platformAiCapabilities=Array.isArray(body.platformAiCapabilities)?body.platformAiCapabilities:[];pageActionKeys=Array.isArray(body.actionKeys)?body.actionKeys:[];if(!applicationSlug||!launchNonce)throw new Error('当前模块启动上下文无效');const title=`${body.applicationName||'__COMPANY_NAME__'} · ${body.moduleName||'业务模块'}`;document.title=title;document.getElementById('page-title').textContent=title;setupPlatformAi()}
+async function loadBootstrap(){const params=new URLSearchParams({moduleKey,pageKey});const r=await fetch(`/api/ui/bootstrap?${params}`);const body=await r.json();if(!r.ok)throw new Error(body.detail||`HTTP ${r.status}`);pageName=String(body.pageName||'业务列表');applicationSlug=String(body.applicationSlug||'');launchNonce=String(body.launchNonce||'');platformAiCapabilities=Array.isArray(body.platformAiCapabilities)?body.platformAiCapabilities:[];pageActionKeys=Array.isArray(body.actionKeys)?body.actionKeys:[];if(!applicationSlug||!launchNonce)throw new Error('当前模块启动上下文无效');const title=`${body.applicationName||'__COMPANY_NAME__'} · ${body.moduleName||'业务模块'}`;document.title=title;document.getElementById('page-title').textContent=title;setupPlatformAi();await initializeNavigation(body)}
+function hasBusinessDraft(){return Boolean(document.getElementById('file').files.length||currentAiDraft||document.getElementById('platform-ai-instruction').value.trim()||document.getElementById('platform-ai-text').value.trim()||document.getElementById('platform-ai-files').files.length)}
+async function initializeNavigation(bootstrap){
+  const {createNavigation}=await import('/static/zhuojian-navigation.js');
+  window.zhuojianNavigation=createNavigation({applicationSlug,launchNonce,
+    platformOrigin:bootstrap.platformOrigin,
+    entryUrl:bootstrap.navigationEntry?new URL(bootstrap.navigationEntry,bootstrap.platformOrigin).href:undefined,
+    isDirty:hasBusinessDraft,onFailure:error=>setStatus('status',error.message,true)});
+  document.addEventListener('click',event=>{
+    const button=event.target.closest('[data-zhuojian-module][data-zhuojian-page]');
+    if(!button)return;
+    event.preventDefault();
+    window.zhuojianNavigation.navigate(button.dataset.zhuojianModule,button.dataset.zhuojianPage)
+      .catch(error=>setStatus('status',error.message,true));
+  });
+}
 function render(items){currentRecords=Array.isArray(items)?items:[];setStatus('status',`共 ${currentRecords.length} 条`);const records=document.getElementById('records');records.replaceChildren();if(!currentRecords.length){replaceWithMessage(records,'暂无数据，可让业务 AI 按真实需求补齐页面表单。');return}for(const item of currentRecords){const card=node('div','card');card.append(node('strong','',item.id??''),node('div','muted',`状态 ${item.status??''} · 版本 ${item.version??''}`),node('pre','',JSON.stringify(item,null,2)));records.append(card)}}
 async function load(){sendContext();setStatus('status','正在读取业务数据…');try{const body=actionBody('query');const r=await fetch(`/api/ui/actions/${moduleKey}.query`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});const result=await r.json();if(!r.ok)throw new Error(result.detail||`HTTP ${r.status}`);render(result.items||[]);return true}catch(e){setStatus('status',e.message,true);return false}}
 function fileParams(action){return new URLSearchParams({moduleKey,pageKey,actionKey:`${moduleKey}.${action}`})}

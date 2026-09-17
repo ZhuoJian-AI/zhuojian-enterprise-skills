@@ -438,6 +438,8 @@ understanding → planned → awaiting_clarification / awaiting_confirmation
 
 ## 页面上下文和 AI 工具
 
+页面内跨模块/页面导航、能力协商、离开检查及独立受控入口见 [标准导航 Bridge](navigation-bridge.md)。保持 2.4/2.5 版本，不以下载 Skill 代替业务适配或登记。
+
 ### 电脑、平板和手机全端界面
 
 SaaS 与子系统共同提供同一套响应式 Web 界面，不开发第二套手机版，也不能为手机复制另一套权限菜单、表单状态或业务逻辑。SaaS 负责平台导航、顶部栏、工作空间、业务小助手和 iframe 容器；子系统负责 iframe 内的业务页面、表单、表格、弹窗和操作按钮。双方都必须在连续宽度变化下保持可用，不能只针对少数测试宽度写特例。

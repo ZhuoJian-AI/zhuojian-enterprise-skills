@@ -2,6 +2,8 @@
 
 Mobile acceptance release: core 1.1.7 / bundle-v1.4.7; evidence and remaining device-test limits in `docs/mobile-acceptance-20260917.md`.
 
+Standard navigation candidate: core 1.1.8; additive 2.4/2.5 bridge contract, no downstream deployment. Publish only after matching SaaS regression; status/evidence in `docs/handoff/2026-09-17_standard-navigation.md`.
+
 ## Scope
 
 This is the canonical public monorepo for ZhuoJian enterprise Codex Skills. One Skill remains one self-contained folder with its own `SKILL.md`, `skill-version.json`, and `CHANGELOG.md`. Company-specific behavior must not be copied into the core Skill.

@@ -238,8 +238,14 @@ def main() -> int:
     failures: list[str] = []
     warnings: set[str] = set()
     failures.extend(semantic_failures)
+    navigation_markers: set[str] = set()
     for path in source_files(root):
         text = path.read_text(encoding="utf-8", errors="replace")
+        if path.suffix.lower() in {".html", ".js", ".ts", ".tsx", ".vue"}:
+            navigation_markers.update(marker for marker in (
+                "zhuojian:navigate", "zhuojian:navigate-result", "navigation.v1",
+                "zhuojian:prepare-leave", "zhuojian:leave-result",
+            ) if marker in text)
         relative = path.relative_to(root)
         if path.suffix.lower() == ".html" and re.search(r"<!doctype\s+html|<html\b", text, re.IGNORECASE):
             viewport_meta = VIEWPORT_META.search(text)
@@ -355,6 +361,13 @@ def main() -> int:
                 f"{path.relative_to(root)}: v2.5 禁止用一个旧接入密钥承担多种用途"
             )
 
+    if "zhuojian:navigate" in navigation_markers:
+        for marker in ("zhuojian:navigate-result", "navigation.v1", "zhuojian:prepare-leave", "zhuojian:leave-result"):
+            if marker not in navigation_markers:
+                failures.append(f"已接入标准导航但缺少 {marker}；不能只发请求不处理结果或离开检查")
+        warnings.add("导航标记检查不证明运行时安全；仍须双身份、跨来源及草稿/返回测试")
+    else:
+        warnings.add("尚未接入可选标准导航；保留旧流程，跨模块业务按钮列入待适配，不自动扩权")
     if not context_found:
         failures.append("未找到 zhuojian:context 页面上下文 Bridge")
     if contract_revision == "2.5":
