@@ -4,7 +4,11 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from manifest_semantics import validate_manifest_semantics, validate_permission_policy
+from manifest_semantics import (
+    validate_manifest_semantics,
+    validate_navigation_theme,
+    validate_permission_policy,
+)
 
 
 @pytest.mark.parametrize("policy,operation", [
@@ -37,3 +41,28 @@ def test_legacy_contract_checks_present_policy_without_requiring_extension():
     assert not validate_manifest_semantics(manifest, require_semantics=False)
     action["permissionPolicy"] = {"group": "public_read", "mode": "public_read"}
     assert validate_manifest_semantics(manifest, require_semantics=False)
+
+
+def test_navigation_theme_requires_readable_controlled_palette():
+    valid = {
+        "moduleNavigationTheme": {
+            "accentColor": "#176B57",
+            "backgroundColor": "#FFFAF1",
+            "selectedBackgroundColor": "#E8F4EF",
+            "selectedTextColor": "#174F43",
+        }
+    }
+
+    assert validate_navigation_theme(valid) == []
+    assert validate_navigation_theme({
+        "moduleNavigationTheme": {
+            **valid["moduleNavigationTheme"],
+            "accentColor": "red",
+        }
+    })
+    assert validate_navigation_theme({
+        "moduleNavigationTheme": {
+            **valid["moduleNavigationTheme"],
+            "selectedTextColor": "#E8F4EF",
+        }
+    })

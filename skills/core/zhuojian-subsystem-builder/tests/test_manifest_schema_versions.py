@@ -69,6 +69,42 @@ def test_schema_accepts_v25_authorization_code_shape():
     )
 
 
+def test_schema_accepts_closed_module_navigation_theme():
+    payload = manifest(
+        "2.5",
+        {"ssoPath": "/api/integration/sso", "mode": "authorization_code"},
+    )
+    payload["presentation"] = {
+        "moduleNavigationTheme": {
+            "accentColor": "#176B57",
+            "backgroundColor": "#FFFAF1",
+            "selectedBackgroundColor": "#E8F4EF",
+            "selectedTextColor": "#174F43",
+        }
+    }
+
+    validate(payload)
+
+
+def test_schema_rejects_arbitrary_navigation_css():
+    payload = manifest(
+        "2.5",
+        {"ssoPath": "/api/integration/sso", "mode": "authorization_code"},
+    )
+    payload["presentation"] = {
+        "moduleNavigationTheme": {
+            "accentColor": "#176B57",
+            "backgroundColor": "#FFFAF1",
+            "selectedBackgroundColor": "#E8F4EF",
+            "selectedTextColor": "#174F43",
+            "css": "body { display: none; }",
+        }
+    }
+
+    with pytest.raises(jsonschema.ValidationError):
+        validate(payload)
+
+
 def test_schema_accepts_closed_page_semantics_and_rejects_prompt_fields():
     payload = manifest("2.5", {"ssoPath": "/api/integration/sso", "mode": "authorization_code"})
     semantics = {
