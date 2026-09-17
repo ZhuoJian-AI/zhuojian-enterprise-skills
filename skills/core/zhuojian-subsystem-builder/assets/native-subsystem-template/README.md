@@ -2,6 +2,8 @@
 
 灼见原生模块骨架，应用标识 `__APPLICATION_SLUG__`，子模块 `__MODULE_KEY__`，ECS 本地 Git 项目名 `__LOCAL_PROJECT_NAME__`。
 
+SaaS 负责系统与模块导航。子系统如需衔接自身品牌，只能按 Skill 契约登记四个 `presentation.moduleNavigationTheme` 颜色令牌；不得注入 CSS，也不得改造平台外壳。
+
 1. 根据真实业务修改 `subsystem.json`、`app.py` 和页面。
 2. 本地测试时由开发 AI 从 `.env.example` 生成一次性随机值；生产凭证只由 Runtime 注入，且不得提交 `.env`。
 3. 运行 `docker compose up --build`，确认 `/health` 和协议验收通过。

@@ -22,6 +22,7 @@
     "teamId": false,
     "team_id": false,
     "bridgeVersion": {"const": 1},
+    "presentation": {"$ref": "#/$defs/presentation"},
     "eventsUrl": {"$ref": "#/$defs/sitePath"},
     "eventDeliveriesUrl": {"const": "/api/integration/event-deliveries"},
     "auth": {
@@ -64,6 +65,25 @@
     "stableKey": {"type": "string", "minLength": 1, "maxLength": 160, "pattern": "^[a-z0-9][a-z0-9._-]*$"},
     "sitePath": {"type": "string", "pattern": "^/(?!/).*$", "maxLength": 2000},
     "schema": {"type": "object"},
+    "color": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
+    "presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["moduleNavigationTheme"],
+      "properties": {
+        "moduleNavigationTheme": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["accentColor", "backgroundColor", "selectedBackgroundColor", "selectedTextColor"],
+          "properties": {
+            "accentColor": {"$ref": "#/$defs/color"},
+            "backgroundColor": {"$ref": "#/$defs/color"},
+            "selectedBackgroundColor": {"$ref": "#/$defs/color"},
+            "selectedTextColor": {"$ref": "#/$defs/color"}
+          }
+        }
+      }
+    },
     "inputSchema": {
       "type": "object",
       "required": ["type"],

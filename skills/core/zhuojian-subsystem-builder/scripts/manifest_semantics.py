@@ -7,6 +7,13 @@ from typing import Any
 
 
 STABLE_KEY_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
+HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+MODULE_NAVIGATION_THEME_FIELDS = {
+    "accentColor",
+    "backgroundColor",
+    "selectedBackgroundColor",
+    "selectedTextColor",
+}
 AI_SEMANTICS_FIELDS = {
     "purpose",
     "primaryEntities",
@@ -33,6 +40,40 @@ PLATFORM_AI_CAPABILITIES = {
     "business.predict": "json",
 }
 PLATFORM_AI_INPUT_KINDS = {"image", "audio", "text", "json"}
+
+
+def _relative_luminance(color: str) -> float:
+    channels = [int(color[index:index + 2], 16) / 255 for index in (1, 3, 5)]
+    linear = [value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4 for value in channels]
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def _contrast_ratio(left: str, right: str) -> float:
+    bright, dark = sorted((_relative_luminance(left), _relative_luminance(right)), reverse=True)
+    return (bright + 0.05) / (dark + 0.05)
+
+
+def validate_navigation_theme(presentation: object) -> list[str]:
+    if presentation is None:
+        return []
+    if not isinstance(presentation, dict) or set(presentation) != {"moduleNavigationTheme"}:
+        return ["presentation 只能声明 moduleNavigationTheme"]
+    theme = presentation.get("moduleNavigationTheme")
+    if not isinstance(theme, dict) or set(theme) != MODULE_NAVIGATION_THEME_FIELDS:
+        return ["moduleNavigationTheme 必须且只能包含四个受控颜色字段"]
+    if any(not isinstance(theme[key], str) or not HEX_COLOR_RE.fullmatch(theme[key]) for key in MODULE_NAVIGATION_THEME_FIELDS):
+        return ["moduleNavigationTheme 颜色必须使用 #RRGGBB 格式"]
+    failures: list[str] = []
+    if _contrast_ratio("#475467", theme["backgroundColor"]) < 4.5:
+        failures.append("moduleNavigationTheme 普通文字与背景对比度必须至少为 4.5:1")
+    if _contrast_ratio(theme["selectedTextColor"], theme["selectedBackgroundColor"]) < 4.5:
+        failures.append("moduleNavigationTheme 选中文字与背景对比度必须至少为 4.5:1")
+    if min(
+        _contrast_ratio(theme["accentColor"], theme["backgroundColor"]),
+        _contrast_ratio(theme["accentColor"], theme["selectedBackgroundColor"]),
+    ) < 3:
+        failures.append("moduleNavigationTheme 选中标识对比度必须至少为 3:1")
+    return failures
 
 
 def _closed_object_schema(value: object) -> bool:
@@ -77,7 +118,7 @@ def validate_manifest_semantics(manifest: object, *, require_semantics: bool) ->
     if not isinstance(modules, list) or not modules:
         return ["v2.5 subsystem.json 必须声明非空 modules"] if require_semantics else []
 
-    failures: list[str] = []
+    failures: list[str] = validate_navigation_theme(manifest.get("presentation"))
     page_index: set[tuple[str, str]] = set()
     for module in modules:
         if not isinstance(module, dict):
