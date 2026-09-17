@@ -2111,6 +2111,8 @@ def ui_bootstrap(request: Request, moduleKey: str, pageKey: str):
         "moduleName": module["name"],
         "pageName": page["name"],
         "launchNonce": session.get("launchNonce"),
+        "platformOrigin": SAAS_ORIGIN,
+        "navigationEntry": session.get("navigationEntry"),
         "actionKeys": list(page_access.get("actionKeys") or []),
         "platformAiCapabilities": platform_ai_capabilities,
     }
@@ -2861,6 +2863,13 @@ def validate_sso_exchange(
     if redirect not in allowed_routes:
         raise HTTPException(403, "SSO redirect is not an authorized page")
 
+    navigation_entry = claims.get("navigationEntry")
+    if navigation_entry is not None and (
+        not isinstance(navigation_entry, str)
+        or not re.fullmatch(r"/subsystem-navigation/[A-Za-z0-9-]+/[0-9a-fA-F-]{36}", navigation_entry)
+    ):
+        raise HTTPException(403, "Invalid platform navigation entry")
+
     return {
         "sub": claims["sub"],
         "organizationId": claims["organizationId"],
@@ -2875,6 +2884,7 @@ def validate_sso_exchange(
         "pageAccess": page_access,
         "authEpoch": claims["authEpoch"],
         "launchNonce": launch_nonce,
+        "navigationEntry": navigation_entry,
     }
 
 
@@ -2911,6 +2921,12 @@ def sso(request: Request, code: str, redirect: str, launch_nonce: str):
     response.headers["Cache-Control"] = "no-store"
     response.headers["Pragma"] = "no-cache"
     return response
+
+
+@app.get("/static/zhuojian-navigation.js")
+def navigation_adapter():
+    # Fixed public SDK asset only; no arbitrary filesystem paths or user data.
+    return FileResponse(ROOT / "static" / "zhuojian-navigation.js", media_type="text/javascript")
 
 
 @app.get("/")
