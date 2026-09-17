@@ -495,3 +495,35 @@ def test_validator_warns_for_table_without_local_scroll(tmp_path: Path):
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "表格但未找到局部横向滚动容器" in result.stdout
+
+
+@pytest.mark.parametrize("css,warning", [
+    ("@media(min-width:1100px){.panel{max-width:1400px}}", False),
+    (".table-scroll{overflow:auto}.panel{max-width:1400px}", False),
+    (".panel{width:1100px}", True),
+    (".panel{color:red; min-width:1100px}", True),
+])
+def test_width_warning_only_checks_actual_declarations(tmp_path: Path, css: str, warning: bool):
+    project = write_valid_project(tmp_path)
+    (project / "index.html").write_text(
+        '<!doctype html><html><head><meta name="viewport" '
+        'content="width=device-width,initial-scale=1,viewport-fit=cover">'
+        f'<style>{css}</style></head><body></body></html>', encoding="utf-8",
+    )
+    result = run_validator(project)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert ("检测到可疑固定" in result.stdout) is warning
+
+
+def test_table_overflow_shorthand_is_recognized(tmp_path: Path):
+    project = write_valid_project(tmp_path)
+    (project / "index.html").write_text(
+        '<!doctype html><html><head><meta name="viewport" '
+        'content="width=device-width,initial-scale=1,viewport-fit=cover">'
+        '<style>.table-scroll{overflow:auto}</style></head><body>'
+        '<div class="table-scroll"><table><tr><td>记录</td></tr></table></div></body></html>',
+        encoding="utf-8",
+    )
+    result = run_validator(project)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "表格但未找到局部横向滚动容器" not in result.stdout
