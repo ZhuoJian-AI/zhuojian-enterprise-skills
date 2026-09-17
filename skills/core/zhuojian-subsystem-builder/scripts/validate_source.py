@@ -123,7 +123,7 @@ VIEWPORT_META = re.compile(
 VIEWPORT_FIT_COVER = re.compile(r"\bviewport-fit\s*=\s*cover\b", re.IGNORECASE)
 CSS_BLOCK = re.compile(r"(?P<selectors>[^{}]+)\{(?P<body>[^{}]*)\}", re.DOTALL)
 ROOT_SELECTOR = re.compile(r"(?:^|,)\s*(?:html|body|#root|#app)(?=\s|,|$)", re.IGNORECASE)
-PIXEL_WIDTH = re.compile(r"\b(?P<property>min-width|width)\s*:\s*(?P<width>\d{3,})px", re.IGNORECASE)
+PIXEL_WIDTH = re.compile(r"(?:^|;)\s*(?P<property>min-width|width)\s*:\s*(?P<width>\d{3,})px", re.IGNORECASE)
 
 
 def uses_model_provider_sdk(path: Path, text: str) -> bool:
@@ -258,15 +258,17 @@ def main() -> int:
                                 f"{relative}: 根布局 {selectors.strip()!r} 固定 min-width={width}px，会阻断手机适配"
                             )
             if re.search(r"<table\b", text, re.IGNORECASE) and not re.search(
-                r"overflow-x\s*:\s*(?:auto|scroll)", text, re.IGNORECASE
+                r"overflow(?:-x)?\s*:\s*(?:auto|scroll)", text, re.IGNORECASE
             ):
                 warnings.add(f"{relative}: 检测到表格但未找到局部横向滚动容器，请用真实浏览器验收")
-            for width_match in PIXEL_WIDTH.finditer(text):
-                width = int(width_match.group("width"))
-                if width >= 768:
-                    warnings.add(
-                        f"{relative}: 检测到可疑固定{width_match.group('property')}={width}px，请确认只用于表格或画布"
-                    )
+            # Inspect declaration bodies, not media-query breakpoints or max-width.
+            for block in CSS_BLOCK.finditer(text):
+                for width_match in PIXEL_WIDTH.finditer(block.group("body")):
+                    width = int(width_match.group("width"))
+                    if width >= 768:
+                        warnings.add(
+                            f"{relative}: 检测到可疑固定{width_match.group('property')}={width}px，请确认只用于表格或画布"
+                        )
             if ":hover" in text and "hover:none" not in text.replace(" ", ""):
                 warnings.add(f"{relative}: 存在 hover 样式，请确认触屏有始终可见的操作入口")
         context_found = context_found or "zhuojian:context" in text
