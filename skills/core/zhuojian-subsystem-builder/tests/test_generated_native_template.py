@@ -85,6 +85,15 @@ def test_scaffold_uses_the_runtime_enterprise_identity(tmp_path: Path):
     assert "@media(max-width:768px)" in page_html
     assert "@media(prefers-reduced-motion:reduce)" in page_html
     assert "frame-ancestors 'self' " in app
+    availability = (project / "static" / "zhuojian-availability.js").read_text(encoding="utf-8")
+    assert 'window.parent !== window' in availability
+    assert "SUBSYSTEM_MAINTENANCE" in availability
+    assert "AbortSignal.timeout" in availability
+    assert "自动清除或重交" in availability
+    assert "zhuojian-availability.js" in page_html
+    assert "zhuojian-availability.css" in page_html
+    assert '@app.get("/static/zhuojian-availability.js")' in app
+    assert '@app.get("/static/zhuojian-availability.css")' in app
 
 
 def test_scaffolded_native_system_runs_its_security_and_recovery_suite(tmp_path: Path):

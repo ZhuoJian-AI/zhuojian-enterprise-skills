@@ -1,0 +1,7 @@
+.zj-availability{position:fixed;z-index:1000;top:max(12px,env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;border:1px solid #d8dce6;border-radius:12px;background:#fff;color:#172033;box-shadow:0 6px 24px rgba(20,27,45,.12);font:inherit}
+.zj-availability[data-kind="maintenance"]{background:#fff9ed;border-color:#e6c889}
+.zj-availability[data-kind="unavailable"]{background:#fff4f2;border-color:#e9b7b0}
+.zj-availability[data-kind="recovered"]{background:#f1faf3;border-color:#a5d5b0}
+.zj-availability__message{flex:1 1 220px;min-width:0;overflow-wrap:anywhere}
+.zj-availability button{min-height:44px;padding:8px 12px}
+@media(max-width:768px){.zj-availability{gap:8px;padding:10px 12px}.zj-availability__message{flex-basis:100%}}
