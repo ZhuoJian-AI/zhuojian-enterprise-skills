@@ -1,6 +1,6 @@
 # Repository Guide
 
-Controlled module-navigation theming released in core 1.1.10 / bundle-v1.4.10. It allows four validated color tokens only, never arbitrary CSS, and does not rewrite or deploy downstream systems. Release evidence is in `docs/handoff/2026-09-17_navigation-theme.md`.
+Controlled module-navigation theming was introduced as optional in core 1.1.10 / bundle-v1.4.10. Core 1.1.11 makes the four validated colors mandatory for every subsequent Skill-managed subsystem release; existing SaaS registrations retain a safe default-color fallback. Neither Skill release rewrites or deploys downstream systems. Release evidence is in `docs/handoff/2026-09-17_navigation-theme.md` and the 2026-09-18 required-theme handoff.
 
 Mobile module grid / truthful leave-state requirements released in core 1.1.9 / bundle-v1.4.9. Public install and local upgrade verified; no business ECS deployment. See `docs/handoff/2026-09-17_mobile-grid-guard.md`.
 

@@ -328,6 +328,14 @@ def main() -> int:
         "applicationSlug": application_slug,
         "applicationName": args.application_name.strip(),
         "bridgeVersion": 1,
+        "presentation": {
+            "moduleNavigationTheme": {
+                "accentColor": "#5148D8",
+                "backgroundColor": "#FFFFFF",
+                "selectedBackgroundColor": "#EEECFF",
+                "selectedTextColor": "#5148D8",
+            },
+        },
         "eventsUrl": "/api/integration/events",
         "eventDeliveriesUrl": "/api/integration/event-deliveries",
         "auth": {"ssoPath": "/api/integration/sso", "mode": "authorization_code"},

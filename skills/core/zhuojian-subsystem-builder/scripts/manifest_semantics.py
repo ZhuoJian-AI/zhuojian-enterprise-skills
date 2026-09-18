@@ -55,7 +55,7 @@ def _contrast_ratio(left: str, right: str) -> float:
 
 def validate_navigation_theme(presentation: object) -> list[str]:
     if presentation is None:
-        return []
+        return ["缺少必填的 presentation.moduleNavigationTheme；发布前须登记与业务页面一致的导航主题"]
     if not isinstance(presentation, dict) or set(presentation) != {"moduleNavigationTheme"}:
         return ["presentation 只能声明 moduleNavigationTheme"]
     theme = presentation.get("moduleNavigationTheme")

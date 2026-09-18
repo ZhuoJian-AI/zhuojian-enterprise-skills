@@ -22,6 +22,22 @@ def runtime_release(commit: str = "a" * 40) -> dict:
     }
 
 
+def test_publisher_blocks_missing_navigation_theme_before_registration():
+    with pytest.raises(SystemExit, match="模块导航主题未通过发布校验"):
+        publish_subsystem.require_publishable_navigation_theme({"modules": []})
+
+    publish_subsystem.require_publishable_navigation_theme({
+        "presentation": {
+            "moduleNavigationTheme": {
+                "accentColor": "#176B57",
+                "backgroundColor": "#FFFAF1",
+                "selectedBackgroundColor": "#E8F4EF",
+                "selectedTextColor": "#174F43",
+            }
+        }
+    })
+
+
 def test_http_error_body_is_never_relayed_to_logs(monkeypatch):
     canary = "zjac_canary-secret-that-must-never-appear"
     error = HTTPError(

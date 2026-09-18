@@ -14,6 +14,17 @@ from urllib.error import HTTPError
 from urllib.parse import urljoin
 from urllib.request import Request, urlopen
 
+try:
+    from manifest_semantics import validate_navigation_theme
+except ModuleNotFoundError:  # imported as scripts.register_subsystem in tests
+    from scripts.manifest_semantics import validate_navigation_theme
+
+
+def require_navigation_theme(manifest: dict) -> None:
+    failures = validate_navigation_theme(manifest.get("presentation"))
+    if failures:
+        raise SystemExit("模块导航主题未通过登记校验：\n- " + "\n- ".join(failures))
+
 
 def call(url: str, token: str, method: str, body: dict | None = None) -> dict:
     data = json.dumps(body, ensure_ascii=False).encode() if body is not None else None
@@ -40,6 +51,8 @@ def main() -> int:
     admin_token, integration_token = os.getenv(args.admin_token_env, ""), os.getenv(args.integration_token_env, "")
     if not admin_token or not integration_token:
         raise SystemExit("管理员 Token 和模块接入 Token 必须通过环境变量提供。")
+    manifest = call(args.base_url.rstrip("/") + "/api/integration/manifest", integration_token, "GET")
+    require_navigation_theme(manifest)
     api = args.platform_url.rstrip("/") + "/api/v1/"
     discovery = call(
         urljoin(api, f"organizations/{args.organization_id}/applications/discover"), admin_token, "POST",

@@ -23,6 +23,14 @@ def manifest(revision: str, auth: dict[str, str]) -> dict:
         "eventsUrl": "/api/integration/events",
         "eventDeliveriesUrl": "/api/integration/event-deliveries",
         "auth": auth,
+        "presentation": {
+            "moduleNavigationTheme": {
+                "accentColor": "#176B57",
+                "backgroundColor": "#FFFAF1",
+                "selectedBackgroundColor": "#E8F4EF",
+                "selectedTextColor": "#174F43",
+            }
+        },
         "modules": [
             {
                 "moduleKey": "orders",
@@ -84,6 +92,18 @@ def test_schema_accepts_closed_module_navigation_theme():
     }
 
     validate(payload)
+
+
+@pytest.mark.parametrize("revision", ["2.4", "2.5"])
+def test_schema_rejects_missing_module_navigation_theme(revision: str):
+    auth = {"ssoPath": "/api/integration/sso", "algorithm": "HS256"} if revision == "2.4" else {
+        "ssoPath": "/api/integration/sso", "mode": "authorization_code",
+    }
+    payload = manifest(revision, auth)
+    del payload["presentation"]
+
+    with pytest.raises(jsonschema.ValidationError, match="presentation"):
+        validate(payload)
 
 
 def test_schema_rejects_arbitrary_navigation_css():

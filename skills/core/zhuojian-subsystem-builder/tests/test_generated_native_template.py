@@ -52,6 +52,14 @@ def test_scaffold_uses_the_runtime_enterprise_identity(tmp_path: Path):
     app = (project / "app.py").read_text(encoding="utf-8")
     assert manifest["enterprise"] == {"key": "zhipu", "name": "质谱科技"}
     assert manifest["contractRevision"] == "2.5"
+    assert manifest["presentation"]["moduleNavigationTheme"] == {
+        "accentColor": "#5148D8",
+        "backgroundColor": "#FFFFFF",
+        "selectedBackgroundColor": "#EEECFF",
+        "selectedTextColor": "#5148D8",
+    }
+    assert "background:#eeecff" in page_html
+    assert "color:#5148d8" in page_html
     assert all(action.get("permissionPolicy", {}).get("mode") == "configurable"
                for module in manifest["modules"] for action in module["actions"])
     manifest_page = manifest["modules"][0]["pages"][0]

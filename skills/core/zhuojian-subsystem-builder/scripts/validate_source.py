@@ -213,7 +213,7 @@ def main() -> int:
                 ):
                     platform_ai_actions.append(str(action.get("actionKey") or ""))
     else:
-        semantic_failures = []
+        semantic_failures = ["缺少 subsystem.json，无法登记必填的 presentation.moduleNavigationTheme"]
         platform_ai_actions = []
 
     context_found = False

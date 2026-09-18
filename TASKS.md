@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **NAVIGATION-THEME-REQUIRED-20260918** (@codex-nav-theme)：将模块导航主题从可选展示增强提升为 Skill 发布必检项。验收：新脚手架生成有效主题；源码、端点和登记前缺失/无效主题拒绝通过；既有已登记系统不因 Skill 更新被 SaaS 停用；测试、稳定 Release 和公开更新路径有证据。
+
 - [x] **NAVIGATION-THEME-20260917** (@codex)：可选受控模块导航主题已随 core 1.1.10 / `bundle-v1.4.10` 发布，公开 Release 与本机正式更新器升级均已验证。只允许四个颜色令牌，不开放任意 CSS，不改变契约版本，也不自动修改或部署业务子系统。见 `docs/handoff/2026-09-17_navigation-theme.md`。
 
 - [ ] 下游真实草稿检查：core 1.1.9 / bundle-v1.4.9 已发布并验证公开安装/自动更新；业务负责人仍需适配、测试及部署子系统。见 `docs/handoff/2026-09-17_mobile-grid-guard.md`。

@@ -13,7 +13,7 @@ v2.5 把 Manifest、SSO、Action 和 Event 的凭证拆开，并把 SSO 改为�
 - `moduleKey`：业务大模块中的子模块标识，也是导航与授权边界。SaaS 按有效目录生成横向导航；嵌入时子系统隐藏重复模块导航，不隐藏页面内筛选与详情页签。
 - `pageKey`：子模块内稳定页面/工作上下文，也是最小可见边界。
 - `actionKey`：系统内全局唯一业务命令，也是最小操作边界。
-- `presentation.moduleNavigationTheme`：可选的应用级模块导航主题，只登记受控颜色，不接受任意 CSS；完整约束见 [模块导航与安全迁移](module-navigation-migration.md)。
+- `presentation.moduleNavigationTheme`：Skill 发布必检的应用级模块导航主题，四个受控颜色须与业务页面配色一致，不接受任意 CSS；完整约束见 [模块导航与安全迁移](module-navigation-migration.md)。SaaS 对已登记旧版本保留缺失时的默认色回退，不代表新发布可省略。
 - `departments[]`：开发、协作、审批和验收责任目录；每个子模块恰好一个 owner 部门。部门责任不产生员工访问权限。
 - `accessRoles[]`：所需的“页面 + Action”权限组合建议。它不是子系统的角色，不创建角色、不绑定用户、不决定部门数据范围；Manifest 只声明真实业务需要的最少组合。
 - SaaS 的组织结构固定为“企业 → 部门 → 用户”，不存在 Team 授权范围。部门只表示组织归属、数据范围与资源所有权，不因员工属于某部门就自动获得该部门资源的写权限。
