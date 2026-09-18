@@ -21,4 +21,7 @@
 
 ## 发布状态
 
-本文件提交时，源码 PR、稳定 Release 及公开自动更新验证仍待完成；应以实际 Release 与验证记录为准，不把此文件当成已发布证明。
+- 源码：[PR #23](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/pull/23)，合并提交 `6bbdb5433e35243443082917cbad30629ee5b22b`。
+- 稳定 Release：[bundle-v1.4.11](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/releases/tag/bundle-v1.4.11)，从干净的已合并 `main` 构建；core ZIP SHA-256 为 `db147c413952703649b1692e21dec00d4673cdba31d4a600b345625b7a2be47d`，与公开目录一致。
+- 公开无登录获取更新清单成功；本机正式更新器输出 `SKILL_UPDATED 1.1.10 -> 1.1.11`，重读新版规则后交接 Skills 均为 current。该证据仅证明 Skill 可获取，不证明下游系统已适配。
+- 已通知组织 wiki 的本仓及已登记下游卡片；主动 issue：[生产协同 #43](https://github.com/ZhuoJian-AI/garment-production-collaboration/issues/43)、[COA #31](https://github.com/ZhuoJian-AI/coa/issues/31)、[旧 Builder #19](https://github.com/ZhuoJian-AI/aifabei-subsystem-builder/issues/19)。未替任何下游修改代码或部署。

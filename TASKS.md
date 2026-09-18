@@ -1,6 +1,6 @@
 # 当前任务
 
-- [ ] **NAVIGATION-THEME-REQUIRED-20260918** (@codex-nav-theme)：将模块导航主题从可选展示增强提升为 Skill 发布必检项。验收：新脚手架生成有效主题；源码、端点和登记前缺失/无效主题拒绝通过；既有已登记系统不因 Skill 更新被 SaaS 停用；测试、稳定 Release 和公开更新路径有证据。
+- [x] **NAVIGATION-THEME-REQUIRED-20260918** (@codex-nav-theme)：模块导航主题已升级为 core 1.1.11 的发布必检项，并随 `bundle-v1.4.11` 稳定发布；脚手架、Schema、源码、端点、Runtime 发布及旧系统手工登记均覆盖。241 passed、41 skipped；公开下载与本机正式更新器已验证。既有 SaaS 版本兼容运行，三个业务子系统仍待各自负责人适配、部署与验收。见 `docs/handoff/2026-09-18_required-navigation-theme.md`。
 
 - [x] **NAVIGATION-THEME-20260917** (@codex)：可选受控模块导航主题已随 core 1.1.10 / `bundle-v1.4.10` 发布，公开 Release 与本机正式更新器升级均已验证。只允许四个颜色令牌，不开放任意 CSS，不改变契约版本，也不自动修改或部署业务子系统。见 `docs/handoff/2026-09-17_navigation-theme.md`。
 
