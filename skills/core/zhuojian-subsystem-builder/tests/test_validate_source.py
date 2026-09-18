@@ -61,6 +61,14 @@ def write_valid_project(tmp_path: Path, contract_revision: str = "2.5") -> Path:
             "protocol": "zhuojian-subsystem",
             "version": 2,
             "contractRevision": contract_revision,
+            "presentation": {
+                "moduleNavigationTheme": {
+                    "accentColor": "#176B57",
+                    "backgroundColor": "#FFFAF1",
+                    "selectedBackgroundColor": "#E8F4EF",
+                    "selectedTextColor": "#174F43",
+                }
+            },
             "modules": [{
                 "moduleKey": "orders",
                 "pages": [{
@@ -419,7 +427,7 @@ def test_explicit_revision_cannot_override_subsystem_json(tmp_path: Path):
     assert "普通维护不得只改版本号" in result.stdout
 
 
-def test_missing_manifest_requires_explicit_revision(tmp_path: Path):
+def test_missing_manifest_is_rejected_even_with_explicit_revision(tmp_path: Path):
     project = tmp_path / "manifestless"
     project.mkdir()
     (project / "app.py").write_text(VALID_SOURCE_V24, encoding="utf-8")
@@ -429,7 +437,36 @@ def test_missing_manifest_requires_explicit_revision(tmp_path: Path):
 
     assert result.returncode == 1
     assert "无法判断现有系统的接入契约" in result.stdout
-    assert explicit.returncode == 0, explicit.stdout + explicit.stderr
+    assert explicit.returncode == 1
+    assert "缺少 subsystem.json，无法登记必填的 presentation.moduleNavigationTheme" in explicit.stdout
+
+
+@pytest.mark.parametrize("contract_revision", ["2.4", "2.5"])
+def test_missing_navigation_theme_blocks_source_validation(tmp_path: Path, contract_revision: str):
+    project = write_valid_project(tmp_path, contract_revision)
+    manifest_path = project / "subsystem.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    del manifest["presentation"]
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    result = run_validator(project)
+
+    assert result.returncode == 1
+    assert "缺少必填的 presentation.moduleNavigationTheme" in result.stdout
+
+
+def test_unreadable_navigation_theme_blocks_source_validation(tmp_path: Path):
+    project = write_valid_project(tmp_path)
+    manifest_path = project / "subsystem.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["presentation"]["moduleNavigationTheme"]["selectedTextColor"] = "#FFFFFF"
+    manifest["presentation"]["moduleNavigationTheme"]["selectedBackgroundColor"] = "#FFFFFF"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    result = run_validator(project)
+
+    assert result.returncode == 1
+    assert "选中文字与背景对比度" in result.stdout
 
 
 def test_validator_rejects_employee_html_without_device_viewport(tmp_path: Path):

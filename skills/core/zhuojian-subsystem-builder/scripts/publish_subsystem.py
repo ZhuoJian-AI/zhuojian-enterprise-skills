@@ -23,6 +23,10 @@ try:
     from contract_versions import require_supported_contract_revision
 except ModuleNotFoundError:  # imported as scripts.publish_subsystem in tests
     from scripts.contract_versions import require_supported_contract_revision
+try:
+    from manifest_semantics import validate_navigation_theme
+except ModuleNotFoundError:  # imported as scripts.publish_subsystem in tests
+    from scripts.manifest_semantics import validate_navigation_theme
 
 try:  # Linux production dependency; Windows remains usable for --help/tests.
     import fcntl
@@ -37,6 +41,12 @@ CANONICAL_ENTERPRISE_KEY = "alphabet"
 def canonical_enterprise_key(value: object) -> str:
     normalized = str(value or "").strip().lower()
     return CANONICAL_ENTERPRISE_KEY if normalized == "aifabei" else normalized
+
+
+def require_publishable_navigation_theme(manifest: dict) -> None:
+    failures = validate_navigation_theme(manifest.get("presentation"))
+    if failures:
+        raise SystemExit("模块导航主题未通过发布校验：\n- " + "\n- ".join(failures))
 
 
 @contextlib.contextmanager
@@ -440,6 +450,7 @@ def main() -> int:
     image_ref = str(running["image"])
 
     manifest = call_json(base_url + "/api/integration/manifest", manifest_token)
+    require_publishable_navigation_theme(manifest)
     application_slug = str(manifest.get("applicationSlug") or "")
     application_name = str(manifest.get("applicationName") or "")
     enterprise_key = str((manifest.get("enterprise") or {}).get("key") or "")

@@ -4,7 +4,7 @@
   "title": "ZhuoJian subsystem manifest v2.4-v2.5",
   "type": "object",
   "additionalProperties": true,
-  "required": ["protocol", "version", "contractRevision", "enterprise", "applicationSlug", "applicationName", "eventsUrl", "eventDeliveriesUrl", "auth", "modules"],
+  "required": ["protocol", "version", "contractRevision", "enterprise", "applicationSlug", "applicationName", "presentation", "eventsUrl", "eventDeliveriesUrl", "auth", "modules"],
   "properties": {
     "protocol": {"const": "zhuojian-subsystem"},
     "version": {"const": 2},

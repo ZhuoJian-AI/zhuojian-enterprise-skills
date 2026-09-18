@@ -37,7 +37,17 @@ def test_invalid(policy, operation):
 
 def test_legacy_contract_checks_present_policy_without_requiring_extension():
     action = {"actionKey": "example.create", "operation": "create", "aiEnabled": False}
-    manifest = {"modules": [{"moduleKey": "example", "actions": [action]}]}
+    manifest = {
+        "presentation": {
+            "moduleNavigationTheme": {
+                "accentColor": "#176B57",
+                "backgroundColor": "#FFFAF1",
+                "selectedBackgroundColor": "#E8F4EF",
+                "selectedTextColor": "#174F43",
+            }
+        },
+        "modules": [{"moduleKey": "example", "actions": [action]}],
+    }
     assert not validate_manifest_semantics(manifest, require_semantics=False)
     action["permissionPolicy"] = {"group": "public_read", "mode": "public_read"}
     assert validate_manifest_semantics(manifest, require_semantics=False)
@@ -54,6 +64,7 @@ def test_navigation_theme_requires_readable_controlled_palette():
     }
 
     assert validate_navigation_theme(valid) == []
+    assert "必填" in validate_navigation_theme(None)[0]
     assert validate_navigation_theme({
         "moduleNavigationTheme": {
             **valid["moduleNavigationTheme"],
