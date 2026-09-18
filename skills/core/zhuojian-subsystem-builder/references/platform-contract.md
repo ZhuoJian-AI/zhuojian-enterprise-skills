@@ -32,6 +32,8 @@ v2.5 把 Manifest、SSO、Action 和 Event 的凭证拆开，并把 SSO 改为�
 | POST | `/api/integration/actions/{actionKey}` | 页面和 AI 共用业务命令出口 |
 | GET | `/api/integration/sso?code=&redirect=&launch_nonce=` | iframe 单次短码换模块会话 |
 
+`/health` 的正常响应继续为 2xx、`{"status":"ok"}`；只有实际受控维护才可返回 HTTP 503、`{"code":"SUBSYSTEM_MAINTENANCE"}` 与正整数 `Retry-After`。故障、超时或未收到可信 Bridge 就绪不得伪装成维护。页面与平台的分工及验收见 [子系统可用性与维护提示](subsystem-availability.md)。
+
 Runtime 为每个系统自动生成四类不可混用的凭证：`zjmf_` 只用于 Manifest 和事件拉取，`zjss_` 只用于模块后端兑换 SSO 短码，`zjac_` 只验证 Action JWT，`zjev_` 只验证事件投递 JWT。它们不得跨系统复用，也不得使用灼见全局 JWT 密钥。业务负责人不接触这些值；Runtime 登记时一次提交，SaaS 只保存必要的哈希或加密值。
 
 模块部署时还必须配置 `ZHUOJIAN_ORGANIZATION_ID`。SSO 兑换结果、Action JWT 和事件 JWT 都必须同时校验 `aud=applicationSlug` 与 `organizationId=ZHUOJIAN_ORGANIZATION_ID`；不能只检查字段非空。

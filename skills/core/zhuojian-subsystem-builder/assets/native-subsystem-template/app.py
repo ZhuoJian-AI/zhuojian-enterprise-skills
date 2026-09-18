@@ -2929,6 +2929,16 @@ def navigation_adapter():
     return FileResponse(ROOT / "static" / "zhuojian-navigation.js", media_type="text/javascript")
 
 
+@app.get("/static/zhuojian-availability.js")
+def availability_script():
+    return FileResponse(ROOT / "static" / "zhuojian-availability.js", media_type="text/javascript")
+
+
+@app.get("/static/zhuojian-availability.css")
+def availability_styles():
+    return FileResponse(ROOT / "static" / "zhuojian-availability.css", media_type="text/css")
+
+
 @app.get("/")
 @app.get("/{path:path}")
 def frontend(request: Request, path: str = ""):

@@ -7,6 +7,7 @@
 - 项目真源默认是 `/srv/zhuojian/repositories/{companySlug}-{applicationSlug}` 的服务器本地 Git 仓库，不配置远程地址也能工作；业务负责人电脑或 GitHub 中的副本不能自动取代它。
 - 一个 `applicationSlug` 永远复用同一项目目录、域名、回环端口、数据目录、原有契约凭证和容器名。新系统使用 `2.5` 四类分用凭证；维护现有 `2.4` 系统时保留单个历史凭证。
 - 一个模块系统可包含多个 `moduleKey`；新增子模块不创建新域名、新项目目录或新数据库，除非确实需要独立故障/数据/发布边界。
+- 发布可用性按 [子系统可用性与维护提示](subsystem-availability.md) 执行：正常候选发布继续服务旧健康版，不能为了显示“升级中”主动制造停机；只有确需暂停接收业务写入时才显式进入计划维护。
 - 生产容器只暴露一个 `127.0.0.1:<port>` 给 Nginx；数据库、Redis 和内部 API 不映射公网端口。
 - 部署前必须有干净的本地 Git commit。镜像使用 commit SHA 标识，成功版本写入发布记录，禁止使用裸 `latest` 作为回滚依据。
 - 模块 Secret 保存于 `/etc/zhuojian/apps/{applicationSlug}.env`，权限 `0600`，不进入项目目录、Git、日志或回复。
