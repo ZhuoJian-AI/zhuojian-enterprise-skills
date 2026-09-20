@@ -16,4 +16,6 @@ SaaS 负责手机平台导航默认展开、仅显式收放、按企业与员工
 
 ## 发布边界
 
-候选待合并后从干净 main 构建 bundle-v1.4.16；稳定包、公开安装与本机更新成功后补充证据。Skill 发布不等于子系统运行时已修改。
+PR #29 已合并为 `d1f5c659301beabd62e0a8632a020951ee237ebf`，从干净 main 构建并发布 [bundle-v1.4.16](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/releases/tag/bundle-v1.4.16)。正式更新器无登录全新安装返回 `SKILL_UPDATED installed 1.1.16`；本机更新返回 `SKILL_UPDATED 1.1.15 -> 1.1.16`，归档身份、版本和 SHA256 均由更新器验证。
+
+SaaS 已先发布 manifest `41534338fdb8e7fd2d91f9f0c3a84e097cc31ffd`，维护部署 `maintenance6491807ef8bd193423e3` 于 14:06:58 CST 恢复。zhangsan/lisi 真实登录的手机模拟通过首次展开、模块切换保持、刷新和新窗口恢复及跨窗口同步；九服务健康。三个现有系统有效模块登记已只读核对，本次没有业务 ECS 部署。浏览器模拟不等于真机验收；Skill 发布不等于子系统运行时已修改。
