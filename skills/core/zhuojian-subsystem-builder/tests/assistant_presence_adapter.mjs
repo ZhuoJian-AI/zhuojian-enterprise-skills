@@ -8,8 +8,9 @@ const listeners = new Map();
 const parent = { postMessage: (data, origin) => messages.push({ data, origin }) };
 const anchor = {
   isConnected: true,
+  rect: { top: 80, left: 40, right: 340, bottom: 220, width: 300, height: 140 },
   getAttribute: name => name === 'data-zhuojian-anchor' ? 'results' : null,
-  getBoundingClientRect: () => ({ top: 80, left: 40, right: 340, bottom: 220, width: 300, height: 140 }),
+  getBoundingClientRect: () => anchor.rect,
   scrollIntoView: () => { anchor.scrolled = true; },
 };
 const appended = [];
@@ -82,6 +83,16 @@ assert.equal(messages.at(-1).data.status, 'shown');
 assert.equal(messages.at(-1).data.anchor_key, 'results');
 assert.equal(appended.length, 1);
 assert.equal(appended[0].style.pointerEvents, 'none');
+anchor.rect = { top: 22, left: 10, right: 333, bottom: 1170, width: 323, height: 1148 };
+for (const handler of listeners.get('resize') || []) handler();
+const overlayTop = Number.parseFloat(appended[0].style.top);
+const overlayLeft = Number.parseFloat(appended[0].style.left);
+const overlayWidth = Number.parseFloat(appended[0].style.width);
+const overlayHeight = Number.parseFloat(appended[0].style.height);
+assert.ok(overlayLeft + overlayWidth <= window.innerWidth - 2);
+assert.ok(overlayTop + overlayHeight <= window.innerHeight - 2);
+assert.equal(appended[0].children[0].style.right, '8px');
+assert.equal(appended[0].children[1].style.position, 'fixed');
 emit({ ...request, request_id: 'assistant-request-0002', anchor_key: 'missing' });
 assert.equal(messages.at(-1).data.status, 'missing');
 emit({ ...request, request_id: 'assistant-request-0003', launch_nonce: 'stale' });

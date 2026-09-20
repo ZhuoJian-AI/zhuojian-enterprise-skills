@@ -61,14 +61,15 @@ export function createAssistantPresence({
     cursor = document.createElement('div');
     cursor.textContent = 'AI';
     Object.assign(cursor.style, {
-      position: 'absolute', right: '-12px', bottom: '-12px', display: 'grid', placeItems: 'center',
+      position: 'absolute', right: '8px', top: '8px', display: 'grid', placeItems: 'center',
       width: '32px', height: '32px', borderRadius: '999px', color: '#fff', font: '700 12px/1 system-ui',
       background: 'var(--zhuojian-ai-presence-color, #635bff)',
       boxShadow: '0 8px 22px rgba(15, 23, 42, .22)',
     });
     label = document.createElement('span');
     Object.assign(label.style, {
-      position: 'absolute', right: '10px', bottom: '-38px', maxWidth: 'min(280px, 70vw)',
+      position: 'fixed', left: 'max(12px, env(safe-area-inset-left))',
+      bottom: 'max(12px, env(safe-area-inset-bottom))', maxWidth: 'calc(100vw - 24px)',
       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '6px 9px',
       borderRadius: '8px', color: '#fff', background: 'rgba(15, 23, 42, .88)',
       font: '600 12px/1.35 system-ui', boxShadow: '0 8px 22px rgba(15, 23, 42, .16)',
@@ -81,11 +82,17 @@ export function createAssistantPresence({
     if (!overlay || !activeElement || !activeElement.isConnected) return;
     const rect = activeElement.getBoundingClientRect();
     const inset = 5;
+    const viewportWidth = Math.max(1, window.innerWidth);
+    const viewportHeight = Math.max(1, window.innerHeight);
+    const left = Math.min(Math.max(2, rect.left - inset), Math.max(2, viewportWidth - 30));
+    const top = Math.min(Math.max(2, rect.top - inset), Math.max(2, viewportHeight - 30));
+    const availableWidth = Math.max(1, viewportWidth - left - 2);
+    const availableHeight = Math.max(1, viewportHeight - top - 2);
     Object.assign(overlay.style, {
-      top: `${Math.max(2, rect.top - inset)}px`,
-      left: `${Math.max(2, rect.left - inset)}px`,
-      width: `${Math.max(28, Math.min(window.innerWidth - 4, rect.width + inset * 2))}px`,
-      height: `${Math.max(28, Math.min(window.innerHeight - 4, rect.height + inset * 2))}px`,
+      top: `${top}px`,
+      left: `${left}px`,
+      width: `${Math.min(Math.max(28, rect.width + inset * 2), availableWidth)}px`,
+      height: `${Math.min(Math.max(28, rect.height + inset * 2), availableHeight)}px`,
     });
   };
 
