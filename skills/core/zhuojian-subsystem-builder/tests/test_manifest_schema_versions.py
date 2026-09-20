@@ -135,6 +135,13 @@ def test_schema_accepts_closed_page_semantics_and_rejects_prompt_fields():
         "relatedPages": [],
         "businessTerms": [],
         "defaultQueryActionKey": "orders.query",
+        "interactionAnchors": [{
+            "anchorKey": "orders_results",
+            "name": "订单结果",
+            "description": "订单列表与筛选结果区域。",
+            "actionKeys": ["orders.query"],
+        }],
+        "defaultInteractionAnchorKey": "orders_results",
     }
     payload["modules"][0]["pages"][0]["aiSemantics"] = semantics
     validate(payload)

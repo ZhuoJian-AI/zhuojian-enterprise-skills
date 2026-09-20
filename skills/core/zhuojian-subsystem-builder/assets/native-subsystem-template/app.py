@@ -2929,6 +2929,12 @@ def navigation_adapter():
     return FileResponse(ROOT / "static" / "zhuojian-navigation.js", media_type="text/javascript")
 
 
+@app.get("/static/zhuojian-assistant-presence.js")
+def assistant_presence_adapter():
+    # Fixed public SDK asset only; semantic anchor keys never become filesystem paths.
+    return FileResponse(ROOT / "static" / "zhuojian-assistant-presence.js", media_type="text/javascript")
+
+
 @app.get("/static/zhuojian-availability.js")
 def availability_script():
     return FileResponse(ROOT / "static" / "zhuojian-availability.js", media_type="text/javascript")

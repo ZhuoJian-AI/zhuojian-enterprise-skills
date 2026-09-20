@@ -367,6 +367,13 @@ def main() -> int:
                     "relatedPages": [],
                     "businessTerms": [],
                     "defaultQueryActionKey": f"{module_key}.query",
+                    "interactionAnchors": [{
+                        "anchorKey": "primary_content",
+                        "name": f"{args.module_name}主要内容",
+                        "description": f"{args.module_name}页面的查询、编辑与文件操作区域。",
+                        "actionKeys": [row["actionKey"] for row in action_rows],
+                    }],
+                    "defaultInteractionAnchorKey": "primary_content",
                 },
             }],
             "actions": action_rows,

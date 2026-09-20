@@ -22,6 +22,8 @@ AI_SEMANTICS_FIELDS = {
     "relatedPages",
     "businessTerms",
     "defaultQueryActionKey",
+    "interactionAnchors",
+    "defaultInteractionAnchorKey",
 }
 EXPORT_RESULT_FIELDS = {
     "snapshotId",
@@ -231,6 +233,66 @@ def validate_manifest_semantics(manifest: object, *, require_semantics: bool) ->
                 or actions[default_query].get("operation") != "query"
             ):
                 failures.append(f"{label} defaultQueryActionKey 未指向本页 query Action")
+
+            anchors = semantics.get("interactionAnchors")
+            anchor_keys: set[str] = set()
+            mapped_actions: set[str] = set()
+            if not isinstance(anchors, list) or not anchors or len(anchors) > 100:
+                failures.append(f"{label} 缺少非空且有界的 aiSemantics.interactionAnchors")
+            else:
+                for anchor in anchors:
+                    if not isinstance(anchor, dict) or set(anchor) != {
+                        "anchorKey", "name", "description", "actionKeys",
+                    }:
+                        failures.append(f"{label} 包含格式无效的交互锚点")
+                        continue
+                    anchor_key = str(anchor.get("anchorKey") or "")
+                    anchor_name = str(anchor.get("name") or "")
+                    description = str(anchor.get("description") or "")
+                    anchor_actions = anchor.get("actionKeys")
+                    if (
+                        not STABLE_KEY_RE.fullmatch(anchor_key)
+                        or anchor_key in anchor_keys
+                        or not anchor_name.strip()
+                        or not description.strip()
+                        or not isinstance(anchor_actions, list)
+                        or not anchor_actions
+                        or len(anchor_actions) > 30
+                        or any(
+                            not isinstance(action_key, str) or not STABLE_KEY_RE.fullmatch(action_key)
+                            for action_key in anchor_actions
+                        )
+                        or len(set(anchor_actions)) != len(anchor_actions)
+                    ):
+                        failures.append(f"{label} 包含无效或重复的交互锚点 {anchor_key or '<empty>'}")
+                        continue
+                    anchor_keys.add(anchor_key)
+                    for action_key in anchor_actions:
+                        if (
+                            not isinstance(action_key, str)
+                            or action_key not in page_action_keys
+                            or action_key not in actions
+                            or not actions[action_key].get("aiEnabled")
+                            or action_key in mapped_actions
+                        ):
+                            failures.append(
+                                f"{label} 交互锚点 {anchor_key} 必须唯一绑定本页 AI Action"
+                            )
+                            continue
+                        mapped_actions.add(action_key)
+            default_anchor = str(semantics.get("defaultInteractionAnchorKey") or "")
+            if not default_anchor or default_anchor not in anchor_keys:
+                failures.append(f"{label} defaultInteractionAnchorKey 未指向本页交互锚点")
+            required_anchor_actions = {
+                action_key
+                for action_key in page_action_keys
+                if action_key in actions and actions[action_key].get("aiEnabled")
+            }
+            missing_anchor_actions = sorted(required_anchor_actions - mapped_actions)
+            if missing_anchor_actions:
+                failures.append(
+                    f"{label} 的 AI Action 未登记交互锚点：{', '.join(missing_anchor_actions)}"
+                )
 
         for action_key, action in actions.items():
             failures.extend(

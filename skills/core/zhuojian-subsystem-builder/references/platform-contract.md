@@ -228,7 +228,14 @@ saas_artifact_e2e_pass      # 真实员工从业务助手拿到可预览、可�
         "supportedIntents": ["说明本页用途", "查询样品评审记录"],
         "relatedPages": [],
         "businessTerms": [],
-        "defaultQueryActionKey": "sample_review.query"
+        "defaultQueryActionKey": "sample_review.query",
+        "interactionAnchors": [{
+          "anchorKey": "review_results",
+          "name": "评审结果",
+          "description": "样品评审筛选结果与业务操作区域。",
+          "actionKeys": ["sample_review.query", "sample_review.create"]
+        }],
+        "defaultInteractionAnchorKey": "review_results"
       }
     }],
     "actions": [{
@@ -406,7 +413,16 @@ Action JWT 使用该系统专属 `zjac_` 密钥和 `typ=zhuojian-action`，至�
     "businessTerms": [
       {"term": "催办", "meaning": "推动当前节点负责人处理临期或逾期任务"}
     ],
-    "defaultQueryActionKey": "progress_dashboard.query"
+    "defaultQueryActionKey": "progress_dashboard.query",
+    "interactionAnchors": [
+      {
+        "anchorKey": "risk_summary",
+        "name": "风险汇总",
+        "description": "订单风险指标、筛选结果和催办入口。",
+        "actionKeys": ["progress_dashboard.query", "progress_dashboard.remind"]
+      }
+    ],
+    "defaultInteractionAnchorKey": "risk_summary"
   }
 }
 ```
@@ -416,6 +432,8 @@ Action JWT 使用该系统专属 `zjac_` 密钥和 `typ=zhuojian-action`，至�
 - `supportedIntents` 是可回答问题的业务描述，不是关键词表，子系统不得据此自行选择模型或工具。
 - `relatedPages` 必须指向同一 Manifest 内真实页面并说明业务关系；它只允许 SaaS 产生导航或候选只读查询，不自动扩权。
 - `defaultQueryActionKey` 必须是本页 `actionKeys` 中唯一优先的 query Action，避免模型在多个含义相近工具之间猜测。
+- `interactionAnchors` 是页面内可公开给 SaaS 的稳定语义位置，不是 CSS 选择器。每项必须含稳定 `anchorKey`、可读名称、用途说明及非空 `actionKeys`；本页每个 `aiEnabled` Action 必须且只能映射一次，不能跨页借用锚点。
+- `defaultInteractionAnchorKey` 必须指向本页已登记锚点，用于页面导航或无法确定更细目标时的安全回退。业务 DOM 用同名 `data-zhuojian-anchor` 标记真实区域；完整协议和验收见 [业务助手语义锚点 Bridge](assistant-presence-bridge.md)。
 
 SaaS 每轮根据当前登录用户、`auth_epoch`、应用、页面、Bridge 上下文、实时授权 Action 和目标工作空间生成可信上下文，交给同一主脑理解自然表达。既有 `BusinessTurnEnvelope/BusinessTurnIntent` 仅辅助检索与展示，不是执行门禁；分类失败不能阻止主脑查询补齐信息。模型可选择获授权目录返回的资源标识，不能伪造组织、用户或权限；服务端再次校验归属、页面要求及文件访问范围。以下意图字段是既有辅助结构，不要求用户表达或每轮执行先通过它：
 
@@ -449,7 +467,7 @@ understanding → planned → awaiting_clarification / awaiting_confirmation
 
 ## 页面上下文和 AI 工具
 
-页面内跨模块/页面导航、能力协商、离开检查及独立受控入口见 [标准导航 Bridge](navigation-bridge.md)。保持 2.4/2.5 版本，不以下载 Skill 代替业务适配或登记。
+页面内跨模块/页面导航、能力协商、离开检查及独立受控入口见 [标准导航 Bridge](navigation-bridge.md)；AI 光标、动作痕迹和手机跟随见 [业务助手语义锚点 Bridge](assistant-presence-bridge.md)。保持 2.4/2.5 版本，不以下载 Skill 代替业务适配或登记。
 
 ### 电脑、平板和手机全端界面
 
