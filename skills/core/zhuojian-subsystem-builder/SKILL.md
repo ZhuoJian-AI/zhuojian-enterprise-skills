@@ -49,6 +49,8 @@ python <skill>/scripts/e2e_acceptance.py --help
 
 涉及页面按钮跨模块/页面跳转时，同时读取 [标准导航 Bridge](references/navigation-bridge.md)。使用平台声明的可选能力和模板封装，不拼接 SaaS 内部路由、不访问父页面 DOM，不要求业务负责人取得 SaaS 服务器权限。隐藏外壳不能替代导航接口；独立入口仍需重新鉴权。
 
+涉及 AI 在业务页面内显示操作位置、查询目标或跟随痕迹时，必须同时读取 [业务助手语义锚点 Bridge](references/assistant-presence-bridge.md)。每个 v2.5 AI 页面必须登记非空 `interactionAnchors` 与默认锚点，并让本页全部 AI Action 恰好映射到一个稳定锚点；业务 DOM 只暴露同名 `data-zhuojian-anchor`，由子系统适配器在自身文档内绘制只读光标和短状态。SaaS 只能发送已登记 `anchorKey`，不得发送选择器、坐标、DOM、CSS 或业务参数；不支持、缺失或过期时回退平台级伴随提示，完整文字说明始终保留。Skill 更新不代表现有子系统已经登记、部署或上线该能力。
+
 涉及子系统发布、故障或健康提示时，必须读取 [子系统可用性与维护提示](references/subsystem-availability.md)。正常候选发布继续服务旧健康版本，不凭发布动作显示“正在升级”；计划维护、突发故障和 iframe/Bridge 未就绪必须区分。嵌入时由 SaaS 显示当前应用提示，独立入口由子系统显示；保留未保存输入，不自动重载或重试写入。此规则适用于新建和本次更新的子系统，不能只改文案不验证真实 `/health` 与业务写入边界。
 
 - 员工从灼见 SaaS 登录，系统自己不再创建一套员工账号和角色。

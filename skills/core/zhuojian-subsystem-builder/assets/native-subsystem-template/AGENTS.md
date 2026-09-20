@@ -15,6 +15,7 @@
 - iframe 首屏隐藏系统与模块导航和外壳，使用灼见统一横向模块导航；独立打开时保留自身导航。业务内容默认 16px 边距，保留页面筛选和详情页签，不复制装饰性大留白。不得删除模板的首屏嵌入模式标记。
 - 发布前必须在 Manifest 登记受控 `presentation.moduleNavigationTheme`，并与本系统页面配色一致；换色时同步更新四个令牌。不得注入 CSS 或读取父页面 DOM。缺失或无效主题阻断本 Skill 的发布校验，但旧运行版本的业务入口不能因此中断。
 - 页面按钮跨模块/页面使用 `static/zhuojian-navigation.js`，先协商 `navigation.v1`；接入真实表单的 `isDirty`，不得把受理当作加载完成。不拼接平台内部路由或读取父页面 DOM；独立模式使用可信换码返回的受控入口重新鉴权，不复用旧模块会话。业务维护不需要 SaaS 服务器账号。
+- 每个 AI 页面必须在 Manifest 登记非空 `interactionAnchors`、默认锚点，并让本页所有 AI Action 唯一映射；业务 DOM 用同名 `data-zhuojian-anchor` 标记真实区域。使用 `static/zhuojian-assistant-presence.js` 协商 `assistant-presence.v1` 并在本 iframe 内绘制只读光标；只接受已登记锚点键，不接受父页面传入选择器、坐标、DOM、CSS 或业务参数，完整文字说明始终保留。
 - 新建及本次新增 Action 必须声明并实际实现 permissionPolicy；旧缺失策略操作只列待升级清单，不自动扩大权限。模块拆分必须列出稳定键映射，不将旧页面授权复制给全部新模块。
 - 电脑、平板和手机使用同一套导航数据、业务 DOM 和权限状态；根页面不得横向滚动，宽表格/画布只能在自身容器滚动。触摸端不能依赖 hover，主要操作至少 44px；必须保留模板的连续响应式、安全区、软键盘、旋转和嵌入模式样式。
 - 处理 `zhuojian:refresh` 时只重新读取当前模块数据并返回同请求号的 `zhuojian:refresh-result`；必须校验父窗口、Origin、应用、模块、页面和 `launch_nonce`，合并并发刷新，存在未保存编辑时返回 `deferred`，禁止整页刷新。

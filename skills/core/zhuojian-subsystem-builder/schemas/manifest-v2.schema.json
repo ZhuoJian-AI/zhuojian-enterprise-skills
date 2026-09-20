@@ -117,7 +117,7 @@
     "aiSemantics": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["purpose", "primaryEntities", "fieldSemantics", "supportedIntents", "relatedPages", "businessTerms", "defaultQueryActionKey"],
+      "required": ["purpose", "primaryEntities", "fieldSemantics", "supportedIntents", "relatedPages", "businessTerms", "defaultQueryActionKey", "interactionAnchors", "defaultInteractionAnchorKey"],
       "properties": {
         "purpose": {"type": "string", "minLength": 1, "maxLength": 2000},
         "primaryEntities": {"type": "array", "minItems": 1, "maxItems": 20, "uniqueItems": true, "items": {"$ref": "#/$defs/stableKey"}},
@@ -147,7 +147,24 @@
             "properties": {"term": {"type": "string", "minLength": 1, "maxLength": 120}, "meaning": {"type": "string", "minLength": 1, "maxLength": 500}}
           }
         },
-        "defaultQueryActionKey": {"$ref": "#/$defs/stableKey"}
+        "defaultQueryActionKey": {"$ref": "#/$defs/stableKey"},
+        "interactionAnchors": {
+          "type": "array", "minItems": 1, "maxItems": 100,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["anchorKey", "name", "description", "actionKeys"],
+            "properties": {
+              "anchorKey": {"$ref": "#/$defs/stableKey"},
+              "name": {"type": "string", "minLength": 1, "maxLength": 120},
+              "description": {"type": "string", "minLength": 1, "maxLength": 500},
+              "actionKeys": {
+                "type": "array", "minItems": 1, "maxItems": 30,
+                "uniqueItems": true, "items": {"$ref": "#/$defs/stableKey"}
+              }
+            }
+          }
+        },
+        "defaultInteractionAnchorKey": {"$ref": "#/$defs/stableKey"}
       }
     },
     "department": {

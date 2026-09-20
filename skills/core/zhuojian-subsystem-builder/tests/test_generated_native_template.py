@@ -65,6 +65,13 @@ def test_scaffold_uses_the_runtime_enterprise_identity(tmp_path: Path):
     manifest_page = manifest["modules"][0]["pages"][0]
     assert manifest_page["aiSemantics"]["defaultQueryActionKey"] == f"{manifest_page['pageKey'].rsplit('.', 1)[0]}.query"
     assert manifest_page["aiSemantics"]["primaryEntities"]
+    assert manifest_page["aiSemantics"]["defaultInteractionAnchorKey"] == "primary_content"
+    assert manifest_page["aiSemantics"]["interactionAnchors"] == [{
+        "anchorKey": "primary_content",
+        "name": "Identity主要内容",
+        "description": "Identity页面的查询、编辑与文件操作区域。",
+        "actionKeys": manifest_page["actionKeys"],
+    }]
     assert all(
         action["inputSchema"].get("additionalProperties") is False
         and action["resultSchema"].get("additionalProperties") is False
@@ -74,6 +81,8 @@ def test_scaffold_uses_the_runtime_enterprise_identity(tmp_path: Path):
     assert "质谱科技 业务模块" in page_html
     assert "__COMPANY_NAME__" not in page_html
     assert "data-zhuojian-embedded" in page_html
+    assert 'data-zhuojian-anchor="primary_content"' in page_html
+    assert "zhuojian-assistant-presence.js" in page_html
     assert page_html.index("data-zhuojian-embedded") < page_html.index("<style>")
     assert "100dvh" in page_html
     assert "viewport-fit=cover" in page_html
@@ -94,6 +103,13 @@ def test_scaffold_uses_the_runtime_enterprise_identity(tmp_path: Path):
     assert "zhuojian-availability.css" in page_html
     assert '@app.get("/static/zhuojian-availability.js")' in app
     assert '@app.get("/static/zhuojian-availability.css")' in app
+    assert '@app.get("/static/zhuojian-assistant-presence.js")' in app
+    assistant_presence = (
+        project / "static" / "zhuojian-assistant-presence.js"
+    ).read_text(encoding="utf-8")
+    assert "assistant-presence.v1" in assistant_presence
+    assert "data-zhuojian-anchor" in assistant_presence
+    assert "querySelector(data" not in assistant_presence
 
 
 def test_scaffolded_native_system_runs_its_security_and_recovery_suite(tmp_path: Path):

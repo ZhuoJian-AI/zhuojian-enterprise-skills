@@ -4,7 +4,7 @@
 
 ## 能力协商与请求
 
-先完成既有 `zhuojian:ready` / `zhuojian:host-ready` 握手。只有后者 `capabilities` 包含 `navigation.v1` 才使用新导航；`leave-check.v1` 表示平台能执行下述离开检查。不能凭 Skill 或 Manifest 版本推断支持情况。
+先完成既有 `zhuojian:ready` / `zhuojian:host-ready` 握手。只有后者 `capabilities` 包含 `navigation.v1` 才使用新导航；`leave-check.v1` 表示平台能执行下述离开检查；`assistant-presence.v1` 的独立协议见 [业务助手语义锚点 Bridge](assistant-presence-bridge.md)。不能凭 Skill 或 Manifest 版本推断支持情况。
 
 ```json
 {

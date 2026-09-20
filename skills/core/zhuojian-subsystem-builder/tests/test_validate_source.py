@@ -84,6 +84,13 @@ def write_valid_project(tmp_path: Path, contract_revision: str = "2.5") -> Path:
                             "relatedPages": [],
                             "businessTerms": [],
                             "defaultQueryActionKey": "orders.query",
+                            "interactionAnchors": [{
+                                "anchorKey": "orders_results",
+                                "name": "订单结果",
+                                "description": "订单列表与筛选结果区域。",
+                                "actionKeys": ["orders.query"],
+                            }],
+                            "defaultInteractionAnchorKey": "orders_results",
                         },
                     } if contract_revision == "2.5" else {}),
                 }],
@@ -332,6 +339,39 @@ def test_v25_requires_page_semantics(tmp_path: Path):
 
     assert result.returncode == 1
     assert "缺少 aiSemantics" in result.stdout
+
+
+def test_v25_requires_interaction_anchors_for_every_ai_action(tmp_path: Path):
+    project = write_valid_project(tmp_path)
+    manifest = json.loads((project / "subsystem.json").read_text(encoding="utf-8"))
+    semantics = manifest["modules"][0]["pages"][0]["aiSemantics"]
+    del semantics["interactionAnchors"]
+    del semantics["defaultInteractionAnchorKey"]
+    (project / "subsystem.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    result = run_validator(project)
+
+    assert result.returncode == 1
+    assert "interactionAnchors" in result.stdout
+    assert "AI Action 未登记交互锚点" in result.stdout
+
+
+def test_v25_rejects_duplicate_or_cross_page_anchor_action_mapping(tmp_path: Path):
+    project = write_valid_project(tmp_path)
+    manifest = json.loads((project / "subsystem.json").read_text(encoding="utf-8"))
+    anchors = manifest["modules"][0]["pages"][0]["aiSemantics"]["interactionAnchors"]
+    anchors.append({
+        "anchorKey": "duplicate_results",
+        "name": "重复结果",
+        "description": "错误地重复绑定查询操作。",
+        "actionKeys": ["orders.query"],
+    })
+    (project / "subsystem.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    result = run_validator(project)
+
+    assert result.returncode == 1
+    assert "必须唯一绑定本页 AI Action" in result.stdout
 
 
 def test_v25_rejects_unknown_related_page_and_unbounded_query(tmp_path: Path):
