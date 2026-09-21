@@ -25,6 +25,7 @@ description: "让 AI 用业务需求和服务器登录信息，在已接入灼�
 3. 检查服务器上的现有项目。若服务器源码比本地/Git 副本更新、分叉或含未同步改动，先从服务器建立开发基线，禁止用落后副本覆盖；例外见 [ECS 直接发布](references/direct-ecs-deployment.md)。读取 `subsystem.json` 识别并保留已有 `2.4` 或 `2.5` 接入版本；未知版本停止，不能猜测或只改版本号。能扩展就扩展；新项目使用内置模板创建。细则见 [原生聚合与扩展](references/native-aggregation.md)。
 4. 完成业务页面、数据库和操作能力，并按 [平台接入协议](references/platform-contract.md) 接入。通用业务助手由 SaaS 提供；页面需要 OCR、语音转写、图片判断等专业 AI 时也由 SaaS 受控执行，子系统不保存模型密钥。
 5. 使用 Runtime 当前提供的文件存储；不要询问用户 Bucket、令牌或服务器目录。需求涉及上传、附件、导入导出或持久文件时，读取 [文件存储与 OSS 迁移](references/object-storage.md)，校验源码时加 `--requires-file-storage`；只有 Runtime 已启用 OSS 时再加 `--requires-object-storage`。
+   外部 NAS／共享盘按需只读访问不等于附件上传或存储迁移。负责人要求原件留在内网时，同时读取 [外部资料源只读访问](references/external-readonly-files.md)，不得因 Runtime 默认启用 OSS 就复制原件。
 6. 完成测试、部署和平台登记。Runtime 自动处理域名、目录和平台接入信息，AI 不读取、不复制、不展示这些秘密。
 7. Runtime 校验通过后自动登记并生效，不等待管理员逐版本审核。新系统先只自动授权“系统研发者”；其他员工仍按企业管理员已绑定的业务角色访问，既有角色只在原权限上限内继承新增能力，管理员停用始终优先。
 

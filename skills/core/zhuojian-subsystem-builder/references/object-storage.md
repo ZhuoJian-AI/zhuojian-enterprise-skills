@@ -6,6 +6,8 @@
 
 ## 模式选择
 
+外部 NAS 原件按需访问不是以下存储后端迁移。负责人要求原件留在内网时，遵守 [外部资料源只读访问](external-readonly-files.md)；不把 NAS 原件套入默认上传、临时转换或 OSS 复制流程。
+
 - `local-managed`：Runtime 尚未验收 OSS 时的安全初始模式。持久文件进入 `/srv/zhuojian/data/<applicationSlug>/files/`，由模块后端鉴权后读写。
 - `oss-gateway`：管理员部署同地域私有 OSS 和文件网关并通过真实探针后的默认模式。每个未来系统由 Runtime 自动获得 `apps/<applicationSlug>/` 和自己的项目身份；OSS 不要求也不应预先创建“文件夹”。
 - 已有系统已经使用 OSS、S3 或其他稳定对象存储时保留现状，不得为了套用默认值迁回本地磁盘。
