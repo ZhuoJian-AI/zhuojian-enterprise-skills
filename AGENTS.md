@@ -14,6 +14,8 @@ Standard navigation released: core 1.1.8 / bundle-v1.4.8; additive 2.4/2.5 bridg
 
 This is the canonical public monorepo for ZhuoJian enterprise Codex Skills. One Skill remains one self-contained folder with its own `SKILL.md`, `skill-version.json`, and `CHANGELOG.md`. Company-specific behavior must not be copied into the core Skill.
 
+The `assistant-open.v1` candidate hands a business goal to the same SaaS assistant as a source-bound draft, never an automatic Run or approval. Runtime capability discovery describes backend implementation only; browser negotiation and current employee authorization remain separate. Business data and Actions stay on subsystem servers. Publication limits and evidence: `docs/handoff/2026-09-22_assistant-entry-bridge.md`.
+
 ## Workflow
 
 - Milestone merges must update `zhuojian-llm-wiki/cards/zhuojian-enterprise-skills.md`; Skill publication is separate from SaaS or subsystem deployment.
