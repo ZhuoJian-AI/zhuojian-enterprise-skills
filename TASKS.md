@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **ASSISTANT-WORKFLOW-GUIDANCE-20260922**（@codex，本地实施）：对齐 SaaS 获权 workflowGuides、已存在 aiTool 描述和显式当前页只读检查；更新 Schema、校验、示例及业务负责人交付规则。保留 2.4/2.5 与缺失能力兼容，不创建第二助手或业务状态机，不修改已安装稳定版或部署三个子系统；先 SaaS 验收发布再发布 Skill。
+
 - [ ] **ASSISTANT-PAGE-SUGGESTIONS-20260922 发布与下游验收** (@codex)：本地协议、实际适配器、Runtime 降级和验收规则已实现并提交；全量 344 passed / 41 skipped，quick_validate 与链接检查通过，跨仓实际 SaaS 解析器联调通过。尚未推送本轮增量/合并/发布稳定包，安装版仍为 1.1.18；先 SaaS 发布验证，再发布 Skill，由业务负责人按需适配真实页面。无监控全部员工或后台自动执行，业务款号错配不计已修，见 [交接](docs/handoff/2026-09-22_1519_page-suggestions-skill.md)。
 
 - [ ] **BUSINESS-IDENTITY-REVIEW-20260922 发布与业务验收** (@codex)：本地规范与离线前向演练完成，30 项交付校验、quick_validate、引用检查通过；尚未推送本轮增量/发布稳定包，安装版仍为 1.1.18。与统一入口候选按 SaaS 先发布的顺序交付，子系统由其负责人同步并核对实际部署/归档，不由平台维护方代改；见 [交接](docs/handoff/2026-09-22_1437_business-identity-review.md)。
