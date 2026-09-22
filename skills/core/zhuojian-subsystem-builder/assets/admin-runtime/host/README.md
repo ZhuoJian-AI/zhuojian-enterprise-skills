@@ -53,6 +53,7 @@ is missing, replaced by a symlink, or has the wrong metadata.
 
 ```text
 zhuojian-runtime doctor
+zhuojian-runtime platform-capabilities
 zhuojian-runtime disk-check --write-state
 zhuojian-runtime preflight <applicationSlug>
 zhuojian-runtime ensure-app <applicationSlug>
@@ -66,6 +67,24 @@ zhuojian-runtime rollback <applicationSlug> [--commit <full-sha>]
 zhuojian-runtime backup <applicationSlug>
 zhuojian-runtime restore <applicationSlug> --archive <exact-path> --confirm-application <applicationSlug>
 ```
+
+`platform-capabilities` makes one read-only GET to the fixed SaaS capability
+endpoint using the existing root-only Runtime credential. The destination is
+the explicit HTTPS `platform.baseUrl` in the root-owned Runtime profile; there
+is no caller-supplied URL. Redirects and ambient proxies are disabled. Only the
+known, validated protocol fields are printed, never credentials, model
+configuration or arbitrary response/error bodies. The command does not register,
+deploy or modify an application, host profile, release or credential.
+
+The response describes implementation support, **not** enterprise enablement,
+employee authorization, live subsystem availability or completed business
+acceptance. The employee-session endpoint and current host Bridge still have to
+authorize/negotiate each use. Background delegation and unattended execution are
+explicitly unsupported in this protocol. HTTP 404, denied/revoked credentials,
+unreachable services and unknown response versions fail with a nonzero exit;
+they must not be reported as verified support. Older installed host tools need
+an administrator-controlled helper upgrade before this command exists; updating
+the development Skill alone does not update an ECS host.
 
 `deploy` and `rollback` close the matching SaaS release before switching the
 container and return `awaiting_platform_registration`. Run

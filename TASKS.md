@@ -1,6 +1,6 @@
 # 当前任务
 
-- [ ] **ASSISTANT-RUNTIME-CAPABILITIES-20260922** (@codex-integration-boundary)：仅增加 Runtime 固定端点只读能力发现 CLI 与脱敏/失败回归测试；不改注册、部署、凭据、模型配置或业务服务器。
+- [x] **ASSISTANT-RUNTIME-CAPABILITIES-20260922 本地候选** (@codex-integration-boundary)：Runtime 固定端点只读能力发现 CLI 与脱敏/失败回归完成，120 passed / 1 skipped；未安装宿主机、未发布 Skill、未部署 SaaS 或子系统。见 [交接](docs/handoff/2026-09-22_runtime-platform-capabilities.md)。
 
 - [ ] **ASSISTANT-OPEN-BRIDGE-20260922** (@codex)：随 SaaS 候选实现补齐业务目标进入同一助手的可选协商协议、无凭据浏览器适配器及拒绝/超时测试；保持 2.4/2.5、既有业务与后台委托边界。先验证 SaaS 实现，再发布稳定 Skill；本次不接管或部署业务子系统。
 

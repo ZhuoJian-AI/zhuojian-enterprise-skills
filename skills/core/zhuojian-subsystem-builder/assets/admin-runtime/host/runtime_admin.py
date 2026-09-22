@@ -4,7 +4,8 @@
 This program deliberately has no command that creates or rotates an ECS Runtime
 credential. ``doctor`` only inspects metadata. Deploy and rollback use the
 root-only credential transiently to close SaaS access before switching code;
-the value is never returned, logged, or passed to a child process.
+``platform-capabilities`` uses it for one read-only capability request. The value
+is never returned, logged, or passed to a child process.
 """
 
 from __future__ import annotations
@@ -356,6 +357,111 @@ def runtime_registration_credential(paths: Paths = PATHS) -> str:
     if len(value) < 32 or not value.startswith("zjrt_"):
         raise AdminError("Runtime registration credential is invalid")
     return value
+
+
+class CapabilityNoRedirect(urllib.request.HTTPRedirectHandler):
+    """Never forward the Runtime credential to a redirected destination."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise AdminError("platform capability endpoint must not redirect")
+
+
+def sanitized_platform_capabilities(value: Any) -> dict[str, Any]:
+    """Project only the known protocol fields; never print an arbitrary body."""
+
+    invalid = "platform capability response is unsupported or invalid; availability is unknown"
+    expected = {
+        "schemaVersion": 1,
+        "protocol": "zhuojian-platform-capabilities",
+        "assurance": "implementation-only",
+        "requiresCurrentEmployeeAuthorization": True,
+        "requiresHostCapabilityNegotiation": True,
+        "doesNotGuaranteeAvailability": True,
+    }
+    if not isinstance(value, dict):
+        raise AdminError(invalid)
+    for key, required in expected.items():
+        if type(value.get(key)) is not type(required) or value[key] != required:
+            raise AdminError(invalid)
+    revisions = value.get("supportedContractRevisions")
+    if (
+        not isinstance(revisions, list)
+        or not revisions
+        or len(revisions) > 6
+        or any(not isinstance(item, str) or item not in {f"2.{n}" for n in range(6)} for item in revisions)
+        or len(set(revisions)) != len(revisions)
+    ):
+        raise AdminError(invalid)
+    features = value.get("features")
+    expected_features = {
+        "assistantEntry": {
+            "supported": True,
+            "version": 1,
+            "bridgeCapability": "assistant-open.v1",
+            "endpoint": "/api/v1/terminal/applications/{application_id}/assistant-entry",
+            "authentication": "employee-session",
+            "mode": "draft-only",
+        },
+        "remoteActions": {"supported": True, "version": 2},
+        "backgroundDelegation": {"supported": False},
+        "unattendedExecution": {"supported": False},
+    }
+    if not isinstance(features, dict):
+        raise AdminError(invalid)
+    for name, declaration in expected_features.items():
+        feature = features.get(name)
+        if not isinstance(feature, dict):
+            raise AdminError(invalid)
+        for key, required in declaration.items():
+            if type(feature.get(key)) is not type(required) or feature[key] != required:
+                raise AdminError(invalid)
+    return {**expected, "supportedContractRevisions": sorted(revisions), "features": expected_features}
+
+
+def cmd_platform_capabilities(_args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, Any]:
+    """Read one fixed SaaS endpoint without changing host or application state."""
+
+    assert_plain_file(paths.runtime)
+    info = paths.runtime.lstat()
+    if (os.name != "nt" and info.st_uid != 0) or stat.S_IMODE(info.st_mode) & 0o022:
+        raise AdminError("Runtime profile must be root-owned and not group/other-writable")
+    try:
+        profile = load_runtime(paths)
+        platform = profile.get("platform")
+        if not isinstance(platform, dict) or not platform.get("baseUrl"):
+            raise AdminError("Runtime profile must explicitly configure platform.baseUrl")
+        origin = platform_origin(profile)
+    except (OSError, ValueError, TypeError, AttributeError):
+        raise AdminError("Runtime profile is invalid; platform capability availability is unknown") from None
+    credential = runtime_registration_credential(paths)
+    if not re.fullmatch(r"zjrt_[A-Za-z0-9_-]{27,251}", credential):
+        raise AdminError("Runtime registration credential is invalid")
+    request = urllib.request.Request(
+        origin + "/api/v1/ecs-publisher/platform-capabilities",
+        method="GET",
+        headers={
+            "Authorization": f"Bearer {credential}",
+            "Accept": "application/json",
+            "User-Agent": "ZhuoJian-Runtime-Admin/1.0",
+        },
+    )
+    # This fixed deployment target is contacted directly. Ambient proxy settings
+    # and all redirects are disabled so the publisher credential stays scoped.
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), CapabilityNoRedirect())
+    try:
+        with opener.open(request, timeout=20) as response:
+            if response.status != 200:
+                raise AdminError("platform capability request was not successful; availability is unknown")
+            raw = response.read(16 * 1024 + 1)
+            if len(raw) > 16 * 1024:
+                raise AdminError("platform capability response is too large; availability is unknown")
+            return sanitized_platform_capabilities(json.loads(raw))
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            raise AdminError("platform capability discovery is unsupported on this deployment (HTTP 404); availability is unknown") from None
+        raise AdminError(f"platform capability request returned HTTP {exc.code}; availability is unknown") from None
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError, UnicodeError):
+        raise AdminError("platform capability request failed; availability is unknown") from None
 
 
 def platform_release_request(
@@ -2929,6 +3035,10 @@ def parser() -> argparse.ArgumentParser:
     disk.set_defaults(func=None)
     doctor = sub.add_parser("doctor", help="safe foundation audit (credential metadata only)")
     doctor.set_defaults(func=cmd_doctor)
+    capabilities = sub.add_parser(
+        "platform-capabilities", help="read current SaaS protocol support without granting employee access",
+    )
+    capabilities.set_defaults(func=cmd_platform_capabilities)
     preflight = sub.add_parser(
         "preflight",
         help="Git, namespace, Runtime, disk checks, and interrupted-switch recovery",
