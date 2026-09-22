@@ -18,9 +18,18 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_skill_release_version_is_separate_from_contract_revision() -> None:
     metadata = load_skill_metadata(ROOT)
 
-    assert metadata["skillVersion"] == "1.1.19"
+    assert metadata["skillVersion"] == "1.1.20"
     assert metadata["defaultContractRevision"] == "2.5"
     assert metadata["supportedContractRevisions"] == ["2.4", "2.5"]
+
+
+def test_module_theme_coordinates_platform_entry_without_styling_assistant_content() -> None:
+    guidance = (ROOT / "references" / "module-navigation-migration.md").read_text(encoding="utf-8")
+
+    assert "统一助手**入口**" in guidance
+    assert "平台骨架、结构、名称和普通文字必须保持中性" in guidance
+    assert "助手面板／回答内容" in guidance
+    assert "离开应用时必须清除主题" in guidance
 
 
 def test_detect_project_revision_is_read_only(tmp_path: Path) -> None:
