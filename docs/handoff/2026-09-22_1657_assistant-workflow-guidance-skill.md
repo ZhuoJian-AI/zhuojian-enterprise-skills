@@ -48,3 +48,5 @@ git diff --check
 ## 主树复核补充
 
 候选已在主工作树 `zhuojian-skills-assistant-bridge-20260922` 集成为 `068a073`。使用既有 Python 3.12 环境从 core 目录执行 `python -m pytest -q --tb=short`：421 passed、42 skipped、109 subtests passed；存在 Starlette 的既有 httpx 弃用警告，不修改依赖。跳过项不计通过，完整业务流程、真实员工、跨服务器、真机及真实 Redis 多 Worker 未在本轮验证。主树补充不是稳定发布；未推送、未安装、未部署。
+
+SaaS 主树新增 `tests/test_workflow_skill_contract.py`，通过 `WORKFLOW_SKILL_SOURCE` 直接加载本候选 fixture、共享校验器和 Runtime 函数：21 项跨仓测试通过，包含在 SaaS 263 项聚焦回归内。正向 2.4/2.5、越权/可执行/超限声明拒绝、检查结果一致性，以及实际平台能力输出的 Runtime 白名单投影均通过。2.4 fixture 必须同时采用其既有 HS256 auth，不能只将 2.5 的 revision 改名；未放宽 SaaS 登录校验。此处测试是静态契约与隔离函数联调，不代表 Runtime 或业务服务器已安装新版。
