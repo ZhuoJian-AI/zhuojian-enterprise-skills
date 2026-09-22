@@ -20,6 +20,8 @@ The optional `assistant-suggestions.v1` candidate reports bounded snapshots of g
 
 ## Workflow
 
+The optional workflow-guidance candidate supplies bounded business descriptions and explicitly enabled foreground read checks, not a second agent or background delegation. Active SaaS must advertise `assistantWorkflowGuidance` before downstream declaration. `workflowGuides` is permission-filtered reference material; `proactiveCheck` names a genuine side-effect-free employee Action with fixed context input and an explicit result contract. Legacy 2.4/2.5 stays compatible. See `docs/handoff/2026-09-22_1657_assistant-workflow-guidance-skill.md`; local candidate is not a stable publication or deployed business capability.
+
 - Milestone merges must update `zhuojian-llm-wiki/cards/zhuojian-enterprise-skills.md`; Skill publication is separate from SaaS or subsystem deployment.
 - Work on a `codex/<description>` branch and merge through a reviewed pull request.
 - Never put passwords, SSH private keys, database credentials, tokens, customer data, or local access profiles in Git or Release assets.

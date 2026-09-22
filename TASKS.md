@@ -1,6 +1,6 @@
 # 当前任务
 
-- [ ] **ASSISTANT-WORKFLOW-GUIDANCE-20260922**（@codex，本地实施）：对齐 SaaS 获权 workflowGuides、已存在 aiTool 描述和显式当前页只读检查；更新 Schema、校验、示例及业务负责人交付规则。保留 2.4/2.5 与缺失能力兼容，不创建第二助手或业务状态机，不修改已安装稳定版或部署三个子系统；先 SaaS 验收发布再发布 Skill。
+- [ ] **ASSISTANT-WORKFLOW-GUIDANCE-20260922 发布与真实流程验收**（@codex）：本地候选已提交；可选流程知识、当前页只读检查契约/实值校验/Runtime 能力白名单及交付规范完成。聚焦 241 passed；主树全量 421 passed / 42 skipped / 109 subtests，未执行项不算通过。仍待 SaaS 前后端发布验证、稳定 Skill 发布和业务负责人按需实现真实流程及检查 Action；未推送本轮增量、未部署、安装版仍为 1.1.18，无后台监控/自动写入，旧 2.4/2.5 兼容。见 [交接](docs/handoff/2026-09-22_1657_assistant-workflow-guidance-skill.md)。
 
 - [ ] **ASSISTANT-PAGE-SUGGESTIONS-20260922 发布与下游验收** (@codex)：本地协议、实际适配器、Runtime 降级和验收规则已实现并提交；全量 344 passed / 41 skipped，quick_validate 与链接检查通过，跨仓实际 SaaS 解析器联调通过。尚未推送本轮增量/合并/发布稳定包，安装版仍为 1.1.18；先 SaaS 发布验证，再发布 Skill，由业务负责人按需适配真实页面。无监控全部员工或后台自动执行，业务款号错配不计已修，见 [交接](docs/handoff/2026-09-22_1519_page-suggestions-skill.md)。
 

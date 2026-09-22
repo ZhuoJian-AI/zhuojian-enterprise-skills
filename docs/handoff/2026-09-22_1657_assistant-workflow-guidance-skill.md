@@ -6,7 +6,7 @@
 - 工作树：`zhuojian-skills-workflow-20260922`；分支 `codex/assistant-workflow-skill-20260922`；基线 `a55fa00`。
 - 责任：本次仅 Skill 规范、JSON Schema、共享校验、Runtime 模板白名单、通用契约 fixture 与本地测试。SaaS 后端/前端由同任务其他工作树实现；业务检查及真实流程由各子系统负责人后续适配。
 - 已修改、已本地测试；未推送、未发布 Skill、未改稳定安装、未部署 Runtime/SaaS/子系统。本文件不是上线证明。
-- 保留 `contractRevision=2.4/2.5`、`skillVersion=1.1.18`；未改根 `AGENTS.md`、`TASKS.md`、版本号或发布包。
+- 保留 `contractRevision=2.4/2.5`、`skillVersion=1.1.18`；子任务未改根 `AGENTS.md`、`TASKS.md`，主树集成后的文档维护见末尾补充；未改版本号或发布包。
 
 ## 实现
 
@@ -45,3 +45,6 @@ git diff --check
 ## 回退
 
 本次字段可选。未启用页面可移除新增字段并保留既有页面与 Action；平台不支持时保留人工功能。任何运行时回退由主任务针对已部署版本执行，不回滚业务数据，不改变员工权限，不使用另一个模型或子系统自建聊天绕过平台。
+## 主树复核补充
+
+候选已在主工作树 `zhuojian-skills-assistant-bridge-20260922` 集成为 `068a073`。使用既有 Python 3.12 环境从 core 目录执行 `python -m pytest -q --tb=short`：421 passed、42 skipped、109 subtests passed；存在 Starlette 的既有 httpx 弃用警告，不修改依赖。跳过项不计通过，完整业务流程、真实员工、跨服务器、真机及真实 Redis 多 Worker 未在本轮验证。主树补充不是稳定发布；未推送、未安装、未部署。
