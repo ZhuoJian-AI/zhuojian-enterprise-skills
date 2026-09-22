@@ -1,6 +1,6 @@
 # 当前任务
 
-- [ ] **ASSISTANT-OPEN-BRIDGE-20260922 发布与下游验收** (@codex)：本地入口契约、浏览器适配器和 Runtime 只读能力 CLI 已完成，核心 331 passed / 41 skipped；剩余为 SaaS 先发布验证、稳定 Skill 版本发布、必要宿主 helper 受控更新及业务负责人适配真实入口。尚未推送/发布，不接管三个业务系统、不启用后台委托，详见 [入口交接](docs/handoff/2026-09-22_assistant-entry-bridge.md) 与 [Runtime 交接](docs/handoff/2026-09-22_runtime-platform-capabilities.md)。
+- [ ] **ASSISTANT-OPEN-BRIDGE-20260922 发布与下游验收** (@codex)：入口契约、浏览器适配器和 Runtime 只读能力 CLI 已推送为 draft PR #35，核心 331 passed / 41 skipped；剩余为审查合并、SaaS 先发布验证、稳定 Skill 版本发布、必要宿主 helper 受控更新及业务负责人适配真实入口。尚未合并/发布，不接管三个业务系统、不启用后台委托，详见 [入口交接](docs/handoff/2026-09-22_assistant-entry-bridge.md) 与 [Runtime 交接](docs/handoff/2026-09-22_runtime-platform-capabilities.md)。
 
 - [x] **MOBILE-NAV-PREFERENCE-20260920** (@codex)：PR #29 合并为 `d1f5c65`，core 1.1.16 / bundle-v1.4.16 已发布；244 passed、41 skipped，公开安装、本机正式更新器 1.1.15→1.1.16 通过。SaaS 默认展开、显式收放及跨窗口偏好已上线，三个子系统登记已核对，无需业务 ECS 部署。见同日 mobile-navigation-preference 交接。
 
