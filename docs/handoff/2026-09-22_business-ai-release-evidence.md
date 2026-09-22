@@ -22,14 +22,14 @@
 - 从同一公开入口重复检查：`current 1.1.18 -> 1.1.18`。
 - 本机正式 Skill 在先备份旧目录后更新：`updated 1.1.17 -> 1.1.18`；本机与公开安装的 SKILL 内容摘要一致，已读取新版版本、更新记录和 Skill 正文，核心 quick_validate 通过。
 
-**证据边界**：公开下载和原更新器校验/安装路径通过；默认 urllib 自动更新的本机代理兼容问题仍存在，不能写成默认自动更新链路已通过。网络不通的其他负责人不会被强制覆盖，仍沿用旧版；其他人的电脑未在本轮远程更新。
+**证据边界**：公开下载和原更新器校验/安装路径通过；默认 urllib 自动更新的本机代理兼容问题尚未验证恢复，不能写成默认自动更新链路已通过。网络不通的其他负责人不会被强制覆盖，仍沿用旧版；其他人的电脑未在本轮远程更新。
 
 ## 跨仓库通知
 
 - [生产协同 #44](https://github.com/ZhuoJian-AI/garment-production-collaboration/issues/44)、[COA #168](https://github.com/ZhuoJian-AI/coa/issues/168)、[旧 Builder #20](https://github.com/ZhuoJian-AI/aifabei-subsystem-builder/issues/20)：下一次新增/实质改造执行新规范；纯维护不全量迁移，不紧急重部署，不删除独立产品合同能力。
 - [模块需求独立源 #1](https://github.com/ZhuoJian-AI/zhuojian-module-requirements/issues/1)：随包副本已更新，独立仓库未改，须核对来源差异后同步。
 - [SaaS #356](https://github.com/ZhuoJian-AI/ai-platform/issues/356)：能力核对、主动触发/委托、跨层回执的待核实需求；已提交不等于已受理或实现，不授权无人值守写入。
-- 组织 Wiki 同步本仓进展与以上责任/Issue 引用，Wiki 提交以其交接记录为准。
+- 组织 Wiki 已推送 [77628cd](https://github.com/ZhuoJian-AI/zhuojian-llm-wiki/commit/77628cd49c9f55eea2ada3f4e1dc2cec5ab7d1fa)，更新本仓与五个关联仓库卡片中的责任/Issue 引用；见该仓 `docs/handoff/2026-09-22_0949_wiki_business-ai-delivery.md`。
 
 ## 未做与责任
 
