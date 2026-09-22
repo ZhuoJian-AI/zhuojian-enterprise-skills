@@ -1,14 +1,14 @@
 # 当前任务
 
-- [ ] **ASSISTANT-WORKFLOW-RELEASE-20260922**（@codex）：用户已批准先 SaaS、后稳定 Skill 发布；核心拟升为 1.1.19，保留旧契约与其余公司包版本。必须在 SaaS 受保护部署并验证后发布 bundle、校验公开安装/更新与资产哈希，再通知下游负责人；本任务不部署现有子系统，也不把 Skill 发布算作业务接入完成。
+- [x] **ASSISTANT-WORKFLOW-RELEASE-20260922**（@codex）：SaaS source `8983e5b` / manifest `aa5a9a7` 于 19:22:59 CST 受保护部署完成、九服务 healthy 后，PR #35 / `6eba784` 的 core 1.1.19 / bundle-v1.4.19 于 19:31:19 CST 发布。CI 422 passed / 41 skipped，9 资产摘要一致、其余4包不变。公开默认新装及 CURRENT 通过；旧升级、兼容迁移与本机安装在 urllib 连接中断后经临时 curl 传输桥和原更新器全部校验完成，不把默认网络失败算通过。合并收尾以下早期候选的发布待办；不部署子系统或 Runtime helper，见 [发布补充](docs/handoff/2026-09-22_1657_assistant-workflow-guidance-skill.md#稳定发布补充2026-09-22)。
 
-- [ ] **ASSISTANT-WORKFLOW-GUIDANCE-20260922 发布与真实流程验收**（@codex）：本地候选已提交；可选流程知识、当前页只读检查契约/实值校验/Runtime 能力白名单及交付规范完成。聚焦 241 passed；主树全量 421 passed / 42 skipped / 109 subtests，未执行项不算通过。仍待 SaaS 前后端发布验证、稳定 Skill 发布和业务负责人按需实现真实流程及检查 Action；未推送本轮增量、未部署、安装版仍为 1.1.18，无后台监控/自动写入，旧 2.4/2.5 兼容。见 [交接](docs/handoff/2026-09-22_1657_assistant-workflow-guidance-skill.md)。
+- [ ] **ASSISTANT-WORKFLOW-GUIDANCE-20260922 下游真实流程验收**：企业文化、生产协同、商品动销负责人用已发布 Skill 1.1.19 梳理真实流程、证据与检查 Action，按需适配并分别发布；核验员工权限/数据范围、失败与无异常分离、版本冲突、停用/撤权、建议进入唯一助手草稿及确认/拒绝，补手机真机。必要 Runtime helper 受控更新亦由实际目标任务安排。本轮未修改业务服务器，生产协同款号错配未修复，不承诺后台监控或自动写入。见 [交接](docs/handoff/2026-09-22_1657_assistant-workflow-guidance-skill.md)。
 
-- [ ] **ASSISTANT-PAGE-SUGGESTIONS-20260922 发布与下游验收** (@codex)：本地协议、实际适配器、Runtime 降级和验收规则已实现并提交；全量 344 passed / 41 skipped，quick_validate 与链接检查通过，跨仓实际 SaaS 解析器联调通过。尚未推送本轮增量/合并/发布稳定包，安装版仍为 1.1.18；先 SaaS 发布验证，再发布 Skill，由业务负责人按需适配真实页面。无监控全部员工或后台自动执行，业务款号错配不计已修，见 [交接](docs/handoff/2026-09-22_1519_page-suggestions-skill.md)。
+- [x] **ASSISTANT-PAGE-SUGGESTIONS-20260922 发布**：随 core 1.1.19 发布；历史测试保留于 [交接](docs/handoff/2026-09-22_1519_page-suggestions-skill.md)，真实业务接入合并至上方下游验收待办。
 
-- [ ] **BUSINESS-IDENTITY-REVIEW-20260922 发布与业务验收** (@codex)：本地规范与离线前向演练完成，30 项交付校验、quick_validate、引用检查通过；尚未推送本轮增量/发布稳定包，安装版仍为 1.1.18。与统一入口候选按 SaaS 先发布的顺序交付，子系统由其负责人同步并核对实际部署/归档，不由平台维护方代改；见 [交接](docs/handoff/2026-09-22_1437_business-identity-review.md)。
+- [x] **BUSINESS-IDENTITY-REVIEW-20260922 规范发布**：随 core 1.1.19 发布；不代表历史误归档排查或业务修复完成。历史依据见 [交接](docs/handoff/2026-09-22_1437_business-identity-review.md)，实际取证/修复由生产协同负责人另行执行。
 
-- [ ] **ASSISTANT-OPEN-BRIDGE-20260922 发布与下游验收** (@codex)：入口契约、浏览器适配器和 Runtime 只读能力 CLI 已推送为 draft PR #35，核心 331 passed / 41 skipped；剩余为审查合并、SaaS 先发布验证、稳定 Skill 版本发布、必要宿主 helper 受控更新及业务负责人适配真实入口。尚未合并/发布，不接管三个业务系统、不启用后台委托，详见 [入口交接](docs/handoff/2026-09-22_assistant-entry-bridge.md) 与 [Runtime 交接](docs/handoff/2026-09-22_runtime-platform-capabilities.md)。
+- [x] **ASSISTANT-OPEN-BRIDGE-20260922 发布**：PR #35 已合并，随 core 1.1.19 发布；真实入口与必要 helper 更新合并至上方下游待办。历史依据见 [入口交接](docs/handoff/2026-09-22_assistant-entry-bridge.md) 与 [Runtime 交接](docs/handoff/2026-09-22_runtime-platform-capabilities.md)。
 
 - [x] **MOBILE-NAV-PREFERENCE-20260920** (@codex)：PR #29 合并为 `d1f5c65`，core 1.1.16 / bundle-v1.4.16 已发布；244 passed、41 skipped，公开安装、本机正式更新器 1.1.15→1.1.16 通过。SaaS 默认展开、显式收放及跨窗口偏好已上线，三个子系统登记已核对，无需业务 ECS 部署。见同日 mobile-navigation-preference 交接。
 

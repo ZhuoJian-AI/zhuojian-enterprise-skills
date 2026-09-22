@@ -1,5 +1,7 @@
 # 业务流程知识与当前页提醒：Skill 候选交接
 
+> 保留以下候选历史；当前状态以文末稳定发布补充为准。Skill 发布不等于 Runtime helper 或业务子系统已经更新。
+
 ## 范围与状态
 
 - 日期：2026-09-22，北京时间。
@@ -50,3 +52,30 @@ git diff --check
 候选已在主工作树 `zhuojian-skills-assistant-bridge-20260922` 集成为 `068a073`。使用既有 Python 3.12 环境从 core 目录执行 `python -m pytest -q --tb=short`：421 passed、42 skipped、109 subtests passed；存在 Starlette 的既有 httpx 弃用警告，不修改依赖。跳过项不计通过，完整业务流程、真实员工、跨服务器、真机及真实 Redis 多 Worker 未在本轮验证。主树补充不是稳定发布；未推送、未安装、未部署。
 
 SaaS 主树新增 `tests/test_workflow_skill_contract.py`，通过 `WORKFLOW_SKILL_SOURCE` 直接加载本候选 fixture、共享校验器和 Runtime 函数：21 项跨仓测试通过，包含在 SaaS 263 项聚焦回归内。正向 2.4/2.5、越权/可执行/超限声明拒绝、检查结果一致性，以及实际平台能力输出的 Runtime 白名单投影均通过。2.4 fixture 必须同时采用其既有 HS256 auth，不能只将 2.5 的 revision 改名；未放宽 SaaS 登录校验。此处测试是静态契约与隔离函数联调，不代表 Runtime 或业务服务器已安装新版。
+
+## 稳定发布补充（2026-09-22）
+
+本节覆盖早期候选及关联入口、资料归属、页面提示交接的未发布状态。任务 `ASSISTANT-WORKFLOW-RELEASE-20260922`，Codex；部署规则 `43dff14`。只发布 SaaS 公共运行时及 Skill 规范，三个子系统和企业 ECS 不在本次发布范围。
+
+### 发布顺序与版本
+
+1. SaaS [PR #358](https://github.com/ZhuoJian-AI/ai-platform/pull/358) 源码 `8983e5b61ffb25a10f1e53c0e62269d7560c13a2`，镜像清单 [PR #363](https://github.com/ZhuoJian-AI/ai-platform/pull/363) / `aa5a9a7d4a2d554dfdce2d9bd8c02bdaaf177b0c`，目标 SaaS staging `47.243.201.63`。维护部署 `maintenance1bcc40e9e16d450d5809` 于 **19:22:59 CST** 恢复 normal，九服务 healthy、公网健康 200、schema 仍为 `0080_assistant_fence`，无迁移、无数据/卷/权限调整。具体不可变镜像、回退清单与验证边界见 [SaaS 发布交接](https://github.com/ZhuoJian-AI/ai-platform/blob/main/docs/handoff/2026-09-22_assistant-workflow-guidance.md)。
+2. Skill [PR #35](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/pull/35) 合并为 `6eba7848f9a5ffa0cbc7c6f877b8d951f9504796`，从干净合并提交构建 core **1.1.19** / [bundle-v1.4.19](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/releases/tag/bundle-v1.4.19)，于 **19:31:19 CST** 发布。兼容入口仍为 1.2.0，支持契约仍为 2.4/2.5，未自动迁移任何业务 Manifest。
+3. 九个公开 Release 资产摘要全部验证一致。core ZIP SHA-256 为 `dfbe2b1b69417b628701eb3439eb6770b955ae79043df65fab699260b1329e13`；其他四个 Skill ZIP 与上一稳定版摘要一致，未重新发布不同内容的同版本公司包。
+
+### 测试与安装证据
+
+- Skill 本地及 [CI run 35720680009](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/actions/runs/35720680009)：**422 passed、41 skipped**，quick_validate 通过。最初版本断言仍为 1.1.18 的测试已同步至 1.1.19；CI 首次事件取消后重跑通过，未改 CI 或绕过门禁。跳过项不算通过。
+- SaaS 合并后后端 297 项、独立退役边界 2 项通过；前端构建、控制器及提醒/建议/审批三场景各三视口、共九视口次通过。真实 Redis 二十连接竞争：1 获准、19 限流，仅清理两个自建测试键；不等于多 Worker 重启验收。张三桌面、李四移动模拟真实 UI 登录与旧 iframe 兼容通过，无业务写入；李四当前未获业务 AI 授权，不为测试扩权。
+- 公开匿名默认更新器：空目录全新安装 1.1.19 和重复 CURRENT 通过；旧 public bundle-v1.4.18 安装 1.1.18 后，默认 urllib 升级连续三次 RemoteDisconnected，本机正式更新另一次 EOF。**默认升级网络路径未通过，不掩盖为成功。**
+- 临时验证桥仅将 `read_url` 的下载传输换为匿名 HTTPS curl，经原 7897 代理、有界重试；调用原 URL 校验并保留原更新器身份、版本、SHA、归档安全、原子安装及回滚逻辑。未启用 test URL，未使用源码目录或本地 ZIP 冒充公开下载，未修改发布包、默认更新器或整机代理。
+- 经该传输桥，隔离 **1.1.18→1.1.19** 与 CURRENT 通过；从旧公开 catalog 安装 **aifabei 1.2.0** 并检查 CURRENT，再由旧入口的 managed updater 安装正式 **core 1.1.19** 及重复 CURRENT，通过。
+- 正式本机 core 已从 **1.1.18 升级到 1.1.19**；旧版完整目录保留在本机临时备份，新版版本记录、SKILL.md 与更新参考已重新读取。未远程更新其他业务负责人的电脑，也不保证其他网络环境下载均成功。
+
+### 仍待下游完成
+
+企业文化、生产协同、商品动销继续运行在各自企业服务器，唯一员工助手、供应商配置、权限和确认编排仍在 SaaS。负责人只确认业务目标与重要规则，开发 AI 使用新 Skill 从真实代码/资料梳理流程，按需实现并登记真实检查 Action 和页面入口；不要求每页制造建议、不统一业务风格、不复制模型密钥。
+
+当前旧业务页尚未声明新检查时返回 unsupported 是正常兼容行为，不代表已经产生主动提醒。必要的 Runtime helper 更新、完整真实流程跨服务器测试、检查准确率、危险操作确认/拒绝及手机真机另行验收。无后台监控全部员工、无人值守 Run 或自动写入；**本轮未修复生产协同 Excel 款号错配或历史误归档**。
+
+组织 Wiki 及受影响下游通知由发布任务同步；通知不是授权代改/部署业务系统。后续纯交接文档合并不改变该不可变 Release 的源码提交或资产摘要。
