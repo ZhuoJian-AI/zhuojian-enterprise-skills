@@ -16,6 +16,7 @@ This is the canonical public monorepo for ZhuoJian enterprise Codex Skills. One 
 
 ## Workflow
 
+- Milestone merges must update `zhuojian-llm-wiki/cards/zhuojian-enterprise-skills.md`; Skill publication is separate from SaaS or subsystem deployment.
 - Work on a `codex/<description>` branch and merge through a reviewed pull request.
 - Never put passwords, SSH private keys, database credentials, tokens, customer data, or local access profiles in Git or Release assets.
 - Stable updates come only from immutable GitHub Releases. `main` is source, not an update channel.

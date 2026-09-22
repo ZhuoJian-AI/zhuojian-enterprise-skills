@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "applicationSlug": "sample-review",
+  "scope": "business_change",
+  "scopeReason": "合成设计样例：样品评审核对与确认后更新，不是真实部署证据",
+  "journeys": [{
+    "id": "review-completeness",
+    "title": "核对评审缺项并整理修改草稿",
+    "baseline": "待业务负责人提供同一样本的人工核对步骤与耗时",
+    "target": "减少逐条查找和重复录入；具体指标待确认，不宣称已经节省时间",
+    "ownerDecision": "proposed",
+    "entryPoint": "on_demand",
+    "delivery": "planned",
+    "reason": "尚未核对目标环境，未运行真实员工端到端测试",
+    "bindings": [],
+    "platformChecks": [{
+      "capability": "统一助手查询、草稿和确认后业务写入",
+      "contractRef": "platform-contract.md：Action、高风险确认、应用语义地图",
+      "deployed": "unknown",
+      "tenantEnabled": "unknown",
+      "actorAuthorized": "unknown",
+      "evidenceRefs": []
+    }],
+    "confirmation": "拟修改的记录、字段新旧值、影响范围与版本先展示，用户确认后才执行；具体业务规则待确认",
+    "acceptance": [{
+      "scenario": "同一样本：查询缺项→草稿校正→确认/拒绝→核对实际回执；另测无权员工与版本冲突",
+      "status": "not_run",
+      "evidenceRefs": []
+    }],
+    "gaps": [{
+      "owner": "subsystem",
+      "problem": "尚未把真实评审查询和确认写入映射到已实现的页面及 Action",
+      "acceptance": "实现后填写真实绑定，验证权限、确认、回执和界面结果",
+      "fallback": "保留原人工核对方式，不宣称 AI 已完成业务",
+      "status": "open",
+      "evidenceRefs": []
+    }]
+  }]
+}
