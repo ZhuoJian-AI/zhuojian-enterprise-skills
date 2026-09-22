@@ -161,8 +161,10 @@ def _journey(value: object, path: str, modules: dict, checks: _Checks, require_v
         checks.error(f"{path}.ownerDecision", "verified delivery requires confirmed requirements, not operational permission")
     bindings = checks.array(item.get("bindings"), f"{path}.bindings", nonempty=verified)
     if item.get("delivery") == "not_applicable":
-        if item.get("ownerDecision") != "declined" or bindings:
-            checks.error(path, "not_applicable requires ownerDecision=declined and empty bindings")
+        if bindings:
+            checks.error(path, "not_applicable requires empty bindings")
+        if require_verified and item.get("ownerDecision") == "proposed":
+            checks.error(f"{path}.ownerDecision", "completed not_applicable outcome requires confirmed design or explicit decline")
     elif item.get("ownerDecision") == "declined":
         checks.error(path, "declined requirements must remain not_applicable")
     _bindings(bindings, modules, f"{path}.bindings", checks)
@@ -204,9 +206,26 @@ def _journey(value: object, path: str, modules: dict, checks: _Checks, require_v
     return item.get("id") if isinstance(item.get("id"), str) else None
 
 
-def validate_delivery(delivery: object, manifest: object, require_verified: bool = False) -> list[str]:
-    """Return structural errors. An empty list never proves actual delivery or consent."""
+def validate_delivery(
+    delivery: object,
+    manifest: object,
+    require_verified: bool = False,
+    journey_ids: list[str] | None = None,
+) -> list[str]:
+    """Check all structure; optionally require only selected journeys to be verified.
+
+    Selection never suppresses malformed entries or validates evidence contents.
+    An empty result does not prove actual delivery or consent.
+    """
     checks = _Checks()
+    selected = None
+    if journey_ids is not None:
+        if not require_verified:
+            checks.error("journey_ids", "requires require_verified=true")
+        selected = set()
+        for index, identifier in enumerate(checks.array(journey_ids, "journey_ids", nonempty=True)):
+            if checks.text(identifier, f"journey_ids[{index}]"):
+                selected.add(identifier)
     document = checks.obj(delivery, "delivery", ROOT_FIELDS)
     if type(document.get("schemaVersion")) is not int or document.get("schemaVersion") != 1:
         checks.error("delivery.schemaVersion", "must be integer 1")
@@ -226,10 +245,17 @@ def validate_delivery(delivery: object, manifest: object, require_verified: bool
     seen = set()
     for index, value in enumerate(journeys):
         path = f"delivery.journeys[{index}]"
-        identifier = _journey(value, path, modules, checks, require_verified)
+        selected_entry = selected is None or (
+            isinstance(value, dict)
+            and isinstance(value.get("id"), str)
+            and value["id"] in selected
+        )
+        identifier = _journey(value, path, modules, checks, require_verified and selected_entry)
         if identifier in seen:
             checks.error(f"{path}.id", "must be unique")
         seen.add(identifier)
+    if selected is not None and selected - seen:
+        checks.error("journey_ids", "contains IDs not present in delivery.journeys")
     return checks.errors
 
 
@@ -248,6 +274,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--delivery", required=True, type=Path)
     parser.add_argument("--manifest", required=True, type=Path)
     parser.add_argument("--require-verified", action="store_true")
+    parser.add_argument(
+        "--journey", dest="journey_ids", action="append", metavar="ID",
+        help="With --require-verified, require completion only for these journey IDs; "
+        "repeatable. All document structure is still checked.",
+    )
     args = parser.parse_args(argv)
     documents = {}
     for name in ("delivery", "manifest"):
@@ -256,7 +287,7 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, UnicodeError, ValueError, RecursionError) as exc:
             _report([f"{name}: cannot read UTF-8 JSON ({type(exc).__name__})"])
             return 2
-    errors = validate_delivery(documents["delivery"], documents["manifest"], args.require_verified)
+    errors = validate_delivery(documents["delivery"], documents["manifest"], args.require_verified, args.journey_ids)
     _report(errors)
     return 1 if errors else 0
 

@@ -76,6 +76,16 @@ def delegation():
     }
 
 
+def partial_delivery():
+    document = delivery()
+    future = copy.deepcopy(document["journeys"][0])
+    future.update(id="future-background", entryPoint="background", delivery="blocked", bindings=[], gaps=[gap()])
+    future["platformChecks"][0].update(deployed="unknown", tenantEnabled="unknown", actorAuthorized="unknown", evidenceRefs=[])
+    future["acceptance"][0].update(status="not_run", evidenceRefs=[])
+    document["journeys"].append(future)
+    return document
+
+
 class DeliveryValidationTests(unittest.TestCase):
     def test_verified_mapping_accepts_query_and_confirmed_write_without_mutation(self):
         document, app = delivery(), manifest()
@@ -100,6 +110,28 @@ class DeliveryValidationTests(unittest.TestCase):
         self.assertEqual(MODULE.validate_delivery(document, manifest()), [])
         self.assertTrue(MODULE.validate_delivery(document, manifest(), True))
 
+    def test_selected_completion_does_not_require_future_blocked_work_to_be_done(self):
+        document = partial_delivery()
+        self.assertTrue(MODULE.validate_delivery(document, manifest(), True))
+        self.assertEqual(MODULE.validate_delivery(document, manifest(), True, ["completeness"]), [])
+        self.assertTrue(MODULE.validate_delivery(document, manifest(), True, ["future-background"]))
+        self.assertTrue(MODULE.validate_delivery(document, manifest(), True, ["unknown"]))
+        self.assertTrue(MODULE.validate_delivery(document, manifest(), True, ["completeness", "future-background"]))
+
+    def test_selector_does_not_hide_malformed_unselected_evidence_or_bindings(self):
+        document = partial_delivery()
+        document["journeys"][1]["platformChecks"][0]["evidenceRefs"] = {"invalid": []}
+        self.assertTrue(MODULE.validate_delivery(document, manifest(), True, ["completeness"]))
+        document = partial_delivery()
+        document["journeys"][1]["bindings"] = [{"moduleKey": "review", "pageKey": "items", "actionKey": "invented"}]
+        self.assertTrue(MODULE.validate_delivery(document, manifest(), True, ["completeness"]))
+
+    def test_selector_requires_explicit_verification_and_nonempty_valid_ids(self):
+        self.assertTrue(MODULE.validate_delivery(delivery(), manifest(), False, ["completeness"]))
+        for value in ([], "completeness", [None], [" "], [{}]):
+            with self.subTest(value=value):
+                self.assertTrue(MODULE.validate_delivery(delivery(), manifest(), True, value))
+
     def test_owner_manual_only_remains_an_explicit_valid_outcome(self):
         document = delivery()
         document["journeys"][0].update(
@@ -109,6 +141,31 @@ class DeliveryValidationTests(unittest.TestCase):
         self.assertEqual(MODULE.validate_delivery(document, manifest(), True), [])
         document["journeys"][0]["bindings"] = delivery()["journeys"][0]["bindings"]
         self.assertTrue(MODULE.validate_delivery(document, manifest()))
+
+    def test_confirmed_deterministic_design_can_be_not_applicable_without_faking_decline(self):
+        document = delivery()
+        document["journeys"][0].update(
+            delivery="not_applicable", ownerDecision="confirmed", bindings=[], platformChecks=[],
+            acceptance=[], reason="Owner approved deterministic arithmetic; model adds no benefit",
+        )
+        self.assertEqual(MODULE.validate_delivery(document, manifest(), True), [])
+        self.assertEqual(document["journeys"][0]["ownerDecision"], "confirmed")
+        document["journeys"][0]["reason"] = " "
+        self.assertTrue(MODULE.validate_delivery(document, manifest()))
+
+    def test_proposed_no_ai_design_is_not_a_confirmed_delivery(self):
+        document = delivery()
+        document["journeys"][0].update(delivery="not_applicable", ownerDecision="proposed", bindings=[])
+        self.assertEqual(MODULE.validate_delivery(document, manifest()), [])
+        self.assertTrue(MODULE.validate_delivery(document, manifest(), True))
+        self.assertTrue(MODULE.validate_delivery(document, manifest(), True, ["completeness"]))
+
+    def test_declined_decision_cannot_claim_an_active_ai_journey(self):
+        for status in ("planned", "blocked", "verified"):
+            with self.subTest(status=status):
+                document = delivery()
+                document["journeys"][0].update(delivery=status, ownerDecision="declined")
+                self.assertTrue(MODULE.validate_delivery(document, manifest()))
 
     def test_out_of_scope_style_fix_does_not_require_a_journey(self):
         document = delivery()
@@ -317,6 +374,25 @@ class DeliveryValidationTests(unittest.TestCase):
         self.assertFalse(json.loads(result.stdout)["valid"])
         self.assertEqual(result.stderr, "")
         self.assertNotIn("synthetic-secret", result.stdout)
+
+    def test_cli_selected_completion_allows_partial_delivery_but_rejects_bad_selection(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "delivery.json").write_text(json.dumps(partial_delivery()), encoding="utf-8")
+            (root / "manifest.json").write_text(json.dumps(manifest()), encoding="utf-8")
+            args = [sys.executable, str(SCRIPT), "--delivery", str(root / "delivery.json"), "--manifest", str(root / "manifest.json")]
+            for switches, expected in (
+                (["--require-verified", "--journey", "completeness"], 0),
+                (["--require-verified", "--journey", "future-background"], 1),
+                (["--require-verified", "--journey", "completeness", "--journey", "future-background"], 1),
+                (["--require-verified", "--journey", "unknown"], 1),
+                (["--journey", "completeness"], 1),
+            ):
+                with self.subTest(switches=switches):
+                    result = subprocess.run(args + switches, capture_output=True, text=True, timeout=10)
+                    self.assertEqual(result.returncode, expected, result.stderr)
+                    self.assertEqual(json.loads(result.stdout)["valid"], expected == 0)
+                    self.assertEqual(result.stderr, "")
 
 
 if __name__ == "__main__":
