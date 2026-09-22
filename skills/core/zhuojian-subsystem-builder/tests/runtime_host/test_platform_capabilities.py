@@ -44,6 +44,13 @@ def capability_payload():
                 "mode": "draft-only",
             },
             "remoteActions": {"supported": True, "version": 2},
+            "assistantSuggestions": {
+                "supported": True,
+                "version": 1,
+                "bridgeCapability": "assistant-suggestions.v1",
+                "authentication": "employee-session",
+                "mode": "suggestion-only",
+            },
             "backgroundDelegation": {"supported": False},
             "unattendedExecution": {"supported": False},
         },
@@ -100,6 +107,7 @@ def test_output_projects_whitelist_including_nested_fields(dependencies):
     payload["secret"] = SECRET
     payload["features"]["provider"] = {"apiKey": SECRET}
     payload["features"]["assistantEntry"]["modelKey"] = SECRET
+    payload["features"]["assistantSuggestions"]["modelKey"] = SECRET
     dependencies.response.read.return_value = json.dumps(payload).encode()
     assert read(dependencies) == capability_payload()
 
@@ -175,6 +183,11 @@ def test_unknown_schema_or_changed_assurance_is_rejected(dependencies, key, valu
     ("assistantEntry", "endpoint", "https://other.example/"),
     ("assistantEntry", "authentication", "runtime-credential"),
     ("assistantEntry", "version", True),
+    ("assistantSuggestions", "mode", "automatic"),
+    ("assistantSuggestions", "authentication", "runtime-credential"),
+    ("assistantSuggestions", "bridgeCapability", "assistant-open.v1"),
+    ("assistantSuggestions", "version", True),
+    ("assistantSuggestions", "supported", "true"),
     ("backgroundDelegation", "supported", True),
     ("unattendedExecution", "supported", True),
 ])
@@ -258,3 +271,25 @@ def test_success_does_not_mutate_the_received_declaration():
     projected = runtime.sanitized_platform_capabilities(payload)
     projected["features"]["assistantEntry"]["mode"] = "changed"
     assert payload == before
+
+
+@pytest.mark.parametrize("declaration", [None, {"supported": False}])
+def test_missing_or_explicitly_unsupported_suggestions_do_not_break_old_backend(dependencies, declaration):
+    payload = capability_payload()
+    if declaration is None:
+        del payload["features"]["assistantSuggestions"]
+    else:
+        payload["features"]["assistantSuggestions"] = declaration
+    dependencies.response.read.return_value = json.dumps(payload).encode()
+    result = read(dependencies)
+    assert result["features"]["assistantSuggestions"] == {"supported": False}
+    assert result["features"]["assistantEntry"]["mode"] == "draft-only"
+
+
+@pytest.mark.parametrize("declaration", [None, [], {}, {"supported": True}, {"supported": 1}])
+def test_present_but_invalid_suggestions_are_not_silently_reported_as_supported(dependencies, declaration):
+    payload = capability_payload()
+    payload["features"]["assistantSuggestions"] = declaration
+    dependencies.response.read.return_value = json.dumps(payload).encode()
+    with pytest.raises(runtime.AdminError, match="unknown"):
+        read(dependencies)

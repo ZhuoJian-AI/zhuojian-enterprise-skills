@@ -7,7 +7,7 @@ const source = await readFile(process.argv[2], 'utf8');
 const messages = [], listeners = new Set();
 const parent = { postMessage: (data, origin) => messages.push({ data, origin }) };
 const window = { parent, addEventListener: (_, fn) => listeners.add(fn), removeEventListener: (_, fn) => listeners.delete(fn) };
-const context = { window, URL, crypto: webcrypto, setTimeout, clearTimeout };
+const context = { window, URL, TextEncoder, crypto: webcrypto, setTimeout, clearTimeout };
 vm.runInNewContext(source.replace('export function', 'function') + '\nthis.factory = createAssistant;', context);
 const origin = 'https://platform.test';
 const identity = { version: 1, application_slug: 'sample', launch_nonce: 'nonce' };

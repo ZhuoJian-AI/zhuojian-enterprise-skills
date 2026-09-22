@@ -415,6 +415,24 @@ def sanitized_platform_capabilities(value: Any) -> dict[str, Any]:
         for key, required in declaration.items():
             if type(feature.get(key)) is not type(required) or feature[key] != required:
                 raise AdminError(invalid)
+    # Additive feature: older backends may omit it. Missing is not evidence of support.
+    suggestions = features.get("assistantSuggestions")
+    suggestion_declaration = {"supported": False}
+    if "assistantSuggestions" in features:
+        if not isinstance(suggestions, dict) or type(suggestions.get("supported")) is not bool:
+            raise AdminError(invalid)
+        if suggestions["supported"]:
+            suggestion_declaration = {
+                "supported": True,
+                "version": 1,
+                "bridgeCapability": "assistant-suggestions.v1",
+                "authentication": "employee-session",
+                "mode": "suggestion-only",
+            }
+            for key, required in suggestion_declaration.items():
+                if type(suggestions.get(key)) is not type(required) or suggestions[key] != required:
+                    raise AdminError(invalid)
+    expected_features["assistantSuggestions"] = suggestion_declaration
     return {**expected, "supportedContractRevisions": sorted(revisions), "features": expected_features}
 
 
