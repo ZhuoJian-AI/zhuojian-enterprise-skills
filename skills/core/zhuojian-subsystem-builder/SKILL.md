@@ -22,6 +22,8 @@ description: "让 AI 把业务需求转成页面与统一助手可完成的业�
 
 新建系统、新增模块或实质改变业务流程时，先读 [业务提效设计与交付](references/business-ai-delivery.md)，再进入以下实施步骤。需求不清时调用随包的 [模块需求](模块需求/SKILL.md)，已有材料能回答的不重复问。即使负责人没有提 AI，开发 AI 也要识别重复劳动、提出统一助手的协作方式，只请负责人确认业务目标、重要规则和风险；不得让小白负责人设计工具、模型或平台对接。仅修故障、样式或契约兼容时按本次范围做增量核对，不强制重做访谈或给每个页面加 AI。
 
+涉及文件识别、批量导入或资料关联业务对象时，必须读取 [资料识别与对象归属核对](references/business-identity-review.md)。先验证对象匹配与写入保护，再增加助手自动化；多个候选、来源冲突不能按排列顺序或“对象已存在”默认归档。平台负责人负责公共能力和规范，具体取证由获授权的子系统开发 AI 承接，不要求平台负责人代员工寻找原件或判断业务归属。
+
 1. 按 [服务器长期访问记忆](references/server-access-memory.md) 查找已有访问档案，再按 [ECS 首次接入](references/ecs-first-access.md) 登录。新服务器先试 SSH `22`，再试管理员配置的 `443`；连接超时不代表密码错误。
 2. 运行 `zhuojian-runtime doctor`。若提示服务器尚未初始化，停止部署，只告诉用户“请企业管理员先初始化这台服务器”。读取服务器非敏感 Runtime 档案中的 `enterpriseKey` 与 `runtimeId`，连同当前主机地址交给 [企业交接 Skill 自动同步](references/managed-handoff-skills.md) 的 `resolve` 流程；用户口述的公司名称只作核对，服务器档案为准。安装或更新后，必须立即读取所有匹配的交接 `SKILL.md` 再继续。
 3. 检查服务器上的现有项目。若服务器源码比本地/Git 副本更新、分叉或含未同步改动，先从服务器建立开发基线，禁止用落后副本覆盖；例外见 [ECS 直接发布](references/direct-ecs-deployment.md)。读取 `subsystem.json` 识别并保留已有 `2.4` 或 `2.5` 接入版本；未知版本停止，不能猜测或只改版本号。能扩展就扩展；新项目使用内置模板创建。细则见 [原生聚合与扩展](references/native-aggregation.md)。
@@ -55,6 +57,12 @@ python <skill>/scripts/e2e_acceptance.py --help
 手机平台模块导航必须首次默认展开；仅用户主动收放，切换模块不得自动收起。偏好由 SaaS 按企业与员工保存并同步同浏览器窗口；子系统提供稳定模块登记，不得重置平台选择。具体责任与验收见上述模块导航参考，登记完整的子系统无需为此重新部署。
 
 涉及页面按钮跨模块/页面跳转时，同时读取 [标准导航 Bridge](references/navigation-bridge.md)。使用平台声明的可选能力和模板封装，不拼接 SaaS 内部路由、不访问父页面 DOM，不要求业务负责人取得 SaaS 服务器权限。隐藏外壳不能替代导航接口；独立入口仍需重新鉴权。
+
+涉及业务页面把目标交给统一助手时，读取 [业务目标入口 Bridge](references/assistant-entry-bridge.md)，复用 `assistant-open.v1` 协商和模板适配器，只带入可编辑草稿，不自动发送、覆盖已有任务或代替确认。SaaS 与子系统可以在不同服务器；业务数据和执行留在子系统，平台通过签名 Action 调用，不共享数据库或模型密钥。没有协商支持就保留人工入口，不能凭本 Skill 宣称线上已实现。
+
+涉及基于当前页面的真实检查结果主动提示员工时，读取 [当前页面的业务提示](references/assistant-page-suggestions.md)。协商 `assistant-suggestions.v1` 后只交接有界、可撤回的业务建议，由员工选择进入同一助手草稿；不监控全部点击、不启动后台 AI，也不强制每页都有建议。确定性检查和写入保护仍由子系统后端负责。
+
+涉及让助手理解业务办理顺序、完成条件或员工主动开启的当前页状态提醒时，读取 [业务流程知识与当前页提醒](references/assistant-workflow-guidance.md)。开发 AI 从真实代码与业务话语提取可选 `workflowGuides`，有真实只读检查才登记 `proactiveCheck`；保持 2.4/2.5，不把本地交付资料变成运行脚本。仅可见当前页、员工明确开启后查询，无模型/后台 Run/自动写入；建议由员工选择交给同一助手，实际写入仍重新授权与确认。
 
 涉及 AI 在业务页面内显示操作位置、查询目标或跟随痕迹时，必须同时读取 [业务助手语义锚点 Bridge](references/assistant-presence-bridge.md)。每个 v2.5 AI 页面必须登记非空 `interactionAnchors` 与默认锚点，并让本页全部 AI Action 恰好映射到一个稳定锚点；业务 DOM 只暴露同名 `data-zhuojian-anchor`，由子系统适配器在自身文档内绘制只读光标和短状态。SaaS 只能发送已登记 `anchorKey`，不得发送选择器、坐标、DOM、CSS 或业务参数；不支持、缺失或过期时回退平台级伴随提示，完整文字说明始终保留。Skill 更新不代表现有子系统已经登记、部署或上线该能力。
 

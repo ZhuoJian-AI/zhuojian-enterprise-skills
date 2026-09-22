@@ -14,7 +14,13 @@ Standard navigation released: core 1.1.8 / bundle-v1.4.8; additive 2.4/2.5 bridg
 
 This is the canonical public monorepo for ZhuoJian enterprise Codex Skills. One Skill remains one self-contained folder with its own `SKILL.md`, `skill-version.json`, and `CHANGELOG.md`. Company-specific behavior must not be copied into the core Skill.
 
+The `assistant-open.v1` candidate hands a business goal to the same SaaS assistant as a source-bound draft, never an automatic Run or approval. Runtime capability discovery describes backend implementation only; browser negotiation and current employee authorization remain separate. Business data and Actions stay on subsystem servers. Publication limits and evidence: `docs/handoff/2026-09-22_assistant-entry-bridge.md`.
+
+The optional `assistant-suggestions.v1` candidate reports bounded snapshots of genuine checks on the currently authorized page. SaaS owns non-modal presentation and employee preflight; choosing a suggestion still only imports a draft into the same assistant. No employee surveillance, automatic send, background Run, or additional model identity is introduced. Deduplication is scoped to a continuous source session, not permanent cross-session memory. Templates and acceptance rules are in `references/assistant-page-suggestions.md` inside the core Skill; local evidence and release limits are in `docs/handoff/2026-09-22_1519_page-suggestions-skill.md`.
+
 ## Workflow
+
+The optional workflow-guidance candidate supplies bounded business descriptions and explicitly enabled foreground read checks, not a second agent or background delegation. Active SaaS must advertise `assistantWorkflowGuidance` before downstream declaration. `workflowGuides` is permission-filtered reference material; `proactiveCheck` names a genuine side-effect-free employee Action with fixed context input and an explicit result contract. Legacy 2.4/2.5 stays compatible. See `docs/handoff/2026-09-22_1657_assistant-workflow-guidance-skill.md`; local candidate is not a stable publication or deployed business capability.
 
 - Milestone merges must update `zhuojian-llm-wiki/cards/zhuojian-enterprise-skills.md`; Skill publication is separate from SaaS or subsystem deployment.
 - Work on a `codex/<description>` branch and merge through a reviewed pull request.

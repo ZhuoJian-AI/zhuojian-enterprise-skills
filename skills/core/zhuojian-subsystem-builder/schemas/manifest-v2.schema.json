@@ -63,6 +63,40 @@
   ],
   "$defs": {
     "stableKey": {"type": "string", "minLength": 1, "maxLength": 160, "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "workflowKey": {"type": "string", "minLength": 1, "maxLength": 120, "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "workflowNotes": {"type": "array", "maxItems": 5, "items": {"type": "string", "minLength": 1, "maxLength": 400, "pattern": "\\S"}},
+    "workflowGuide": {
+      "type": "object", "additionalProperties": false,
+      "required": ["workflowKey", "name", "goal", "whenToUse", "steps", "exceptions"],
+      "properties": {
+        "workflowKey": {"$ref": "#/$defs/workflowKey"},
+        "name": {"type": "string", "minLength": 1, "maxLength": 120, "pattern": "\\S"},
+        "goal": {"type": "string", "minLength": 1, "maxLength": 600, "pattern": "\\S"},
+        "whenToUse": {"type": "string", "minLength": 1, "maxLength": 600, "pattern": "\\S"},
+        "exceptions": {"$ref": "#/$defs/workflowNotes"},
+        "steps": {"type": "array", "minItems": 1, "maxItems": 8, "items": {
+          "type": "object", "additionalProperties": false,
+          "required": ["stepKey", "title", "purpose", "moduleKey", "pageKey", "actionKeys", "preconditions", "completionCriteria"],
+          "properties": {
+            "stepKey": {"$ref": "#/$defs/workflowKey"},
+            "title": {"type": "string", "minLength": 1, "maxLength": 120, "pattern": "\\S"},
+            "purpose": {"type": "string", "minLength": 1, "maxLength": 400, "pattern": "\\S"},
+            "moduleKey": {"$ref": "#/$defs/workflowKey"},
+            "pageKey": {"$ref": "#/$defs/stableKey"},
+            "actionKeys": {"type": "array", "maxItems": 8, "uniqueItems": true, "items": {"$ref": "#/$defs/stableKey"}},
+            "preconditions": {"$ref": "#/$defs/workflowNotes"},
+            "completionCriteria": {"allOf": [{"$ref": "#/$defs/workflowNotes"}], "minItems": 1}
+          }
+        }}
+      }
+    },
+    "proactiveCheck": {
+      "type": "object", "additionalProperties": false, "required": ["actionKey"],
+      "properties": {
+        "actionKey": {"$ref": "#/$defs/stableKey"},
+        "intervalSeconds": {"type": "integer", "minimum": 60, "maximum": 600, "default": 90}
+      }
+    },
     "sitePath": {"type": "string", "pattern": "^/(?!/).*$", "maxLength": 2000},
     "schema": {"type": "object"},
     "color": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
@@ -164,7 +198,9 @@
             }
           }
         },
-        "defaultInteractionAnchorKey": {"$ref": "#/$defs/stableKey"}
+        "defaultInteractionAnchorKey": {"$ref": "#/$defs/stableKey"},
+        "workflowGuides": {"type": "array", "maxItems": 3, "items": {"$ref": "#/$defs/workflowGuide"}},
+        "proactiveCheck": {"$ref": "#/$defs/proactiveCheck"}
       }
     },
     "department": {
