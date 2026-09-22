@@ -51,7 +51,7 @@
 
 确定性提醒、既有业务定时报告无需一律引入模型或延期。但它们不能伪装成在线助手已具备后台自主运行。不得用子系统 cron 直连供应商、开发 Codex 常驻、管理员身份或模拟用户发送来补平台缺口。
 
-未来后台委托必须明确有效主体、任务目标、数据/操作范围、触发条件、去重与频率/费用上限、到期时间、撤销入口、结果接收人；中文业务时间默认 `Asia/Shanghai`，机器时间保留偏移。执行前和恢复后重新核权，撤销/过期即停；单次确认不能无限复用。只有真实实现、部署并验证以上能力后，才可报告这类流程可用。
+未来后台委托必须明确有效主体、任务目标、数据/操作范围、触发条件、去重与频率/费用上限、到期时间、撤销入口、结果接收人；按当前平台要求，业务时间统一为北京时间 `Asia/Shanghai`，机器时间保留偏移。执行前和恢复后重新核权，撤销/过期即停；单次确认不能无限复用。只有真实实现、部署并验证以上能力后，才可报告这类流程可用。
 
 ## 写入与上下文
 
@@ -68,7 +68,7 @@
 
 工程方另维护项目内 `docs/ai-delivery.json`，可从 [合成示例](../assets/business-ai-delivery.example.json) 起步。它是**本地交付证据索引**，不是 Manifest 扩展、提示词、调度定义或线上可执行流程。SaaS/Runtime 不读取此文件，不得直接发送它尝试注册新能力。不得放凭证、真实个人资料、原始业务数据或日志正文；只留获准的脱敏引用。
 
-每条 journey 记录目标、基线、目标值、负责人决定、入口、状态、真实页面/Action 映射、平台核对、确认规则、验收结果与跨层缺口。未实现的 Action 不填虚构绑定，写进 gaps；跨应用链分别在对应项目记录真实绑定及关联证据。无 AI 收益/负责人明确只要人工时用 `not_applicable`，写原因和 `ownerDecision=declined`；纯样式修复用根 `scope=out_of_scope` 加理由。
+每条 journey 记录目标、基线、目标值、负责人决定、入口、状态、真实页面/Action 映射、平台核对、确认规则、验收结果与跨层缺口。未实现的 Action 不填虚构绑定，写进 gaps；跨应用链分别在对应项目记录真实绑定及关联证据。无 AI 收益或明确只要人工时用 `not_applicable`，写真实原因并留空绑定：负责人确认普通自动化方案用 `ownerDecision=confirmed`，明确拒绝助手用 `declined`，开发 AI 尚未得到确认则用 `proposed`、不能通过严格完成检查。只是不允许 AI 修改，但仍要求查询的，是正常只读 journey，不是整条不适用。纯样式修复用根 `scope=out_of_scope` 加理由。
 
 `schemaVersion=1` 的状态值：`ownerDecision=proposed/confirmed/declined`，`entryPoint=on_demand/in_page/background`，`delivery=planned/blocked/verified/not_applicable`；平台三项核对使用 `yes/no/unknown`，测试为 `pass/fail/not_run`，缺口为 `open/closed`。绑定仅含真实 `moduleKey/pageKey/actionKey`，不填 URL 或凭证。`background` 若要标 verified，还须给出 `delegation` 的 `actorRef/scope/expiresAt/revocation/limits/approvalEvidence/timezone`，到期时间带时区、timezone 为 `Asia/Shanghai`；这些只是证据引用及说明，不是运行时委托令牌。到期/撤销的委托不能继续作为当前可用证明。
 
@@ -82,7 +82,7 @@
 python <skill>/scripts/validate_ai_delivery.py --delivery <项目>/docs/ai-delivery.json --manifest <项目>/subsystem.json
 ```
 
-此命令只读，检查结构、实际页面/Action 绑定与状态一致性，不调用网络、不改权限、不证明证据为真。设计阶段允许 `planned/blocked`；对承诺已完成的本次流程，再加 `--require-verified`（未完成流程失败，显式不采用项保留）。静态通过不能替代业务测试；正常交付报告逐项列出已完成和待办，不因未承诺的后台能力缺失停用已上线业务。
+此命令只读，检查结构、实际页面/Action 绑定与状态一致性，不调用网络、不改权限、不证明证据为真。设计阶段允许 `planned/blocked`；对承诺已完成的本次流程，再加 `--require-verified --journey <本次承诺的ID>`，多个 ID 重复传 `--journey`。不传 ID 则严格检查全部；未知 ID 报错，未选中的条目仍做结构检查。不能漏选本次承诺的任务来伪装全部完成，发布证据需列出选择范围、未选项及原因。显式确认的不适用项保留，未承诺的后台待办不阻断已完成的按需任务。静态通过不能替代业务测试，报告仍逐项列出已完成和待办。
 
 测试使用获授权测试数据/账号，优先覆盖本次改变的工作链：
 
