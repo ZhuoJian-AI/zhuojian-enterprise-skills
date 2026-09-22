@@ -66,7 +66,7 @@ SaaS 主树新增 `tests/test_workflow_skill_contract.py`，通过 `WORKFLOW_SKI
 ### 测试与安装证据
 
 - Skill 本地及 [CI run 35720680009](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/actions/runs/35720680009)：**422 passed、41 skipped**，quick_validate 通过。最初版本断言仍为 1.1.18 的测试已同步至 1.1.19；CI 首次事件取消后重跑通过，未改 CI 或绕过门禁。跳过项不算通过。
-- SaaS 合并后后端 297 项、独立退役边界 2 项通过；前端构建、控制器及提醒/建议/审批三场景三视口次通过。真实 Redis 二十连接竞争：1 获准、19 限流，仅清理两个自建测试键；不等于多 Worker 重启验收。张三桌面、李四移动模拟真实 UI 登录与旧 iframe 兼容通过，无业务写入；李四当前未获业务 AI 授权，不为测试扩权。
+- SaaS 合并后后端 297 项、独立退役边界 2 项通过；前端构建、控制器及提醒/建议/审批三场景各三视口、共九视口次通过。真实 Redis 二十连接竞争：1 获准、19 限流，仅清理两个自建测试键；不等于多 Worker 重启验收。张三桌面、李四移动模拟真实 UI 登录与旧 iframe 兼容通过，无业务写入；李四当前未获业务 AI 授权，不为测试扩权。
 - 公开匿名默认更新器：空目录全新安装 1.1.19 和重复 CURRENT 通过；旧 public bundle-v1.4.18 安装 1.1.18 后，默认 urllib 升级连续三次 RemoteDisconnected，本机正式更新另一次 EOF。**默认升级网络路径未通过，不掩盖为成功。**
 - 临时验证桥仅将 `read_url` 的下载传输换为匿名 HTTPS curl，经原 7897 代理、有界重试；调用原 URL 校验并保留原更新器身份、版本、SHA、归档安全、原子安装及回滚逻辑。未启用 test URL，未使用源码目录或本地 ZIP 冒充公开下载，未修改发布包、默认更新器或整机代理。
 - 经该传输桥，隔离 **1.1.18→1.1.19** 与 CURRENT 通过；从旧公开 catalog 安装 **aifabei 1.2.0** 并检查 CURRENT，再由旧入口的 managed updater 安装正式 **core 1.1.19** 及重复 CURRENT，通过。
