@@ -1,0 +1,61 @@
+name: Core Skill CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "skills/core/zhuojian-subsystem-builder/**"
+      - ".github/workflows/core-skill-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "skills/core/zhuojian-subsystem-builder/**"
+      - ".github/workflows/core-skill-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: core-skill-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-tests:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      PYTHONUTF8: "1"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      # Shell-script fixtures are compared as LF text, including on Windows.
+      - name: Preserve repository line endings
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      # requirements-dev contains -e .[test], resolved from this directory.
+      - name: Install gateway test dependencies
+        working-directory: skills/core/zhuojian-subsystem-builder/assets/admin-runtime/gateway
+        run: python -m pip install -r requirements-dev.txt
+      - name: Install template and validation dependencies
+        working-directory: skills/core/zhuojian-subsystem-builder
+        run: python -m pip install -r assets/native-subsystem-template/requirements-dev.txt "jsonschema==4.25.1" "playwright==1.60.0"
+      - name: Verify browser and JavaScript prerequisites
+        working-directory: skills/core/zhuojian-subsystem-builder
+        run: |
+          node --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -c "import runpy; assert runpy.run_path('tests/test_native_template_responsive.py')['browser_executable'](), 'Chrome/Chromium is required on the Windows runner'"
+      - name: Run core test suite
+        working-directory: skills/core/zhuojian-subsystem-builder
+        run: python -m pytest -q -ra

@@ -13,6 +13,8 @@
 　4. 折叠区（details）里的内容开工时才读，不用精简
 　5. 全文不许出现技术词：接口/数据库/字段/部署/前端/后端/框架/事件
 　　　例外：文件名、系统名、路径这些专有名词照写
+　6. 新建/流程改造先填「怎样少花时间」；技术映射另交 docs/ai-delivery.json，不让负责人填。
+　7. 设计建议、用户确认、实际授权、能力核实和已经上线分别记录，不混为已完成。
 -->
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -115,13 +117,13 @@ footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);font-si
 <!--
 　架构图 · 必画
 　─────────────────────────────────────────
-　骨架：上排=数据从哪来(1-3个)　中间=模块主体(黑框)　下排=页面/入口(2-4个)+AI旁路　底部=产出去哪
+　骨架：上排=数据从哪来(1-3个)　中间=模块主体(黑框)　下排=页面/入口(2-4个)+公司现有助手　底部=产出去哪
 　颜色规矩（不要自己发挥）：
 　　红框 #c0392b  = 现在缺的、阻塞的东西
 　　黑底 #12161b  = 模块本体
 　　蓝框 #2f6fd0  = 使用者用的页面
 　　灰框 #8a929c  = 别人维护 / 不常用的
-　　黄虚线 #b8860b = AI 那条旁路（永远画成虚线，表示它不走页面）
+　　黄虚线 #b8860b = 公司现有助手（另一种入口，不是第二套助手或业务规则）
 　　绿线 #1a7a4c  = 产出流向公司外面
 　下排框最多 4 个。超过 4 个说明这个模块该拆了 —— 回去问槽 4。
 　详细规则见 references/05_画出来.md
@@ -175,8 +177,8 @@ footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);font-si
 
   <rect x="650" y="286" width="170" height="76" rx="2" fill="#fdf8ea" stroke="#b8860b" stroke-width="1.5"
     stroke-dasharray="5 3"/>
-  <text x="735" y="310" text-anchor="middle" font-size="14.5" font-weight="600" fill="#12161b">问 AI</text>
-  <text x="735" y="330" text-anchor="middle" font-size="11.5" fill="#4a525c">不开页面直接问</text>
+  <text x="735" y="310" text-anchor="middle" font-size="14.5" font-weight="600" fill="#12161b">公司现有助手</text>
+  <text x="735" y="330" text-anchor="middle" font-size="11.5" fill="#4a525c">同一规则帮你办事</text>
   <text x="735" y="349" text-anchor="middle" font-size="11.5" fill="#b8860b">{{能做什么，不能做什么}}</text>
 
   <path d="M300,212 L300,250 L114,250 L114,282" fill="none" stroke="#8a929c" stroke-width="1.3" marker-end="url(#ar)"/>
@@ -204,6 +206,18 @@ footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);font-si
 <p style="margin-bottom:0;font-size:13px;color:var(--ink3)">
 现在是：{{现状的动作链，末尾带上那个基线数字}}。</p>
 </div>
+
+<!-- 新建/流程改造适用。只修样式时不要为了填本节扩任务；明确不用 AI 就写人工或固定规则方案。 -->
+<h2>怎样少花时间</h2>
+<table>
+<tr><th>要完成的事</th><th>现在怎么做</th><th>建议怎么分工</th><th>怎么证明省事</th></tr>
+<tr><td><strong>{{业务任务}}</strong></td>
+  <td>{{步骤、耗时及来源；没实测就写待测}}</td>
+  <td>{{助手或固定规则承担什么；人确认什么；哪些保留人工}}</td>
+  <td>{{预期目标与正确结果；试用后补实际记录，不编收益}}</td></tr>
+</table>
+<p style="font-size:13px;color:var(--ink3)">以上是待确认的分工方案，不是自动授权。
+能做哪些还要按现有批准范围核对；{{可做、待核对及缺少的条件}}。不另加一个公司助手。</p>
 
 
 <h2>{{几}}个页面长什么样</h2>
@@ -293,15 +307,15 @@ footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);font-si
   <td>{{谁}}</td><td>{{算完成的标志，要能判断}}</td></tr>
 <tr><td><strong style="color:#c0392b">S1</strong></td>
   <td><strong>{{第二条阻塞}}</strong></td><td>{{谁}}</td><td>{{算完成}}</td></tr>
-<tr><td>S2</td><td>{{第一版做什么}}</td><td>承接方</td><td>{{算完成}}</td></tr>
+<tr><td>S2</td><td>{{第一版任务与页面一起做，包含已确认的助手分工}}</td><td>承接方</td><td>{{算完成}}</td></tr>
 <tr><td>S3</td><td>{{加什么}}</td><td>承接方</td><td>{{算完成}}</td></tr>
 <tr><td>S4</td><td>{{加什么}}</td><td>承接方</td><td>{{算完成}}</td></tr>
-<tr><td>S5</td><td>让 AI 也能{{做什么}}</td><td>承接方</td><td>{{算完成}}</td></tr>
+<tr><td>S5</td><td>从{{开始做什么}}到{{最终结果}}一起试</td><td>承接方与使用者</td><td>{{结果正确；确认、拒绝和失败均试过；与原步骤对照}}</td></tr>
 <tr><td>S6</td><td>试用{{多久}}，验收</td><td>{{谁}}</td><td>验收清单逐条勾完</td></tr>
 </table>
 
 <p style="font-size:13.5px;color:var(--ink3)">
-🔴 <strong>S0 和 S1 完成之前，S2 之后一步都别开始。</strong></p>
+🔴 <strong>{{哪些步骤依赖尚未补齐的条件，先暂停哪些；不受影响的部分可以继续}}</strong></p>
 
 
 <h2>什么算做成了</h2>
@@ -383,11 +397,13 @@ footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);font-si
 
 <h3>AI 能替他们做什么</h3>
 <ul>
-<li>✅ {{能做的}} —— 可以直接问，不用打开页面</li>
-<li>⛔ {{不能做的}} —— 必须自己上去点</li>
+<li>{{查、核对和草稿任务}} —— {{资料来源、结果怎么看；能力是否已核实}}</li>
+<li>{{确认后执行的任务}} —— {{谁确认、影响哪些记录、怎么检查结果；未核实的不启用}}</li>
+<li>{{保留人工或明确不做的事}} —— {{原因；不要把无权限写成“人自己点就能做”}}</li>
 </ul>
 <p style="font-size:13px;color:var(--ink3)">页面按钮和 AI 做同一个动作，
-<strong>走的必须是同一套规则和权限</strong>，不能页面一套 AI 一套。</p>
+<strong>走的必须是同一套规则和权限</strong>，不能页面一套 AI 一套。
+公司只用现有助手；同意本方案不代表已给任何人开放操作，也不代表开始无人值守地办事。</p>
 
 <h3>哪些要问一句「确定吗」</h3>
 <ul>
@@ -426,6 +442,15 @@ footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);font-si
 <h3>{{形态名，比如「能查」}}</h3>
 <ul class="chk">
 <li>{{验收条件，要能一条条勾}}</li>
+</ul>
+
+<!-- 有助手任务时保留；仅人工或确定性自动化的需求改成对应验收，不强行增加 AI。 -->
+<h3>省事任务与边界</h3>
+<ul class="chk">
+<li>用{{真实任务}}从找资料做到核对结果；换一种说法也能完成，不只会响应固定口令</li>
+<li>修改前展示对象和变化；有权的人确认才执行，拒绝或超时不改，无权的人不能绕过</li>
+<li>资料取不到和确实没记录分开说，不把失败当成“无异常”</li>
+<li>保留原步骤/耗时和试用记录；未测、未支持和人工剩余步骤如实写明</li>
 </ul>
 
 <div class="card red">
