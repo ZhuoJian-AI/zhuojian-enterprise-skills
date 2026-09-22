@@ -16,6 +16,8 @@ This is the canonical public monorepo for ZhuoJian enterprise Codex Skills. One 
 
 The `assistant-open.v1` candidate hands a business goal to the same SaaS assistant as a source-bound draft, never an automatic Run or approval. Runtime capability discovery describes backend implementation only; browser negotiation and current employee authorization remain separate. Business data and Actions stay on subsystem servers. Publication limits and evidence: `docs/handoff/2026-09-22_assistant-entry-bridge.md`.
 
+The optional `assistant-suggestions.v1` candidate reports bounded snapshots of genuine checks on the currently authorized page. SaaS owns non-modal presentation and employee preflight; choosing a suggestion still only imports a draft into the same assistant. No employee surveillance, automatic send, background Run, or additional model identity is introduced. Deduplication is scoped to a continuous source session, not permanent cross-session memory. Templates and acceptance rules are in `references/assistant-page-suggestions.md` inside the core Skill; local evidence and release limits are in `docs/handoff/2026-09-22_1519_page-suggestions-skill.md`.
+
 ## Workflow
 
 - Milestone merges must update `zhuojian-llm-wiki/cards/zhuojian-enterprise-skills.md`; Skill publication is separate from SaaS or subsystem deployment.
