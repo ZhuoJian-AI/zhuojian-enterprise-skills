@@ -469,6 +469,8 @@ understanding → planned → awaiting_clarification / awaiting_confirmation
 
 ## 页面上下文和 AI 工具
 
+业务页面主动向同一 SaaS 助手交接目标的可选 `assistant-open.v1` 见 [业务目标入口 Bridge](assistant-entry-bridge.md)。它只接收目标草稿，不创建第二套会话、不自动执行，也不改变远程签名 Action 的授权、确认和幂等边界。
+
 页面内跨模块/页面导航、能力协商、离开检查及独立受控入口见 [标准导航 Bridge](navigation-bridge.md)；AI 光标、动作痕迹和手机跟随见 [业务助手语义锚点 Bridge](assistant-presence-bridge.md)。保持 2.4/2.5 版本，不以下载 Skill 代替业务适配或登记。
 
 ### 电脑、平板和手机全端界面
