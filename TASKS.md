@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **BUSINESS-IDENTITY-REVIEW-20260922** (@codex)：补充文件导入/对象归属冲突的开发与验收规则，复用现有交付材料；不把候选、已存在或 HTTP 成功当作业务完成，不把取证工作转嫁给平台负责人。与 SaaS 结果链核对配套，保持 2.4/2.5 兼容；本轮不发布稳定包、不修改子系统或业务数据。
+
 - [ ] **ASSISTANT-OPEN-BRIDGE-20260922 发布与下游验收** (@codex)：入口契约、浏览器适配器和 Runtime 只读能力 CLI 已推送为 draft PR #35，核心 331 passed / 41 skipped；剩余为审查合并、SaaS 先发布验证、稳定 Skill 版本发布、必要宿主 helper 受控更新及业务负责人适配真实入口。尚未合并/发布，不接管三个业务系统、不启用后台委托，详见 [入口交接](docs/handoff/2026-09-22_assistant-entry-bridge.md) 与 [Runtime 交接](docs/handoff/2026-09-22_runtime-platform-capabilities.md)。
 
 - [x] **MOBILE-NAV-PREFERENCE-20260920** (@codex)：PR #29 合并为 `d1f5c65`，core 1.1.16 / bundle-v1.4.16 已发布；244 passed、41 skipped，公开安装、本机正式更新器 1.1.15→1.1.16 通过。SaaS 默认展开、显式收放及跨窗口偏好已上线，三个子系统登记已核对，无需业务 ECS 部署。见同日 mobile-navigation-preference 交接。
