@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **ASSISTANT-RUNTIME-CAPABILITIES-20260922** (@codex-integration-boundary)：仅增加 Runtime 固定端点只读能力发现 CLI 与脱敏/失败回归测试；不改注册、部署、凭据、模型配置或业务服务器。
+
 - [ ] **ASSISTANT-OPEN-BRIDGE-20260922** (@codex)：随 SaaS 候选实现补齐业务目标进入同一助手的可选协商协议、无凭据浏览器适配器及拒绝/超时测试；保持 2.4/2.5、既有业务与后台委托边界。先验证 SaaS 实现，再发布稳定 Skill；本次不接管或部署业务子系统。
 
 - [x] **MOBILE-NAV-PREFERENCE-20260920** (@codex)：PR #29 合并为 `d1f5c65`，core 1.1.16 / bundle-v1.4.16 已发布；244 passed、41 skipped，公开安装、本机正式更新器 1.1.15→1.1.16 通过。SaaS 默认展开、显式收放及跨窗口偏好已上线，三个子系统登记已核对，无需业务 ECS 部署。见同日 mobile-navigation-preference 交接。
