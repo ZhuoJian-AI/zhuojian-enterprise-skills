@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **ASSISTANT-PAGE-SUGGESTIONS-20260922** (@codex)：配套 SaaS 候选增加当前页面有界业务建议 Bridge、适配器、降级与验收规则；只能依据真实业务检查结果，不录屏、不采集全部点击、不自动发送/创建 Run、不新增后台委托。保持旧契约与安装稳定版本，子系统由负责人按需适配，完成前不得声称上线。
+
 - [ ] **BUSINESS-IDENTITY-REVIEW-20260922 发布与业务验收** (@codex)：本地规范与离线前向演练完成，30 项交付校验、quick_validate、引用检查通过；尚未推送本轮增量/发布稳定包，安装版仍为 1.1.18。与统一入口候选按 SaaS 先发布的顺序交付，子系统由其负责人同步并核对实际部署/归档，不由平台维护方代改；见 [交接](docs/handoff/2026-09-22_1437_business-identity-review.md)。
 
 - [ ] **ASSISTANT-OPEN-BRIDGE-20260922 发布与下游验收** (@codex)：入口契约、浏览器适配器和 Runtime 只读能力 CLI 已推送为 draft PR #35，核心 331 passed / 41 skipped；剩余为审查合并、SaaS 先发布验证、稳定 Skill 版本发布、必要宿主 helper 受控更新及业务负责人适配真实入口。尚未合并/发布，不接管三个业务系统、不启用后台委托，详见 [入口交接](docs/handoff/2026-09-22_assistant-entry-bridge.md) 与 [Runtime 交接](docs/handoff/2026-09-22_runtime-platform-capabilities.md)。
