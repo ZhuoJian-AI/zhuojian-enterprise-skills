@@ -1,6 +1,6 @@
 # 当前任务
 
-- [ ] **ADAPTIVE-SUBSYSTEM-SHELL-THEME-RELEASE-20260922**（@codex）：core 1.1.20 本地候选已将四个受控主题令牌扩展为 SaaS 外壳的协调式视觉上下文，允许当前应用影响平台导航轨、通用操作和统一助手入口的边框、选中、焦点、图标与轻量晕染，同时禁止整片重绘平台、其他应用、助手内容或 iframe。保持 2.4／2.5 与四字段 Schema 不变；423 passed、41 skipped。待 SaaS 对应实现合并后再经 PR 发布稳定 Skill；现有主题登记正确的子系统不改业务代码、不重新部署。见 [候选交接](docs/handoff/2026-09-22_adaptive-shell-theme-contract.md)。
+- [x] **ADAPTIVE-SUBSYSTEM-SHELL-THEME-RELEASE-20260922**（@codex）：SaaS source `9f104d5` / manifest `3cbe964` 已于 21:39:17 CST 受保护发布并通过九服务健康、真实张三桌面／李四手机双系统验收；Skill PR #37 / `f429ee1` 已合并，core 1.1.20 / `bundle-v1.4.20` 于 21:54:36 CST 发布。CI 成功，本地 423 passed／41 skipped；九资产摘要、公开新装／CURRENT／1.1.19 升级及本机 1.1.20 安装通过。保持 2.4／2.5 与四字段 Schema 不变；现有主题登记正确的子系统未改业务代码、未重新部署。见 [发布交接](docs/handoff/2026-09-22_adaptive-shell-theme-contract.md#稳定发布补充2026-09-22)。
 
 - [x] **ASSISTANT-WORKFLOW-RELEASE-20260922**（@codex）：SaaS source `8983e5b` / manifest `aa5a9a7` 于 19:22:59 CST 受保护部署完成、九服务 healthy 后，PR #35 / `6eba784` 的 core 1.1.19 / bundle-v1.4.19 于 19:31:19 CST 发布。CI 422 passed / 41 skipped，9 资产摘要一致、其余4包不变。公开默认新装及 CURRENT 通过；旧升级、兼容迁移与本机安装在 urllib 连接中断后经临时 curl 传输桥和原更新器全部校验完成，不把默认网络失败算通过。合并收尾以下早期候选的发布待办；不部署子系统或 Runtime helper，见 [发布补充](docs/handoff/2026-09-22_1657_assistant-workflow-guidance-skill.md#稳定发布补充2026-09-22)。
 
