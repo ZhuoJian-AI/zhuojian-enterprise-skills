@@ -31,4 +31,4 @@
 
 ## 发布状态
 
-候选已推送为 [draft PR #35](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/pull/35)，未合并，不是稳定 Release；不能把 draft 跳过 CI 当作云端测试通过。版本元数据保持已安装基线 core 1.1.18，不提前占用新版本，不修改本机已安装 Skill。不推送/发布 Runtime 安装器到任何 ECS。后续先完成 SaaS 构建、受控部署与线上验证，再发布递增版本的稳定 Skill，最后由有权限的子系统负责人适配和验收。代码、推送、部署与实际启用分别报告。
+候选已推送为 [draft PR #35](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/pull/35)，配套 SaaS 为 [draft PR #358](https://github.com/ZhuoJian-AI/ai-platform/pull/358)。均未合并，不是稳定 Release；不能把 draft 跳过 CI 当作云端测试通过。版本元数据保持已安装基线 core 1.1.18，不提前占用新版本，不修改本机已安装 Skill。不推送/发布 Runtime 安装器到任何 ECS。后续先完成 SaaS 构建、受控部署与线上验证，再发布递增版本的稳定 Skill，最后由有权限的子系统负责人适配和验收。代码、推送、部署与实际启用分别报告。
