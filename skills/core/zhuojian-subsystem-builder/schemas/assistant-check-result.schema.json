@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Current-page read-only assistant check result (not an execution plan)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["assistantCheck"],
+  "properties": {
+    "assistantCheck": {
+      "type": "object", "additionalProperties": false,
+      "required": ["version", "dataVersion", "summary", "suggestions"],
+      "properties": {
+        "version": {"type": "integer", "const": 1},
+        "dataVersion": {"type": "string", "minLength": 1, "maxLength": 160, "pattern": "\\S"},
+        "summary": {"type": "string", "minLength": 1, "maxLength": 400, "pattern": "\\S"},
+        "suggestions": {
+          "type": "array", "maxItems": 3,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["id", "revision", "title", "summary", "goal"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1, "maxLength": 120, "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,119}$"},
+              "revision": {"type": "string", "minLength": 1, "maxLength": 120, "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,119}$"},
+              "title": {"type": "string", "minLength": 1, "maxLength": 80, "pattern": "\\S"},
+              "summary": {"type": "string", "minLength": 1, "maxLength": 400, "pattern": "\\S"},
+              "goal": {"type": "string", "minLength": 1, "maxLength": 2000, "pattern": "\\S"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

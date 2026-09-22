@@ -51,6 +51,14 @@ def capability_payload():
                 "authentication": "employee-session",
                 "mode": "suggestion-only",
             },
+            "assistantWorkflowGuidance": {
+                "supported": True,
+                "version": 1,
+                "authentication": "employee-session",
+                "mode": "foreground-read-only",
+                "configEndpoint": "/api/v1/terminal/applications/{application_id}/page-assistance",
+                "checkEndpoint": "/api/v1/terminal/applications/{application_id}/page-check",
+            },
             "backgroundDelegation": {"supported": False},
             "unattendedExecution": {"supported": False},
         },
@@ -108,6 +116,7 @@ def test_output_projects_whitelist_including_nested_fields(dependencies):
     payload["features"]["provider"] = {"apiKey": SECRET}
     payload["features"]["assistantEntry"]["modelKey"] = SECRET
     payload["features"]["assistantSuggestions"]["modelKey"] = SECRET
+    payload["features"]["assistantWorkflowGuidance"]["modelKey"] = SECRET
     dependencies.response.read.return_value = json.dumps(payload).encode()
     assert read(dependencies) == capability_payload()
 
@@ -188,6 +197,12 @@ def test_unknown_schema_or_changed_assurance_is_rejected(dependencies, key, valu
     ("assistantSuggestions", "bridgeCapability", "assistant-open.v1"),
     ("assistantSuggestions", "version", True),
     ("assistantSuggestions", "supported", "true"),
+    ("assistantWorkflowGuidance", "supported", "true"),
+    ("assistantWorkflowGuidance", "version", True),
+    ("assistantWorkflowGuidance", "mode", "background"),
+    ("assistantWorkflowGuidance", "authentication", "runtime-credential"),
+    ("assistantWorkflowGuidance", "configEndpoint", "https://other.example/"),
+    ("assistantWorkflowGuidance", "checkEndpoint", "/arbitrary-run"),
     ("backgroundDelegation", "supported", True),
     ("unattendedExecution", "supported", True),
 ])
@@ -293,3 +308,35 @@ def test_present_but_invalid_suggestions_are_not_silently_reported_as_supported(
     dependencies.response.read.return_value = json.dumps(payload).encode()
     with pytest.raises(runtime.AdminError, match="unknown"):
         read(dependencies)
+
+
+@pytest.mark.parametrize("declaration", [None, {"supported": False}])
+def test_old_backend_does_not_invent_workflow_support(dependencies, declaration):
+    payload = capability_payload()
+    if declaration is None:
+        del payload["features"]["assistantWorkflowGuidance"]
+    else:
+        payload["features"]["assistantWorkflowGuidance"] = declaration
+    dependencies.response.read.return_value = json.dumps(payload).encode()
+    result = read(dependencies)
+    assert result["features"]["assistantWorkflowGuidance"] == {"supported": False}
+    assert result["features"]["assistantEntry"]["mode"] == "draft-only"
+
+
+@pytest.mark.parametrize("declaration", [None, [], {}, {"supported": True}, {"supported": 1}])
+def test_invalid_workflow_feature_is_unknown_not_usable(dependencies, declaration):
+    payload = capability_payload()
+    payload["features"]["assistantWorkflowGuidance"] = declaration
+    dependencies.response.read.return_value = json.dumps(payload).encode()
+    with pytest.raises(runtime.AdminError, match="unknown"):
+        read(dependencies)
+
+
+def test_legacy_backend_without_either_optional_feature_keeps_original_capabilities():
+    payload = capability_payload()
+    del payload["features"]["assistantWorkflowGuidance"]
+    del payload["features"]["assistantSuggestions"]
+    result = runtime.sanitized_platform_capabilities(payload)
+    assert result["features"]["assistantWorkflowGuidance"] == {"supported": False}
+    assert result["features"]["assistantSuggestions"] == {"supported": False}
+    assert result["supportedContractRevisions"] == ["2.4", "2.5"]

@@ -433,6 +433,24 @@ def sanitized_platform_capabilities(value: Any) -> dict[str, Any]:
                 if type(suggestions.get(key)) is not type(required) or suggestions[key] != required:
                     raise AdminError(invalid)
     expected_features["assistantSuggestions"] = suggestion_declaration
+    workflow = features.get("assistantWorkflowGuidance")
+    workflow_declaration = {"supported": False}
+    if "assistantWorkflowGuidance" in features:
+        if not isinstance(workflow, dict) or type(workflow.get("supported")) is not bool:
+            raise AdminError(invalid)
+        if workflow["supported"]:
+            workflow_declaration = {
+                "supported": True,
+                "version": 1,
+                "authentication": "employee-session",
+                "mode": "foreground-read-only",
+                "configEndpoint": "/api/v1/terminal/applications/{application_id}/page-assistance",
+                "checkEndpoint": "/api/v1/terminal/applications/{application_id}/page-check",
+            }
+            for key, required in workflow_declaration.items():
+                if type(workflow.get(key)) is not type(required) or workflow[key] != required:
+                    raise AdminError(invalid)
+    expected_features["assistantWorkflowGuidance"] = workflow_declaration
     return {**expected, "supportedContractRevisions": sorted(revisions), "features": expected_features}
 
 

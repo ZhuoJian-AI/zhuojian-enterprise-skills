@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 
 
 STABLE_KEY_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
+SUGGESTION_KEY_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,119}$")
 HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 MODULE_NAVIGATION_THEME_FIELDS = {
     "accentColor",
@@ -24,6 +26,8 @@ AI_SEMANTICS_FIELDS = {
     "defaultQueryActionKey",
     "interactionAnchors",
     "defaultInteractionAnchorKey",
+    "workflowGuides",
+    "proactiveCheck",
 }
 EXPORT_RESULT_FIELDS = {
     "snapshotId",
@@ -113,6 +117,148 @@ def validate_permission_policy(policy: object, operation: object) -> list[str]:
     return []
 
 
+def _bounded_text(value: object, maximum: int) -> bool:
+    return isinstance(value, str) and bool(value.strip()) and len(value) <= maximum
+
+
+def _bounded_key(value: object, maximum: int = 160) -> bool:
+    return isinstance(value, str) and len(value) <= maximum and bool(STABLE_KEY_RE.fullmatch(value))
+
+
+def _workflow_notes(value: object, minimum: int = 0) -> bool:
+    return (isinstance(value, list) and minimum <= len(value) <= 5
+            and all(_bounded_text(item, 400) for item in value))
+
+
+def validate_workflow_guides(value: object, page_actions: dict[tuple[str, str], set[str]]) -> list[str]:
+    """Validate descriptive workflow knowledge, never an executable workflow DSL."""
+    if not isinstance(value, list) or len(value) > 3:
+        return ["workflowGuides 必须是最多 3 项的列表"]
+    errors: list[str] = []
+    guide_keys: set[str] = set()
+    for guide in value:
+        if not isinstance(guide, dict) or set(guide) != {
+            "workflowKey", "name", "goal", "whenToUse", "steps", "exceptions",
+        }:
+            errors.append("workflowGuides 流程必须且只能包含规定的六个字段")
+            continue
+        key = guide.get("workflowKey")
+        if not _bounded_key(key, 120) or key in guide_keys:
+            errors.append("workflowGuides workflowKey 必须是唯一且不超过 120 字符的稳定标识")
+        else:
+            guide_keys.add(key)
+        if not all(_bounded_text(guide.get(field), limit) for field, limit in (
+            ("name", 120), ("goal", 600), ("whenToUse", 600),
+        )) or not _workflow_notes(guide.get("exceptions")):
+            errors.append("workflowGuides 名称、目标、适用情况或异常说明超限或无效")
+        steps = guide.get("steps")
+        if not isinstance(steps, list) or not 1 <= len(steps) <= 8:
+            errors.append("workflowGuides steps 必须包含 1..8 个步骤")
+            continue
+        step_keys: set[str] = set()
+        for step in steps:
+            if not isinstance(step, dict) or set(step) != {
+                "stepKey", "title", "purpose", "moduleKey", "pageKey", "actionKeys",
+                "preconditions", "completionCriteria",
+            }:
+                errors.append("workflowGuides 步骤必须且只能包含规定的八个字段")
+                continue
+            step_key = step.get("stepKey")
+            if not _bounded_key(step_key, 120) or step_key in step_keys:
+                errors.append("workflowGuides stepKey 必须在流程内唯一且不超过 120 字符")
+            else:
+                step_keys.add(step_key)
+            if (not _bounded_text(step.get("title"), 120)
+                    or not _bounded_text(step.get("purpose"), 400)
+                    or not _workflow_notes(step.get("preconditions"))
+                    or not _workflow_notes(step.get("completionCriteria"), 1)):
+                errors.append("workflowGuides 步骤说明、前提或完成证据无效")
+            module_key, page_key = step.get("moduleKey"), step.get("pageKey")
+            if (not _bounded_key(module_key, 120) or not _bounded_key(page_key)
+                    or (module_key, page_key) not in page_actions):
+                errors.append("workflowGuides 步骤必须指向同一 Manifest 的真实模块与页面")
+                continue
+            action_keys = step.get("actionKeys")
+            if (not isinstance(action_keys, list) or len(action_keys) > 8
+                    or any(not _bounded_key(item) for item in action_keys)
+                    or len(set(action_keys)) != len(action_keys)
+                    or not set(action_keys) <= page_actions[(module_key, page_key)]):
+                errors.append("workflowGuides actionKeys 必须唯一且属于步骤目标页面的真实 Action")
+    if not errors:
+        try:
+            if len(json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")) > 32768:
+                errors.append("workflowGuides JSON UTF-8 总量不得超过 32 KiB")
+        except (TypeError, ValueError, UnicodeError):
+            errors.append("workflowGuides 必须是有效 UTF-8 JSON")
+    return errors
+
+
+def validate_proactive_check(value: object, page_action_keys: list, actions: dict) -> list[str]:
+    """An explicitly opted-in current-page check is a regular authorized read."""
+    if (not isinstance(value, dict) or set(value) - {"actionKey", "intervalSeconds"}
+            or not _bounded_key(value.get("actionKey"))):
+        return ["proactiveCheck 只能声明 actionKey 和可选 intervalSeconds"]
+    interval = value.get("intervalSeconds", 90)
+    if type(interval) is not int or not 60 <= interval <= 600:
+        return ["proactiveCheck intervalSeconds 必须为 60..600 的整数，省略时为 90"]
+    key = value["actionKey"]
+    action = actions.get(key)
+    if (key not in page_action_keys or not isinstance(action, dict)
+            or action.get("operation") != "query" or action.get("aiEnabled") is not True
+            or action.get("requiresConfirmation") is not False
+            or action.get("platformAiCapability") is not None):
+        return ["proactiveCheck 必须绑定本页 AI 可用、无确认、无 platformAiCapability 的只读 query"]
+    schema = action.get("inputSchema")
+    if (not isinstance(schema, dict) or schema.get("type") != "object"
+            or schema.get("additionalProperties") is not False
+            or not isinstance(schema.get("properties"), dict)
+            or set(schema["properties"]) != {"context"}
+            or schema.get("required") != ["context"]):
+        return ["proactiveCheck inputSchema 必须是仅含必填 context 的封闭对象"]
+    context = schema["properties"]["context"]
+    if (not isinstance(context, dict) or context.get("type") != "object"
+            or not isinstance(context.get("properties", {}), dict)
+            or set(context.get("properties", {})) - {
+                "route", "entity_type", "entity_id", "filters", "selection", "data_version",
+            }):
+        return ["proactiveCheck context 必须是当前业务上下文对象，不得声明身份、URL 或自由参数"]
+    return []
+
+
+def validate_assistant_check_result(value: object) -> list[str]:
+    """Check an actual result.assistantCheck in local business contract tests.
+
+    Manifest/source validation never executes a business query to obtain it.
+    Runtime SaaS validation remains authoritative and must recheck permissions.
+    """
+    if not isinstance(value, dict) or set(value) != {"version", "dataVersion", "summary", "suggestions"}:
+        return ["assistantCheck 必须且只能包含 version/dataVersion/summary/suggestions"]
+    if (type(value["version"]) is not int or value["version"] != 1
+            or not _bounded_text(value["dataVersion"], 160)
+            or not _bounded_text(value["summary"], 400)):
+        return ["assistantCheck 版本、数据版本或摘要无效"]
+    suggestions = value["suggestions"]
+    if not isinstance(suggestions, list) or len(suggestions) > 3:
+        return ["assistantCheck suggestions 必须为 0..3 条"]
+    seen: set[str] = set()
+    for item in suggestions:
+        if not isinstance(item, dict) or set(item) != {"id", "revision", "title", "summary", "goal"}:
+            return ["assistantCheck 建议只允许规定的五个字段"]
+        if (any(not isinstance(item[key], str) or not SUGGESTION_KEY_RE.fullmatch(item[key])
+                for key in ("id", "revision"))
+                or item["id"] in seen
+                or not all(_bounded_text(item[key], limit)
+                           for key, limit in (("title", 80), ("summary", 400), ("goal", 2000)))):
+            return ["assistantCheck 建议 ID、版本或文本无效，ID 不得重复"]
+        seen.add(item["id"])
+    try:
+        if len(json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")) > 16384:
+            return ["assistantCheck JSON UTF-8 总量不得超过 16 KiB"]
+    except (TypeError, ValueError, UnicodeError):
+        return ["assistantCheck 必须是有效 UTF-8 JSON"]
+    return []
+
+
 def validate_manifest_semantics(manifest: object, *, require_semantics: bool) -> list[str]:
     if not isinstance(manifest, dict):
         return ["subsystem.json 根节点必须是对象"]
@@ -122,13 +268,19 @@ def validate_manifest_semantics(manifest: object, *, require_semantics: bool) ->
 
     failures: list[str] = validate_navigation_theme(manifest.get("presentation"))
     page_index: set[tuple[str, str]] = set()
+    page_actions: dict[tuple[str, str], set[str]] = {}
     for module in modules:
         if not isinstance(module, dict):
             continue
         module_key = str(module.get("moduleKey") or "")
+        actual_actions = {action.get("actionKey") for action in module.get("actions") or []
+                          if isinstance(action, dict) and isinstance(action.get("actionKey"), str)}
         for page in module.get("pages") or []:
             if isinstance(page, dict):
-                page_index.add((module_key, str(page.get("pageKey") or "")))
+                target = (module_key, str(page.get("pageKey") or ""))
+                page_index.add(target)
+                page_actions[target] = {key for key in page.get("actionKeys") or []
+                                        if isinstance(key, str) and key in actual_actions}
 
     for module in modules:
         if not isinstance(module, dict):
@@ -140,6 +292,7 @@ def validate_manifest_semantics(manifest: object, *, require_semantics: bool) ->
             for action in module.get("actions") or []
             if isinstance(action, dict)
         }
+        proactive_action_keys: set[str] = set()
         if require_semantics:
             action_meanings: dict[tuple[str, str], str] = {}
             for action_key, action in actions.items():
@@ -178,6 +331,17 @@ def validate_manifest_semantics(manifest: object, *, require_semantics: bool) ->
             unknown = sorted(set(semantics) - AI_SEMANTICS_FIELDS)
             if unknown:
                 failures.append(f"{label} aiSemantics 含未支持字段：{', '.join(unknown)}")
+            if "workflowGuides" in semantics:
+                failures.extend(f"{label} {error}" for error in validate_workflow_guides(
+                    semantics["workflowGuides"], page_actions,
+                ))
+            if "proactiveCheck" in semantics:
+                check_errors = validate_proactive_check(
+                    semantics["proactiveCheck"], page.get("actionKeys") or [], actions,
+                )
+                failures.extend(f"{label} {error}" for error in check_errors)
+                if not check_errors:
+                    proactive_action_keys.add(semantics["proactiveCheck"]["actionKey"])
             purpose = semantics.get("purpose")
             if not isinstance(purpose, str) or not purpose.strip():
                 failures.append(f"{label} aiSemantics.purpose 不能为空")
@@ -363,6 +527,7 @@ def validate_manifest_semantics(manifest: object, *, require_semantics: bool) ->
             if (
                 operation in {"query", "export"}
                 and platform_ai is None
+                and action_key not in proactive_action_keys
                 and isinstance(input_schema, dict)
             ):
                 limit = (input_schema.get("properties") or {}).get("limit")

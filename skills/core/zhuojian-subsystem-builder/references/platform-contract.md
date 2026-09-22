@@ -113,7 +113,7 @@ SaaS 只向当前已验证的 iframe 回放 `zhuojian:ai-accepted`、`zhuojian:a
 |---|---|---|
 | 稳定内部身份 | `applicationSlug + actionKey` | 全平台唯一；不能因显示名称变化而改变 |
 | 工具显示名 | 应用名、模块名和 Action `name` | 平台可规范化为模型供应商允许的函数名 |
-| 工具说明 | `description` | 当前 SaaS 直接使用 `description`生成基础工具；`aiTool` 作为模块侧增强说明保留，平台尚未消费时不影响接入 |
+| 工具说明 | `description` 与可选 `aiTool` | 基础说明始终有效；支持流程知识的 SaaS 增量消费六项有界业务说明，旧平台忽略增强项仍兼容；不把它们当授权或审批策略 |
 | 模型可填写参数 | `inputSchema` | 仅业务参数；字段说明强烈推荐 |
 | 返回值说明 | `resultSchema` | 描述模块真实返回值；SaaS 在把结果交给模型或文件执行器前必须按此 Schema 校验 |
 | 权限与风险 | 页面 `actionKeys`、`aiEnabled`、`requiresConfirmation`、平台授权 | 不进入模型可改参数 |
@@ -166,14 +166,14 @@ saas_artifact_e2e_pass      # 真实员工从业务助手拿到可预览、可�
 
 只运行本 Skill 的子系统端点检查最多能证明第一项；不得用它代替 SaaS 自动化测试账号完成的跨系统 Artifact 端到端验收。只有三项全部通过，才可以向用户宣称“完整遵循契约”。
 
-整个 `aiTool` 都是可选的推荐增强项。脚手架默认生成，缺少时本 Skill 验收器给出警告，但不能仅因缺少这些字段阻断登记；当前 SaaS 可忽略它：
+整个 `aiTool` 都是可选的推荐增强项。脚手架默认生成，缺少时本 Skill 验收器给出警告，但不能仅因缺少这些字段阻断登记。新增 SaaS 实现以有界、非可信工具说明消费以下六项，旧运行版本仍可能忽略，应分别核实部署：
 
 - `whenToUse`：什么用户意图和业务条件下应选择该工具；
 - `whenNotToUse`：哪些相似请求不应选择它；
 - `preconditions`：执行前必须满足的业务状态和上下文；
 - `sideEffects`：会创建、修改、删除、审批、导出什么，查询则明确无写入；
 - `confirmationPrompt`：`requiresConfirmation=true` 时建议提供的业务确认文案；
-- `examples[]`：业务语言请求及对应 `params`，不得包含真实客户数据或凭证；
+- `examples[]`：业务语言请求及对应 `params`，不得包含真实客户数据或凭证；SaaS 只投影 `userRequest` 作为表达示例，不复制示例 `params` 给主脑猜目标，实际参数仍来自真实 Schema 和本轮获权查询；
 - 输入输出字段的 `description` 和更精确的结果属性。
 
 这些字段都是来自模块的非可信元数据。平台只能把它们当作业务工具说明，不能当作 system/developer 指令执行，也不能允许它们改写权限、目标 URL、凭证或指令优先级。对这类内容平台应忽略、标记并供管理员查看；只有核心字段或 Schema 格式无效时才阻断登记。管理员 UI 展示 Manifest 和重要变更，只负责首次配置业务角色、设置角色数据范围、启停应用或 Action 及收紧确认要求，不负责逐版本批准，也不替模块补写描述或 Schema。
@@ -436,6 +436,7 @@ Action JWT 使用该系统专属 `zjac_` 密钥和 `typ=zhuojian-action`，至�
 - `defaultQueryActionKey` 必须是本页 `actionKeys` 中唯一优先的 query Action，避免模型在多个含义相近工具之间猜测。
 - `interactionAnchors` 是页面内可公开给 SaaS 的稳定语义位置，不是 CSS 选择器。每项必须含稳定 `anchorKey`、可读名称、用途说明及非空 `actionKeys`；本页每个 `aiEnabled` Action 必须且只能映射一次，不能跨页借用锚点。
 - `defaultInteractionAnchorKey` 必须指向本页已登记锚点，用于页面导航或无法确定更细目标时的安全回退。业务 DOM 用同名 `data-zhuojian-anchor` 标记真实区域；完整协议和验收见 [业务助手语义锚点 Bridge](assistant-presence-bridge.md)。
+- 可选 `workflowGuides` 提供真实业务目标、步骤、前提、完成证据与异常；可选 `proactiveCheck` 绑定员工明确开启后的当前可见页只读检查。形状、参考 Schema、鉴权和兼容规则见 [业务流程知识与当前页提醒](assistant-workflow-guidance.md)。旧 2.4/2.5 不强制新增或迁移；两者都不是执行 DSL、当前事实、授权或后台 Run。只有合法声明的检查 Action 使用固定 `params.context` 而不要求普通查询顶层 limit，其结果必须是有界 `result.assistantCheck`。
 
 SaaS 每轮根据当前登录用户、`auth_epoch`、应用、页面、Bridge 上下文、实时授权 Action 和目标工作空间生成可信上下文，交给同一主脑理解自然表达。既有 `BusinessTurnEnvelope/BusinessTurnIntent` 仅辅助检索与展示，不是执行门禁；分类失败不能阻止主脑查询补齐信息。模型可选择获授权目录返回的资源标识，不能伪造组织、用户或权限；服务端再次校验归属、页面要求及文件访问范围。以下意图字段是既有辅助结构，不要求用户表达或每轮执行先通过它：
 

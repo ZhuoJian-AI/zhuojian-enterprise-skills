@@ -62,6 +62,8 @@ python <skill>/scripts/e2e_acceptance.py --help
 
 涉及基于当前页面的真实检查结果主动提示员工时，读取 [当前页面的业务提示](references/assistant-page-suggestions.md)。协商 `assistant-suggestions.v1` 后只交接有界、可撤回的业务建议，由员工选择进入同一助手草稿；不监控全部点击、不启动后台 AI，也不强制每页都有建议。确定性检查和写入保护仍由子系统后端负责。
 
+涉及让助手理解业务办理顺序、完成条件或员工主动开启的当前页状态提醒时，读取 [业务流程知识与当前页提醒](references/assistant-workflow-guidance.md)。开发 AI 从真实代码与业务话语提取可选 `workflowGuides`，有真实只读检查才登记 `proactiveCheck`；保持 2.4/2.5，不把本地交付资料变成运行脚本。仅可见当前页、员工明确开启后查询，无模型/后台 Run/自动写入；建议由员工选择交给同一助手，实际写入仍重新授权与确认。
+
 涉及 AI 在业务页面内显示操作位置、查询目标或跟随痕迹时，必须同时读取 [业务助手语义锚点 Bridge](references/assistant-presence-bridge.md)。每个 v2.5 AI 页面必须登记非空 `interactionAnchors` 与默认锚点，并让本页全部 AI Action 恰好映射到一个稳定锚点；业务 DOM 只暴露同名 `data-zhuojian-anchor`，由子系统适配器在自身文档内绘制只读光标和短状态。SaaS 只能发送已登记 `anchorKey`，不得发送选择器、坐标、DOM、CSS 或业务参数；不支持、缺失或过期时回退平台级伴随提示，完整文字说明始终保留。Skill 更新不代表现有子系统已经登记、部署或上线该能力。
 
 涉及子系统发布、故障或健康提示时，必须读取 [子系统可用性与维护提示](references/subsystem-availability.md)。正常候选发布继续服务旧健康版本，不凭发布动作显示“正在升级”；计划维护、突发故障和 iframe/Bridge 未就绪必须区分。嵌入时由 SaaS 显示当前应用提示，独立入口由子系统显示；保留未保存输入，不自动重载或重试写入。此规则适用于新建和本次更新的子系统，不能只改文案不验证真实 `/health` 与业务写入边界。
