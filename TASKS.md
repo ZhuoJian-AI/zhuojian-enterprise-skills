@@ -1,6 +1,6 @@
 # 当前任务
 
-- [ ] **ASSISTANT-CHROME-THEME-20260923 发布待办**（@codex）：core 1.1.21 本地候选已明确当前应用四令牌可协调同一助手的外框、顶部与输入控件，回答／审批语义色及 iframe 保持中性；423 passed／41 skipped，quick_validate 通过。尚未推送、PR、合并、稳定发布或安装；Skill 文档不代表 SaaS 已部署或子系统已重建。见 [本次交接](docs/handoff/2026-09-23_assistant-chrome-theme-contract.md)。
+- [x] **ASSISTANT-CHROME-THEME-20260923 已发布**（@codex）：core 1.1.21 经 PR #39 / `37cffdb` 合并并公开发布 `bundle-v1.4.21`；423 passed／41 skipped、CI、九资产 SHA-256、公开全新安装／CURRENT 与本机 1.1.20→1.1.21 均通过，安装传输使用临时 curl 以绕过本机 Python urllib／代理断流。SaaS 前端已先行受控部署；四个业务子系统未改、未部署。见 [稳定发布补充](docs/handoff/2026-09-23_assistant-chrome-theme-contract.md#稳定发布补充2026-09-23以本节状态为准)。
 
 - [x] **ADAPTIVE-SUBSYSTEM-SHELL-THEME-RELEASE-20260922**（@codex）：SaaS source `9f104d5` / manifest `3cbe964` 已于 21:39:17 CST 受保护发布并通过九服务健康、真实张三桌面／李四手机双系统验收；Skill PR #37 / `f429ee1` 已合并，core 1.1.20 / `bundle-v1.4.20` 于 21:54:36 CST 发布。CI 成功，本地 423 passed／41 skipped；九资产摘要、公开新装／CURRENT／1.1.19 升级及本机 1.1.20 安装通过。保持 2.4／2.5 与四字段 Schema 不变；现有主题登记正确的子系统未改业务代码、未重新部署。见 [发布交接](docs/handoff/2026-09-22_adaptive-shell-theme-contract.md#稳定发布补充2026-09-22)。
 
