@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **ASSISTANT-GLOBAL-CHECK-20260924**（@codex-skill-global）：为登录期跨页面只读业务检查补齐 Skill 的可选 `aiSemantics.globalCheck` 契约、Schema、语义校验与聚焦测试；沿用唯一 SaaS 助手与 `assistantCheck` v1，不放宽权限、不暗示离线监控。验收：原 2.4/2.5 与当前页 `proactiveCheck` 兼容，非法 Action/参数/间隔被拒绝，focused tests、核心测试及 quick_validate 通过；提交独立 handoff。本任务不包含发布、部署或真实子系统业务适配。
+
 - [x] **ASSISTANT-CHROME-THEME-20260923 已发布**（@codex）：core 1.1.21 经 PR #39 / `37cffdb` 合并并公开发布 `bundle-v1.4.21`；423 passed／41 skipped、CI、九资产 SHA-256、公开全新安装／CURRENT 与本机 1.1.20→1.1.21 均通过，安装传输使用临时 curl 以绕过本机 Python urllib／代理断流。SaaS 前端已先行受控部署；四个业务子系统未改、未部署。见 [稳定发布补充](docs/handoff/2026-09-23_assistant-chrome-theme-contract.md#稳定发布补充2026-09-23以本节状态为准)。
 
 - [x] **ADAPTIVE-SUBSYSTEM-SHELL-THEME-RELEASE-20260922**（@codex）：SaaS source `9f104d5` / manifest `3cbe964` 已于 21:39:17 CST 受保护发布并通过九服务健康、真实张三桌面／李四手机双系统验收；Skill PR #37 / `f429ee1` 已合并，core 1.1.20 / `bundle-v1.4.20` 于 21:54:36 CST 发布。CI 成功，本地 423 passed／41 skipped；九资产摘要、公开新装／CURRENT／1.1.19 升级及本机 1.1.20 安装通过。保持 2.4／2.5 与四字段 Schema 不变；现有主题登记正确的子系统未改业务代码、未重新部署。见 [发布交接](docs/handoff/2026-09-22_adaptive-shell-theme-contract.md#稳定发布补充2026-09-22)。
