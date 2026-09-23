@@ -1,4 +1,4 @@
-# 当前应用主题与统一助手外壳：Skill 本地候选交接
+# 当前应用主题与统一助手外壳：Skill 发布交接
 
 ## 责任与契约
 
@@ -15,4 +15,9 @@
 
 ## 发布状态和下游
 
-当前是独立 worktree 的本地候选：未推送、未开 PR、未合并、未发布 `bundle-v1.4.21`，本机已安装的稳定 core 1.1.20 不会被本次源码编辑替换。SaaS 前端候选另在 `ai-platform` 仓库；先完成 SaaS 受控发布与真实桌面／手机核对，再按 Skill 仓库规则合并、构建并公开发布新稳定包。企业文化、生产协同、商品动销和公司共享盘现有主题登记无需因本次规范变化重新部署；若未来发现个别登记无效，应在该子系统发布任务中单独处理，不能把本次 Skill 更新称为已修复。
+## 稳定发布补充（2026-09-23，以本节状态为准）
+
+- SaaS 前端先行发布：源码 [PR #377](https://github.com/ZhuoJian-AI/ai-platform/pull/377) / `e94ff16`、清单 [PR #378](https://github.com/ZhuoJian-AI/ai-platform/pull/378) / `d3689a9`，受控部署 `maintenance783341d08946c2badeec` 于 13:10:06 北京时间恢复 `normal`，九服务健康。真实 `zhangsan` 桌面 1440px／手机模拟 390px 只读核对首页四卡和企业文化助手主题作用域通过；未测真机与危险写入。
+- Skill [PR #39](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/pull/39) 经 `core-tests` 通过后合并为 `37cffdb0087d3a300ad3627526bb2d00bf4b08d4`。从该干净主线构建并公开发布 [bundle-v1.4.21](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/releases/tag/bundle-v1.4.21)，core 为 1.1.21；其余四个 Skill ZIP 与 1.4.20 的摘要完全相同。九个公开资产各自下载并核对 SHA-256 一致，核心 ZIP 摘要为 `7d0d2c01d242fe8d064994a6f595b75d96f54dee90ca8fa1d12f7ef27e88ae06`。
+- 合并主线重新运行 core 全量测试：423 passed、41 skipped；Skill quick validation 通过。公开无登录全新安装 1.1.21、重复检查 `SKILL_UPDATE_CURRENT`、本机托管副本 1.1.20→1.1.21 更新和更新后校验通过。默认 Python urllib 传输在本机代理下连续三次 `Remote end closed connection without response`，上述安装仅将下载传输临时改用既有代理下的 curl；原更新器继续执行 URL 白名单、版本、摘要、归档路径与原子替换校验，不能把默认联网通道记为已修复。本机交接 Skill 自动同步尝试因同一代理读超时给出 `MANAGED_SKILLS_WARNING`，未改变既有交接包。
+- 本次没有新增 Manifest 字段、升级 2.4／2.5、更新业务 Runtime helper、修改员工授权或部署任何企业 ECS。企业文化、生产协同、商品动销和公司共享盘的现有登记无需为该外观规范重新发布；业务数据／流程和款号匹配问题均不在本次修复范围。
