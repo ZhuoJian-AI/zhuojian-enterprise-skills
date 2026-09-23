@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "skillName": "zhuojian-subsystem-builder",
-  "skillVersion": "1.1.20",
+  "skillVersion": "1.1.21",
   "managedBy": "ZhuoJian-AI/zhuojian-enterprise-skills",
   "defaultContractRevision": "2.5",
   "supportedContractRevisions": [

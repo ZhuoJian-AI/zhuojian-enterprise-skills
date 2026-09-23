@@ -18,17 +18,18 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_skill_release_version_is_separate_from_contract_revision() -> None:
     metadata = load_skill_metadata(ROOT)
 
-    assert metadata["skillVersion"] == "1.1.20"
+    assert metadata["skillVersion"] == "1.1.21"
     assert metadata["defaultContractRevision"] == "2.5"
     assert metadata["supportedContractRevisions"] == ["2.4", "2.5"]
 
 
-def test_module_theme_coordinates_platform_entry_without_styling_assistant_content() -> None:
+def test_module_theme_coordinates_assistant_chrome_without_styling_content() -> None:
     guidance = (ROOT / "references" / "module-navigation-migration.md").read_text(encoding="utf-8")
 
-    assert "统一助手**入口**" in guidance
+    assert "**同一统一助手**入口／外框／顶部／输入控件" in guidance
     assert "平台骨架、结构、名称和普通文字必须保持中性" in guidance
-    assert "助手面板／回答内容" in guidance
+    assert "助手内容、审批与错误等语义状态" in guidance
+    assert "缺失或无效的既有登记回退平台默认色" in guidance
     assert "离开应用时必须清除主题" in guidance
 
 
