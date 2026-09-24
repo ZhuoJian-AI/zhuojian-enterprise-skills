@@ -2,7 +2,7 @@
 
 - 执行者：Codex（独立工作树 `codex/global-check-skill-20260924`）
 - 任务：`ASSISTANT-GLOBAL-CHECK-20260924`
-- 规则依据：本仓 `AGENTS.md` 与 core Skill `AGENTS.md`；灼见规则 SHA `43dff14`。从 `origin/main` 的 `c566e62` 起步。本条仅是候选源码，不是稳定包或线上发布。
+- 规则依据：本仓 `AGENTS.md` 与 core Skill `AGENTS.md`；灼见规则 SHA `43dff14`。从 `origin/main` 的 `c566e62` 起步。本条原为候选记录；实际发布状态以文末“稳定发布完成”一节为准。
 
 ## 本次改变
 
@@ -33,3 +33,9 @@
 - 独立评审指出 `globalCheck` 绑定 Action 可遗漏 `permissionPolicy`，与新增 Action 必须声明权限策略的契约不符。候选校验器已限定仅在声明 `globalCheck` 时强制要求，并增加缺失策略及旧 Manifest 兼容测试；未给旧 2.4/2.5 Action 全局加新门禁。
 - 用户选择“暂不授权”，所以只可验证无权拒绝、Manifest 登记及健康路径；获权员工的跨页面提醒、范围隔离和撤权回归待以后授权后完成。本次不得报告主动业务预警已完成验收。生产协同 ECS 与 Skill 稳定 Release 的实际发布状态以各自发布记录为准，不从 SaaS 已发布推断完成。
 - 生产协同 ECS `8.218.208.205` 已从 `86c2630d85e2951281126dd39dc45ac3f85ddd40` 切换到 `e3cae7a98fc65914a959cfc799664276081fe06e`；候选镜像隔离环境 91 项测试通过，旧版备份已留存。Runtime `verify-release` 和 `status` 均返回 healthy，平台同应用 Manifest 登记返回 healthy、`authorization: unchanged; new capabilities require administrator approval`。这同样不等于员工获权路径已验收；另三个子系统没有部署。
+
+## 2026-09-24 稳定发布完成
+
+- PR #41 经独立审查、缺失 `permissionPolicy` 问题修正后合并为 `ff7a60ed141114696bdb568c3548e8fad93d0971`。core 1.1.22 全量测试 458 passed、41 skipped；`quick_validate.py` 和主分支 CI 通过。从干净的合并后 `main` 构建并公开发布 `bundle-v1.4.22`，九个 Release 资产的远端 SHA-256 均与本地一致；core ZIP SHA-256 为 `3d11785ac8a7c9cf68365bc39986f0e50c37433f785f764271f2b860367b438f`。
+- 官方更新器的公开全新安装、重复更新 CURRENT 和本机 1.1.21→1.1.22 安装通过。Skill 稳定发布是开发接入契约已可用，不自动修改已有子系统或用户权限。
+- 本次跨层同步范围：SaaS 已独立受控发布；生产协同在企业 ECS 独立部署并登记；其他三个子系统未改代码、未部署。用户明确选择“暂不授权”试点角色；真实获权员工的跨页面提醒出现、撤回和范围隔离仍待授权后验收，不能称为全员主动预警已验证。
