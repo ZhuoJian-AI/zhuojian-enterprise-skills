@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Current-page read-only assistant check result (not an execution plan)",
+  "title": "Read-only assistant check result (current-page or logged-in global; not an execution plan)",
   "type": "object",
   "additionalProperties": false,
   "required": ["assistantCheck"],

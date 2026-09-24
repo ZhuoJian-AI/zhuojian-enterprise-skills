@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 from typing import Any
 
 
@@ -28,6 +29,7 @@ AI_SEMANTICS_FIELDS = {
     "defaultInteractionAnchorKey",
     "workflowGuides",
     "proactiveCheck",
+    "globalCheck",
 }
 EXPORT_RESULT_FIELDS = {
     "snapshotId",
@@ -46,6 +48,14 @@ PLATFORM_AI_CAPABILITIES = {
     "business.predict": "json",
 }
 PLATFORM_AI_INPUT_KINDS = {"image", "audio", "text", "json"}
+ASSISTANT_CHECK_RESULT_SCHEMA = {
+    key: value
+    for key, value in json.loads(
+        (Path(__file__).resolve().parents[1] / "schemas" / "assistant-check-result.schema.json")
+        .read_text(encoding="utf-8")
+    ).items()
+    if key not in {"$schema", "title"}
+}
 
 
 def _relative_luminance(color: str) -> float:
@@ -225,6 +235,38 @@ def validate_proactive_check(value: object, page_action_keys: list, actions: dic
     return []
 
 
+def validate_global_check(value: object, page_action_keys: list, actions: dict) -> list[str]:
+    """A logged-in cross-page check has no browser or model-supplied context."""
+    if (not isinstance(value, dict) or set(value) - {"actionKey", "intervalSeconds"}
+            or not _bounded_key(value.get("actionKey"))):
+        return ["globalCheck 只能声明 actionKey 和可选 intervalSeconds"]
+    interval = value.get("intervalSeconds", 300)
+    if type(interval) is not int or not 60 <= interval <= 3600:
+        return ["globalCheck intervalSeconds 必须为 60..3600 的整数，省略时为 300"]
+    key = value["actionKey"]
+    action = actions.get(key)
+    if (key not in page_action_keys or not isinstance(action, dict)
+            or action.get("operation") != "query" or action.get("aiEnabled") is not True
+            or action.get("requiresConfirmation") is not False
+            or "platformAiCapability" in action):
+        return ["globalCheck 必须绑定本页 AI 可用、无确认、无 platformAiCapability 的只读 query"]
+    schema = action.get("inputSchema")
+    if (not isinstance(schema, dict)
+            or set(schema) != {"type", "additionalProperties", "properties", "required"}
+            or schema.get("type") != "object"
+            or schema.get("additionalProperties") is not False
+            or schema.get("required") != ["context"]
+            or not isinstance(schema.get("properties"), dict)
+            or set(schema["properties"]) != {"context"}
+            or schema["properties"]["context"] != {
+                "type": "object", "additionalProperties": False, "properties": {},
+            }):
+        return ["globalCheck inputSchema 必须只接收必填的空封闭 context 对象"]
+    if action.get("resultSchema") != ASSISTANT_CHECK_RESULT_SCHEMA:
+        return ["globalCheck resultSchema 必须声明有界的 result.assistantCheck v1"]
+    return []
+
+
 def validate_assistant_check_result(value: object) -> list[str]:
     """Check an actual result.assistantCheck in local business contract tests.
 
@@ -269,6 +311,7 @@ def validate_manifest_semantics(manifest: object, *, require_semantics: bool) ->
     failures: list[str] = validate_navigation_theme(manifest.get("presentation"))
     page_index: set[tuple[str, str]] = set()
     page_actions: dict[tuple[str, str], set[str]] = {}
+    global_check_action_keys: set[str] = set()
     for module in modules:
         if not isinstance(module, dict):
             continue
@@ -292,7 +335,7 @@ def validate_manifest_semantics(manifest: object, *, require_semantics: bool) ->
             for action in module.get("actions") or []
             if isinstance(action, dict)
         }
-        proactive_action_keys: set[str] = set()
+        special_check_action_keys: set[str] = set()
         if require_semantics:
             action_meanings: dict[tuple[str, str], str] = {}
             for action_key, action in actions.items():
@@ -341,7 +384,19 @@ def validate_manifest_semantics(manifest: object, *, require_semantics: bool) ->
                 )
                 failures.extend(f"{label} {error}" for error in check_errors)
                 if not check_errors:
-                    proactive_action_keys.add(semantics["proactiveCheck"]["actionKey"])
+                    special_check_action_keys.add(semantics["proactiveCheck"]["actionKey"])
+            if "globalCheck" in semantics:
+                check_errors = validate_global_check(
+                    semantics["globalCheck"], page.get("actionKeys") or [], actions,
+                )
+                failures.extend(f"{label} {error}" for error in check_errors)
+                if not check_errors:
+                    check_key = semantics["globalCheck"]["actionKey"]
+                    if check_key in global_check_action_keys:
+                        failures.append(f"{label} globalCheck actionKey 在同一应用内只能声明一次")
+                    else:
+                        global_check_action_keys.add(check_key)
+                        special_check_action_keys.add(check_key)
             purpose = semantics.get("purpose")
             if not isinstance(purpose, str) or not purpose.strip():
                 failures.append(f"{label} aiSemantics.purpose 不能为空")
@@ -527,7 +582,7 @@ def validate_manifest_semantics(manifest: object, *, require_semantics: bool) ->
             if (
                 operation in {"query", "export"}
                 and platform_ai is None
-                and action_key not in proactive_action_keys
+                and action_key not in special_check_action_keys
                 and isinstance(input_schema, dict)
             ):
                 limit = (input_schema.get("properties") or {}).get("limit")
