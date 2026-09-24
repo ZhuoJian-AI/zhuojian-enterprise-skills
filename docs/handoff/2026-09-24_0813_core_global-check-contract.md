@@ -18,4 +18,10 @@
 - `python C:/Users/王鑫涛/.codex/skills/.system/skill-creator/scripts/quick_validate.py skills/core/zhuojian-subsystem-builder`：`Skill is valid!`。`git diff --check`：通过。
 - 运行命令与最终结果见本提交验证记录；这些是 Skill 包内测试，不是 SaaS、Runtime 或生产协同的跨服务器验收。
 - 待 SaaS 实际实现并验证登录期发现、权限隔离、错误反馈、去重与桌面/手机展示；待具体子系统实现真实只读 Action 和业务测试。生产协同旧进度底表含静态资料，在未核实实时来源前只能提示“待核对”，不能向员工宣称实时进度风险。其他未适配子系统保持原功能。
-- 发布边界：本分支不 push、不提 PR、不构建 Release、不部署 SaaS/Runtime/ECS；Skill 文档与校验器修改不代表服务器同步。发布时应另按仓库评审、稳定包与下游通知流程执行。
+- 发布边界：本分支已推送并建立 PR #41，现为待评审状态；尚未合并、构建稳定 Release 或部署 SaaS/Runtime/ECS。Skill 文档与校验器修改不代表服务器同步。发布时仍须按仓库评审、稳定包与下游通知流程执行。
+
+## 2026-09-24 发布准备补充
+
+- 按稳定更新规则将 core Skill 升至候选 `1.1.22`，添加同版本更新记录和版本测试；`contractRevision` 继续保持 2.4／2.5，不做协议迁移。
+- 重新运行 core 全量测试：456 passed、41 skipped；`quick_validate.py` 通过，`git diff --check` 通过。PR #41 由草稿转待评审以触发 CI；CI 结果、评审与 Release 尚需单独核实。
+- 用本分支校验器检查生产协同候选 `subsystem.json`：0 项错误；同一 Manifest 经 SaaS 候选校验器接受，子系统只读 Action 的模拟业务快照结果也经 SaaS `AssistantCheck` 模型接受。这是跨仓**本地契约验证**，不是真实员工授权、企业服务器 Action 或在线提醒验收。
