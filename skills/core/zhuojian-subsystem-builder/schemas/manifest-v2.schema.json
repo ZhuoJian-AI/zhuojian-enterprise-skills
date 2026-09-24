@@ -97,6 +97,13 @@
         "intervalSeconds": {"type": "integer", "minimum": 60, "maximum": 600, "default": 90}
       }
     },
+    "globalCheck": {
+      "type": "object", "additionalProperties": false, "required": ["actionKey"],
+      "properties": {
+        "actionKey": {"$ref": "#/$defs/stableKey"},
+        "intervalSeconds": {"type": "integer", "minimum": 60, "maximum": 3600, "default": 300}
+      }
+    },
     "sitePath": {"type": "string", "pattern": "^/(?!/).*$", "maxLength": 2000},
     "schema": {"type": "object"},
     "color": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
@@ -200,7 +207,8 @@
         },
         "defaultInteractionAnchorKey": {"$ref": "#/$defs/stableKey"},
         "workflowGuides": {"type": "array", "maxItems": 3, "items": {"$ref": "#/$defs/workflowGuide"}},
-        "proactiveCheck": {"$ref": "#/$defs/proactiveCheck"}
+        "proactiveCheck": {"$ref": "#/$defs/proactiveCheck"},
+        "globalCheck": {"$ref": "#/$defs/globalCheck"}
       }
     },
     "department": {

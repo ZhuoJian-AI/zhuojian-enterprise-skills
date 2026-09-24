@@ -436,7 +436,7 @@ Action JWT 使用该系统专属 `zjac_` 密钥和 `typ=zhuojian-action`，至�
 - `defaultQueryActionKey` 必须是本页 `actionKeys` 中唯一优先的 query Action，避免模型在多个含义相近工具之间猜测。
 - `interactionAnchors` 是页面内可公开给 SaaS 的稳定语义位置，不是 CSS 选择器。每项必须含稳定 `anchorKey`、可读名称、用途说明及非空 `actionKeys`；本页每个 `aiEnabled` Action 必须且只能映射一次，不能跨页借用锚点。
 - `defaultInteractionAnchorKey` 必须指向本页已登记锚点，用于页面导航或无法确定更细目标时的安全回退。业务 DOM 用同名 `data-zhuojian-anchor` 标记真实区域；完整协议和验收见 [业务助手语义锚点 Bridge](assistant-presence-bridge.md)。
-- 可选 `workflowGuides` 提供真实业务目标、步骤、前提、完成证据与异常；可选 `proactiveCheck` 绑定员工明确开启后的当前可见页只读检查。形状、参考 Schema、鉴权和兼容规则见 [业务流程知识与当前页提醒](assistant-workflow-guidance.md)。旧 2.4/2.5 不强制新增或迁移；两者都不是执行 DSL、当前事实、授权或后台 Run。只有合法声明的检查 Action 使用固定 `params.context` 而不要求普通查询顶层 limit，其结果必须是有界 `result.assistantCheck`。
+- 可选 `workflowGuides` 提供真实业务目标、步骤、前提、完成证据与异常；可选 `proactiveCheck` 绑定员工明确开启后的当前可见页只读检查；独立的可选 `globalCheck` 绑定登录 SaaS 外壳中、不依赖页面对象的跨页只读检查。形状、参考 Schema、鉴权和兼容规则见 [业务流程知识、当前页与跨页检查](assistant-workflow-guidance.md)。旧 2.4/2.5 不强制新增或迁移；三者都不是执行 DSL、当前事实、授权或后台 Run。仅合法声明的检查 Action 使用固定 `params.context` 而不要求普通查询顶层 limit：`proactiveCheck` 使用获校验当前页上下文，`globalCheck` 固定传空对象 `{}`；结果都必须是有界 `result.assistantCheck` v1。
 
 SaaS 每轮根据当前登录用户、`auth_epoch`、应用、页面、Bridge 上下文、实时授权 Action 和目标工作空间生成可信上下文，交给同一主脑理解自然表达。既有 `BusinessTurnEnvelope/BusinessTurnIntent` 仅辅助检索与展示，不是执行门禁；分类失败不能阻止主脑查询补齐信息。模型可选择获授权目录返回的资源标识，不能伪造组织、用户或权限；服务端再次校验归属、页面要求及文件访问范围。以下意图字段是既有辅助结构，不要求用户表达或每轮执行先通过它：
 
