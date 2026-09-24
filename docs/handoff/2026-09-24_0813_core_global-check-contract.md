@@ -23,5 +23,6 @@
 ## 2026-09-24 发布准备补充
 
 - 按稳定更新规则将 core Skill 升至候选 `1.1.22`，添加同版本更新记录和版本测试；`contractRevision` 继续保持 2.4／2.5，不做协议迁移。
-- 重新运行 core 全量测试：456 passed、41 skipped；`quick_validate.py` 通过，`git diff --check` 通过。PR #41 由草稿转待评审以触发 CI；CI 结果、评审与 Release 尚需单独核实。
+- 重新运行 core 全量测试：456 passed、41 skipped；`quick_validate.py` 通过，`git diff --check` 通过。PR #41 由草稿转待评审；远端 Core Skill CI 运行 `35943527943` 已通过。评审、合并与稳定 Release 尚未完成。
 - 用本分支校验器检查生产协同候选 `subsystem.json`：0 项错误；同一 Manifest 经 SaaS 候选校验器接受，子系统只读 Action 的模拟业务快照结果也经 SaaS `AssistantCheck` 模型接受。这是跨仓**本地契约验证**，不是真实员工授权、企业服务器 Action 或在线提醒验收。
+- 用户明确选择“暂不授权”试点角色；本轮不增加员工 Action 或数据范围，获权账号的线上提醒效果须待以后显式授权再验收。
