@@ -250,6 +250,8 @@ def validate_global_check(value: object, page_action_keys: list, actions: dict) 
             or action.get("requiresConfirmation") is not False
             or "platformAiCapability" in action):
         return ["globalCheck 必须绑定本页 AI 可用、无确认、无 platformAiCapability 的只读 query"]
+    if action.get("permissionPolicy") is None:
+        return ["globalCheck 绑定 Action 必须声明 permissionPolicy"]
     schema = action.get("inputSchema")
     if (not isinstance(schema, dict)
             or set(schema) != {"type", "additionalProperties", "properties", "required"}

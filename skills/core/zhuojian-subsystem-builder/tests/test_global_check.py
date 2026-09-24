@@ -103,6 +103,19 @@ def test_global_check_is_a_real_read_only_non_model_action(field, value):
     assert any("globalCheck" in error for error in errors(payload))
 
 
+def test_global_check_requires_explicit_permission_policy():
+    payload = fixture()
+    del action(payload)["permissionPolicy"]
+    assert any("globalCheck 绑定 Action 必须声明 permissionPolicy" in error for error in errors(payload))
+
+
+def test_legacy_action_without_global_check_keeps_optional_permission_policy():
+    payload = fixture()
+    del page(payload)["aiSemantics"]["globalCheck"]
+    del action(payload)["permissionPolicy"]
+    assert not any("permissionPolicy" in error for error in errors(payload))
+
+
 @pytest.mark.parametrize("mutation", [
     "missing", "other-page", "extra-check-field", "extra-param", "browser-field",
     "open-context", "open-root", "missing-context", "root-conditional",

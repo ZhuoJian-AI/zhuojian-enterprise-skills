@@ -26,3 +26,10 @@
 - 重新运行 core 全量测试：456 passed、41 skipped；`quick_validate.py` 通过，`git diff --check` 通过。PR #41 由草稿转待评审；远端 Core Skill CI 运行 `35943527943` 已通过。评审、合并与稳定 Release 尚未完成。
 - 用本分支校验器检查生产协同候选 `subsystem.json`：0 项错误；同一 Manifest 经 SaaS 候选校验器接受，子系统只读 Action 的模拟业务快照结果也经 SaaS `AssistantCheck` 模型接受。这是跨仓**本地契约验证**，不是真实员工授权、企业服务器 Action 或在线提醒验收。
 - 用户明确选择“暂不授权”试点角色；本轮不增加员工 Action 或数据范围，获权账号的线上提醒效果须待以后显式授权再验收。
+
+## 2026-09-24 发布审查修正
+
+- SaaS 源码 PR #380 已合并为 `b4ba7214670bacf17d0bf9e54349f7e2c8e4e3a3`，镜像清单 PR #381 已合并为 `84116d05c39657246d807fbd6ff6fa68f2537e6d`；受保护发布 `maintenanced253a5d720634ecbdfe2` 完成，九个服务健康，公开 `/health` 正常。这只证明 SaaS 发布与技术健康，不证明员工已收到提醒。
+- 独立评审指出 `globalCheck` 绑定 Action 可遗漏 `permissionPolicy`，与新增 Action 必须声明权限策略的契约不符。候选校验器已限定仅在声明 `globalCheck` 时强制要求，并增加缺失策略及旧 Manifest 兼容测试；未给旧 2.4/2.5 Action 全局加新门禁。
+- 用户选择“暂不授权”，所以只可验证无权拒绝、Manifest 登记及健康路径；获权员工的跨页面提醒、范围隔离和撤权回归待以后授权后完成。本次不得报告主动业务预警已完成验收。生产协同 ECS 与 Skill 稳定 Release 的实际发布状态以各自发布记录为准，不从 SaaS 已发布推断完成。
+- 生产协同 ECS `8.218.208.205` 已从 `86c2630d85e2951281126dd39dc45ac3f85ddd40` 切换到 `e3cae7a98fc65914a959cfc799664276081fe06e`；候选镜像隔离环境 91 项测试通过，旧版备份已留存。Runtime `verify-release` 和 `status` 均返回 healthy，平台同应用 Manifest 登记返回 healthy、`authorization: unchanged; new capabilities require administrator approval`。这同样不等于员工获权路径已验收；另三个子系统没有部署。
