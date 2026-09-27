@@ -36,3 +36,14 @@ Skill 主责是开发约束和验收契约；SaaS 负责公共外壳双端，子
 - Windows 隔离 Python 3.10.21 环境完整执行 core `python -m pytest -q -ra`：458 passed、41 skipped、1 warning，23.61 秒，退出码 0。跳过项为 Windows 不具备的 POSIX 语义与待生成项目执行的占位模板集成测试；不把跳过写成通过，浏览器证据与手机真机分开报告。
 - SaaS 文档 PR #419 已合并为 `6cd80a1950e33d80ae7a866eda4677dfad7e3ada`；最新主线的管理员图片设置规则保持不变。本次无产品代码构建或服务器部署。
 - 生成模板规则属于下游可复制资料，按跨仓库规则核对使用方，稳定发布后同步 wiki 与说明性 issue；既有系统不因此立即重做或重新部署，没有强制迁移截止日期。
+
+## 稳定发布完成（2026-09-27，以本节状态为准）
+
+- [PR #43](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/pull/43) 于 11:20:49 CST 合并，source SHA 为 `d7358ca36160ccbb86633caf87445fefacfa5eb7`。PR [CI 36290842523](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/actions/runs/36290842523) 与主线 [CI 36291137460](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/actions/runs/36291137460) 均成功；PR 初次执行被晚到的草稿 synchronize 事件取消，重跑同一已审查提交后成功，没有放宽检查。
+- 从干净的合并提交构建并于 11:24:24 CST 正式发布 core 1.1.23 / [bundle-v1.4.23](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/releases/tag/bundle-v1.4.23)，已设为 latest，非 draft/prerelease。core ZIP SHA-256 为 `f2223067d8b5aa4323faf78c3d349338cd1d73f2d7e8a40b38b23340ea12411f`。
+- 首次 LF 检出构包发现四个未改 Skill 的归档摘要与旧版不同，逐文件比对确定只有行尾差异；最终使用与历史发布一致的 Windows 检出方式构建，`.gitattributes` 继续保证 shell 文件 LF。正式发布的四个未改 Skill ZIP 与 bundle-v1.4.22 摘要完全一致，没有对同版本包重写内容。
+- 九个 GitHub 资产上传摘要和匿名 `curl` 公开下载 SHA-256 均与本地正式产物一致，catalog/update manifests 指向同一 source SHA；压缩包结构、版本、更新记录和契约版本检查通过。
+- 使用公开下载的原始更新器，空目录匿名新装输出 `SKILL_UPDATED installed 1.1.23`，重复更新输出 `SKILL_UPDATE_CURRENT 1.1.23`；本机原始更新器输出 `SKILL_UPDATED 1.1.22 -> 1.1.23`，重复 CURRENT 通过。没有替换传输函数、使用测试地址或绕过包摘要检查，本机旧 Skill 已备份。
+- 测试边界：458 passed、41 skipped、1 条依赖弃用提示；其中 38 条模板占位集成检查由生成项目子套件执行并通过，3 条 POSIX 权限语义在 Windows 未覆盖。Chrome 153 / Playwright 1.60 的 8 视口及独立/嵌入检查通过；WebKit、Firefox 未安装，手机真机未验收。
+- SaaS 项目规范 PR #419 已合并为 `6cd80a1`。实际依赖核对范围为 coa、garment-production-collaboration、aifabei-subsystem-builder、zhuojian-module-requirements、aifabei-sample-review、aifabei-production-handoff；按部署 Skill 的跨仓库流程同步说明性 issue 和 wiki 卡片。后两仓旧 2.3 锁定保留，不强制迁移；chairco 没有核实到 builder 依赖，不按历史通知泛发。具体通知链接保存在组织 wiki。
+- 本次仅发布 SaaS 开发规范与 Skill 包；没有修改或部署 SaaS 页面、Runtime、业务 ECS，也没有改企业权限或业务数据。稳定包发布和本机安装已完成，不能据此宣称现有子系统已经实现双端界面。
