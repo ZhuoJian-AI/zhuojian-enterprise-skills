@@ -1,6 +1,6 @@
 # 当前任务
 
-- [ ] **CONTINUOUS-RESPONSIVE-CONTRACT-20260927**（@codex）：补充双端内部连续自适应、容器约束与宽屏背景隔离规范，同步 Skill 入口、平台契约及生成模板。检查链接、quick_validate 和相关模板测试；本轮仅源规范，不升级版本、不发布稳定包、不部署现有子系统。
+- [ ] **CONTINUOUS-RESPONSIVE-CONTRACT-20260927 待合并发布**（@codex）：Skill 入口、契约及生成项目规范已补连续自适应与容器约束；quick_validate 与 4 项相关模板测试通过。本地源规范未推送、未发布，稳定包仍 1.1.23；无子系统部署。见 [交接](docs/handoff/2026-09-27_continuous-responsive-contract.md)。
 
 - [x] **ASSISTANT-CHROME-THEME-20260923 已发布**（@codex）：core 1.1.21 经 PR #39 / `37cffdb` 合并并公开发布 `bundle-v1.4.21`；423 passed／41 skipped、CI、九资产 SHA-256、公开全新安装／CURRENT 与本机 1.1.20→1.1.21 均通过，安装传输使用临时 curl 以绕过本机 Python urllib／代理断流。SaaS 前端已先行受控部署；四个业务子系统未改、未部署。见 [稳定发布补充](docs/handoff/2026-09-23_assistant-chrome-theme-contract.md#稳定发布补充2026-09-23以本节状态为准)。
 
