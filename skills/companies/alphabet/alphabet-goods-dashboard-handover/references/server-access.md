@@ -2,7 +2,7 @@
 
 ## 2026-09-28 杭州接管与临时中继
 
-杭州 `101.37.173.94` 已恢复并启动商品动销业务，健康检查与同步 ready 通过；香港源 `47.243.48.78` 业务容器已停，旧入口反代杭州，避免 DNS 缓存产生双写。保留 `enterpriseKey=aifabei`、`runtimeId=aifabei-hk-48`、`organizationId=65130a23-b05e-4026-9615-761ab2d4193c` 和域名后缀 `hk48.aifabei.staging.zhuojianai.com`。真实员工页面与 DNS 最终收口由迁移主任务另行记录。
+杭州 `101.37.173.94` 已恢复并启动商品动销业务，健康检查与同步 ready 通过；香港源 `47.243.48.78` 业务容器已停，旧入口反代杭州，避免 DNS 缓存产生双写。保留 `enterpriseKey=aifabei`、`runtimeId=aifabei-hk-48`、`organizationId=65130a23-b05e-4026-9615-761ab2d4193c` 和域名后缀 `hk48.aifabei.staging.zhuojianai.com`。`*.hk48` 记录已于 23:08:43 CST 切杭州，TTL 600；真实员工页面与真机仍单独验收。
 
 商品动销保留 `local-managed`，无企业 OSS 网关。道讯 HTTP 暂经杭州 `172.18.0.1:18849` → 旧香港同端点的受限 SSH 中继；`/api/gd_shops` 实测 200/883 行。不是 SQL 适配，也不是全大陆数据链路。旧香港已续费，待企业内网客户端改连杭州并验证后才撤临时 bridge，不能提前停止原内网通道。
 
