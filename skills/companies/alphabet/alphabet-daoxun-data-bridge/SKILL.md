@@ -1,6 +1,6 @@
 ---
 name: alphabet-daoxun-data-bridge
-description: "在 Alphabet 的 8.218.208.205 ECS 上，通过既有反向隧道读取内网道讯 SQL Server 数据，并据此开发、部署和接入灼见 SaaS 子系统。用户提到道讯数据、H_TRADE、Alphabet 内网数据库、反向隧道或把相关看板嵌入 SaaS 时使用。"
+description: "在 Alphabet 的 aifabei-hk-01 Runtime 主机上，通过既有反向隧道只读访问内网道讯 SQL Server 并开发、部署灼见子系统；迁移期间依据环境表核对源/目标地址。用户提到道讯数据、H_TRADE、Alphabet 内网数据库或该反向隧道时使用。"
 ---
 
 # Alphabet 道讯数据子系统
@@ -27,7 +27,7 @@ description: "在 Alphabet 的 8.218.208.205 ECS 上，通过既有反向隧道�
 
 ## 工作流程
 
-1. 先按 `$zhuojian-subsystem-builder` 登录 `8.218.208.205` 并运行 Runtime 健康检查。
+1. 先从 [当前环境](references/environment.md) 核对当前生效主机及迁移状态，按 `$zhuojian-subsystem-builder` 登录并运行 Runtime 健康检查；不能仅凭旧 IP 或“目标已购买”判断。
 2. 在 ECS 宿主机复核 `127.0.0.1:11433`。需要确定性验证时，把 [check_tds_tunnel.py](scripts/check_tds_tunnel.py) 送入 ECS 的 `python3 -` 标准输入执行；该检查只做 SQL Server PRELOGIN 握手，不登录、不执行 SQL、不修改数据。
 3. 若握手成功，状态写为“网络隧道已通”。不得因为 ECS 无法直接访问 `10.0.0.181`、没有 VPN 或没有网络挂载而推翻该结论。
 4. 若握手失败，先检查 ECS 回环端口是否监听，再检查内网服务器上的专用隧道任务是否运行。只报告实际失败层级，不把传输失败说成数据库密码错误。

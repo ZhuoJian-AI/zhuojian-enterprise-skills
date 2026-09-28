@@ -119,6 +119,7 @@ ensure_directory /run/zhuojian 0755
 
 install -d -o root -g root -m 0750 /usr/local/lib/zhuojian
 install -o root -g root -m 0750 "$SOURCE_DIR/runtime_admin.py" /usr/local/lib/zhuojian/runtime_admin.py
+install -o root -g root -m 0750 "$SOURCE_DIR/migrate_oss_scope.py" /usr/local/lib/zhuojian/migrate_oss_scope.py
 install -o root -g root -m 0750 "$SOURCE_DIR/zhuojian-runtime" /usr/local/sbin/zhuojian-runtime
 install -o root -g root -m 0644 "$SOURCE_DIR/zhuojian-disk-monitor.service" /etc/systemd/system/zhuojian-disk-monitor.service
 install -o root -g root -m 0644 "$SOURCE_DIR/zhuojian-disk-monitor.timer" /etc/systemd/system/zhuojian-disk-monitor.timer

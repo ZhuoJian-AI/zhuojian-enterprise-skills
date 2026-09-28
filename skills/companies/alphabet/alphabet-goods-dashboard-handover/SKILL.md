@@ -1,11 +1,11 @@
 ---
 name: alphabet-goods-dashboard-handover
-description: "维护 Alphabet 的 47.243.48.78 ECS 上已交付的商品动销看板，解释数据口径、排查同步或访问异常、修改页面与报表并安全发布。仅适用于该看板及其道讯只读数据链路。"
+description: "维护 Alphabet 的 aifabei-hk-48 Runtime 上已交付的商品动销看板，解释数据口径、排查同步或访问异常并安全发布；迁移期间依据服务器访问表核对源/目标地址。仅适用于该看板及其道讯只读数据链路。"
 ---
 
 # Alphabet 商品动销看板交接
 
-本 Skill 是 `47.243.48.78` 上商品动销看板的交接层，必须与 `$zhuojian-subsystem-builder` 同时使用。总 Skill 负责服务器访问、开发、部署、统一登录、权限、文件存储和 SaaS 接入；本 Skill 只补充该看板的真实现状、业务口径和维护边界，不取代或放宽总契约。
+本 Skill 是 `aifabei-hk-48` 上商品动销看板的交接层，当前主机及候选状态见 [服务器访问](references/server-access.md)，必须与 `$zhuojian-subsystem-builder` 同时使用。总 Skill 负责服务器访问、开发、部署、统一登录、权限、文件存储和 SaaS 接入；本 Skill 只补充该看板的真实现状、业务口径和维护边界，不取代或放宽总契约。
 
 本 Skill 由 `ZhuoJian-AI/zhuojian-enterprise-skills` 稳定目录托管。总 Skill 根据 ECS Runtime 档案或主机地址安装、更新本 Skill 后，立即重新读取本文件以及当前任务需要的 references，不使用更新前的交接事实。
 

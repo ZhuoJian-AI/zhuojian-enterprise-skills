@@ -20,29 +20,34 @@
       "path": "skills/companies/alphabet/alphabet-daoxun-data-bridge",
       "kind": "handoff",
       "enterpriseKeys": [
-        "alphabet"
+        "alphabet",
+        "aifabei"
       ],
-      "runtimeIds": [],
+      "runtimeIds": ["aifabei-hk-01"],
       "hosts": [
-        "8.218.208.205"
+        "8.218.208.205",
+        "47.97.90.161"
       ]
     },
     "alphabet-goods-dashboard-handover": {
       "path": "skills/companies/alphabet/alphabet-goods-dashboard-handover",
       "kind": "handoff",
       "enterpriseKeys": [
-        "alphabet"
+        "alphabet",
+        "aifabei"
       ],
-      "runtimeIds": [],
+      "runtimeIds": ["aifabei-hk-48"],
       "hosts": [
-        "47.243.48.78"
+        "47.243.48.78",
+        "101.37.173.94"
       ]
     },
     "alphabet-nas-data-bridge": {
       "path": "skills/companies/alphabet/alphabet-nas-data-bridge",
       "kind": "handoff",
       "enterpriseKeys": [
-        "alphabet"
+        "alphabet",
+        "aifabei"
       ],
       "runtimeIds": [
         "aifabei-hk-01",
@@ -50,7 +55,9 @@
       ],
       "hosts": [
         "8.218.208.205",
-        "47.243.48.78"
+        "47.243.48.78",
+        "47.97.90.161",
+        "101.37.173.94"
       ]
     }
   }
