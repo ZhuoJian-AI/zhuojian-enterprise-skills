@@ -8,7 +8,9 @@
 
 SQL 当前经杭州 `127.0.0.1:11433` → 旧香港同端点的临时受限 SSH 桥，Docker 仍用 `172.29.181.1:11433`。`zhuojian-migration-production-data-bridge.service` 同时承接 NAS 10445；源端专用 key 限来源 IP、仅 PermitOpen 指定端点、禁止 shell。TDS PRELOGIN 已验证，真实 SQL 只读查询仍按下方原契约验收。企业内网客户端尚未切杭州，不能宣称全大陆链路；改连并验证后才撤桥，保留原 LAN 凭据和回退方案。
 
-## 固定拓扑
+2026-09-29 00:02 复核：从杭州生产侧经上述临时桥，以既定 TDS `7.0` 身份认证 `H_TRADE` 成功；只读角色检查为读取权限 1、写入权限 0。这是当前桥接链路验收，不代表公司内网客户端已改为直连杭州。
+
+## 原内网隧道拓扑（香港落点仍在使用）
 
 ```text
 Alphabet 内网 Windows / SQL Server

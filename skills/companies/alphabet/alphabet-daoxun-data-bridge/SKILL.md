@@ -19,7 +19,7 @@ description: "在 Alphabet 的 aifabei-hk-01 Runtime 主机上，通过既有反
 
 开始工作先完整读取 [当前环境](references/environment.md)。不要重新猜测内网地址或把“ECS 不能直连内网 IP”误报成通道未打通。
 
-- 道讯 SQL Server 位于 Alphabet 内网，内网服务器主动向 ECS 建立反向 SSH 隧道。
+- 道讯 SQL Server 位于 Alphabet 内网，内网服务器主动向 ECS 建立反向 SSH 隧道。业务主机已迁杭州时，隧道仍可能经香港临时中继；实际落点以环境表和现场核验为准。
 - ECS 上的入口是宿主机回环地址 `127.0.0.1:11433`；它转发到内网 SQL Server `1433`。
 - `8.218.208.205 -> 10.0.0.181:1433` 直接访问失败是预期行为。这里没有整网 VPN、专线或网络磁盘，也不需要这些东西才能使用现有定点隧道。
 - ECS 已配置专用 SQL Server 只读身份，并已从宿主机和临时 Docker 容器执行真实 `SELECT` 验收。该身份不是写入角色或数据库所有者。
