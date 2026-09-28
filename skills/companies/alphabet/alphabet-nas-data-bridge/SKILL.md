@@ -1,6 +1,6 @@
 ---
 name: alphabet-nas-data-bridge
-description: "在 Alphabet 的 8.218.208.205 或 47.243.48.78 ECS 上，经群晖 NAS 反向隧道只读浏览企业共享资料，并把选定资料接入灼见 SaaS 子系统。用户提到 10.0.0.33、NAS、共享盘、000、AI、outshare、TEST 或在子系统中查询公司文件时使用。"
+description: "在 Alphabet 的 aifabei-hk-01 / aifabei-hk-48 Runtime 主机上，经群晖 NAS 反向隧道只读浏览企业共享资料；迁移期间依据环境表核对源/目标地址。用户提到 10.0.0.33、NAS、共享盘、000、AI、outshare、TEST 或子系统查询公司文件时使用。"
 ---
 
 # Alphabet NAS 数据桥接

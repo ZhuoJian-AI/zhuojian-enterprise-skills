@@ -1,5 +1,11 @@
 # 当前环境
 
+## 2026-09-28 迁移候选
+
+源 `8.218.208.205` → 杭州候选 `47.97.90.161`。只读实测源 Runtime 为 `enterpriseKey=aifabei`、`runtimeId=aifabei-hk-01`、`organizationId=65130a23-b05e-4026-9615-761ab2d4193c`；公司展示名 Alphabet 不覆盖这些身份。目标接管和隧道验证尚未记录前，以下拓扑仍为源环境。域名后缀 `hk01.aifabei.staging.zhuojianai.com` 与 ID 保留，`hk` 不代表应重建身份。
+
+源生产协同、企业文化、NAS 文件三个受管 release 均已使用 `oss-gateway`，源 Bucket `alphabet-prod-hk-files-20260903` / `cn-hongkong`；杭州 Bucket 须以真实创建和切换结果更新，不能把候选当生效。道讯仍只读，迁移时须从企业内网端重建到目标的受限反向转发并在最终容器重新验收；源通道保留回退。
+
 ## 固定拓扑
 
 ```text
