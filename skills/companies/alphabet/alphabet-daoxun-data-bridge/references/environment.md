@@ -4,7 +4,7 @@
 
 杭州 `47.97.90.161` 已恢复源 `8.218.208.205` 的 Runtime 和数据；保留 `enterpriseKey=aifabei`、`runtimeId=aifabei-hk-01`、`organizationId=65130a23-b05e-4026-9615-761ab2d4193c` 与 `hk01.aifabei.staging.zhuojianai.com`，展示名与历史地域缩写不覆盖身份。
 
-生产协同、企业文化、NAS 三个受管 release 保留 `oss-gateway`。Runtime 网关已通过受控 helper 切到 `alphabet-prod-hz-files-20260928` / `cn-hangzhou`：266 对象、90,128,812 bytes，大小/CRC64/内容元数据一致，7 项真实存储 probe 通过。三业务在杭州以原镜像启动，health 与 HTTPS/TLS 均通过；旧业务和网关停止，旧域名入口反代杭州保持唯一写入。SSO、员工页面与真机仍需独立记录，不能由服务器健康代替。
+生产协同、企业文化、NAS 三个受管 release 保留 `oss-gateway`。Runtime 网关已通过受控 helper 切到 `alphabet-prod-hz-files-20260928` / `cn-hangzhou`：266 对象、90,128,812 bytes，大小/CRC64/内容元数据一致，7 项真实存储 probe 通过。三业务在杭州以原镜像启动，health 与 HTTPS/TLS 均通过；旧业务和网关停止，旧域名入口反代杭州保持唯一写入。总迁移任务已独立通过真实员工 SSO 打开模块验收，不能由此推定手机真机全通过。生产协同手机页面既存 overflow 本轮未修改 UI，保留后续单独修复事项。
 
 SQL 当前经杭州 `127.0.0.1:11433` → 旧香港同端点的临时受限 SSH 桥，Docker 仍用 `172.29.181.1:11433`。`zhuojian-migration-production-data-bridge.service` 同时承接 NAS 10445；源端专用 key 限来源 IP、仅 PermitOpen 指定端点、禁止 shell。TDS PRELOGIN 已验证，真实 SQL 只读查询仍按下方原契约验收。企业内网客户端尚未切杭州，不能宣称全大陆链路；改连并验证后才撤桥，保留原 LAN 凭据和回退方案。
 
