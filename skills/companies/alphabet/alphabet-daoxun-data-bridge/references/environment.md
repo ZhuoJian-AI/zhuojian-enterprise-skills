@@ -1,10 +1,12 @@
 # 当前环境
 
-## 2026-09-28 迁移候选
+## 2026-09-28 杭州恢复与临时中继
 
-源 `8.218.208.205` → 杭州候选 `47.97.90.161`。只读实测源 Runtime 为 `enterpriseKey=aifabei`、`runtimeId=aifabei-hk-01`、`organizationId=65130a23-b05e-4026-9615-761ab2d4193c`；公司展示名 Alphabet 不覆盖这些身份。目标接管和隧道验证尚未记录前，以下拓扑仍为源环境。域名后缀 `hk01.aifabei.staging.zhuojianai.com` 与 ID 保留，`hk` 不代表应重建身份。
+杭州 `47.97.90.161` 已恢复源 `8.218.208.205` 的 Runtime 和数据；保留 `enterpriseKey=aifabei`、`runtimeId=aifabei-hk-01`、`organizationId=65130a23-b05e-4026-9615-761ab2d4193c` 与 `hk01.aifabei.staging.zhuojianai.com`，展示名与历史地域缩写不覆盖身份。
 
-源生产协同、企业文化、NAS 文件三个受管 release 均已使用 `oss-gateway`，源 Bucket `alphabet-prod-hk-files-20260903` / `cn-hongkong`；杭州 Bucket 须以真实创建和切换结果更新，不能把候选当生效。道讯仍只读，迁移时须从企业内网端重建到目标的受限反向转发并在最终容器重新验收；源通道保留回退。
+生产协同、企业文化、NAS 三个受管 release 保留 `oss-gateway`。Runtime 网关已通过受控 helper 切到 `alphabet-prod-hz-files-20260928` / `cn-hangzhou`：266 对象、90,128,812 bytes，大小/CRC64/内容元数据一致，7 项真实存储 probe 通过。三业务在杭州以原镜像启动，health 与 HTTPS/TLS 均通过；旧业务和网关停止，旧域名入口反代杭州保持唯一写入。SSO、员工页面与真机仍需独立记录，不能由服务器健康代替。
+
+SQL 当前经杭州 `127.0.0.1:11433` → 旧香港同端点的临时受限 SSH 桥，Docker 仍用 `172.29.181.1:11433`。`zhuojian-migration-production-data-bridge.service` 同时承接 NAS 10445；源端专用 key 限来源 IP、仅 PermitOpen 指定端点、禁止 shell。TDS PRELOGIN 已验证，真实 SQL 只读查询仍按下方原契约验收。企业内网客户端尚未切杭州，不能宣称全大陆链路；改连并验证后才撤桥，保留原 LAN 凭据和回退方案。
 
 ## 固定拓扑
 
