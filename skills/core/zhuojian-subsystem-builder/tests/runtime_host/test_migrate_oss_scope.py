@@ -61,9 +61,9 @@ class MigrationTests(unittest.TestCase):
         self.secret.write_bytes(b"FILE_STORAGE_TOKEN=fixture-identity\n")
         self.secret.chmod(0o600)
         self.addCleanup(mock.patch.stopall)
-        # Windows cannot represent POSIX uid/mode; production metadata is covered
-        # by the existing Runtime host suite and is never bypassed by the CLI.
-        if os.name == "nt":
+        # Fixtures are owned by the CI runner, not production root. Unit tests
+        # substitute metadata only; the root-only CLI never bypasses this check.
+        if os.name == "nt" or os.geteuid() != 0:
             mock.patch.object(ra, "secure_file_metadata", return_value={}).start()
             mock.patch.object(migration, "state_read", side_effect=lambda p: p.read_bytes()).start()
         self.profile = {
