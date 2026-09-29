@@ -1,5 +1,13 @@
 # 企业内网与主备份收尾
 
+## 稳定发布及本机同步已完成
+
+2026-09-29 14:32:15 CST，[bundle-v1.4.26](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/releases/tag/bundle-v1.4.26) 从 PR #52 合并后的干净 main `6bfab6d8c355aa27aaccc34fd813b71a636cf125` 正式发布，非 draft/prerelease、设为 latest。SQL `1.1.2` / goods `1.0.2` / NAS `1.0.3` 生效；core `1.1.25` 与 legacy `1.2.0` ZIP 和上一稳定版逐字节一致。
+
+九份匿名公开资产 SHA 全部匹配本地构建。原始 Python 更新器公开新装和重复 CURRENT 通过；本机三个企业包升级及重复 CURRENT、两台杭州 Runtime 精确 resolve 均通过。四个本机包分别 153 / 7 / 6 / 5 个归档文件逐字节一致，三个企业包 quick_validate 通过。没有替换更新器传输、摘要、安全解压或原子安装逻辑。NAS 实机、随包与本机脚本 SHA256 均为 `aca2d070d96bd6821a3005781e7472a4e78785a7836c6889394b3df81e52a834`。
+
+部署规则 PR #13 已合并为 `fa8415fc48cf9291f3c4030b69f78c33cc291a88`；本地“灼见服务器部署”指针于 14:52:09 CST 拉取该最新规则并返回 `STUB_OK=1`。本地可恢复旧企业包副本已保留。受控证据为 `skill-stable-release-verification-v1.4.26.json` 与 `skill-public-assets-v1.4.26.json`；以下保留构建前的范围及运行验收记录，不改变不可变 Release 来源。
+
 责任归属：服务器、备份和内网传输由部署基础设施负责，SaaS 与子系统分别负责员工入口和业务页面。本仓只同步企业交接事实及 NAS 随包脚本；没有再次构建或发布业务服务，没有改变账号、授权、Runtime 身份、数据口径或共享 ACL。
 
 ## 已验证的运行状态
