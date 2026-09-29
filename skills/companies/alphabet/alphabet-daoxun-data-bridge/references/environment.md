@@ -38,7 +38,7 @@ ECS 不拥有到 `10.0.0.0/24` 的通用路由。直接探测 `10.0.0.181:1433` 
 - 已在 `H_TRADE` 建立专用只读身份；它属于 `db_datareader`，不属于 `db_datawriter` 或 `db_owner`，并显式拒绝增删改和执行权限。
 - 凭证保存在 ECS root-only 集成配置 `/etc/zhuojian/integrations/daoxun-readonly.env`，不得输出其密码。宿主机连接字段和 Docker 连接字段都记录在该配置中。
 - 已建立内部 Docker 网络 `zhuojian-daoxun-readonly`，容器入口为 `172.29.181.1:11433`；持久代理服务已启用并处于运行状态。
-- 已从 ECS 宿主机和加入该网络的临时 Docker 容器完成认证、数据库确认和真实业务表 `SELECT`；SQL Server 2008 R2 使用 TDS `7.0` 验收通过。
+- 历史交接已从 ECS 宿主机和加入该网络的临时 Docker 容器完成认证、数据库确认和真实业务表 `SELECT`。本次杭州实测覆盖宿主机及 Docker 私网入口，尚无最终 SQL consumer，不将历史容器结果视为新应用验收；SQL Server 2008 R2 继续使用 TDS `7.0`。
 
 以上事实需要在每次实际开发时实时复核，不能只引用历史结果。
 
