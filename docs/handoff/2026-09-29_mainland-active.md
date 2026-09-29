@@ -14,7 +14,7 @@
 
 ## 明确保留的边界
 
-企业内网客户端尚未迁到杭州。商品动销 HTTP、生产 SQL/NAS 暂经受限 SSH 桥访问原香港入口，旧企业主机仍需保留。次日需在内网改连、验证真实业务读取后，按精确 key/单元清单撤临时桥；不能因为云业务已迁完就提前删除香港机器或原 LAN 凭据。
+2026-09-29 中午，公司 Windows goods HTTP / SQL 任务及 NAS 双隧道已直连杭州。goods 正常同步 `ready/error=null`、SQL 只读认证/业务读取、NAS 允许共享与拒绝共享、最终 NAS 容器读取均通过。公司 Windows 机外备份 pull 同时改到新 goods 并验 SHA。13:32:21 CST 两条临时 bridge 的 unit、专用 key / known_hosts、源端对应公钥和迁移 sshd 配置已精确撤除，原 LAN/NAS keys 未动；源临时账号保留 locked/nologin 且无公钥。旧资源和 DNS 缓存入口保留观察，不能据此自动释放。详见 [内网与备份收尾](2026-09-29_mainland-final-closure.md)。
 
 生产协同手机页面既存 overflow 本轮未改；它属于该子系统后续 UI 修复，并非 Skill 更新已解决。既定电脑端/手机端分别设计和验收的规则继续有效。
 
@@ -24,7 +24,7 @@
 
 两个企业新机已经真实执行 backup-all 并启用维护 timer。主 ECS 已完成首份新本地备份：8 个 PostgreSQL 实例 / 17 个数据库、7 个 Redis CRC 检查、3 个 SQLite 一致快照；归档 263,829,906 bytes，SHA-256 `078efdbb3a6d1f0ca7fc2522bf834f30be31d46aa1314b85e87f868ba37e7825`。它是逐库在线一致备份，并非跨数据库同时事务快照。
 
-主机每日 `zhuojian-main-backup.timer` 已启用，本地脚本后接 OSS 上传和精确版本整份读回；专用 OSS 凭据创建等待阿里云手机验证，**尚未证明首份主机备份已上传 OSS**。目标 `zhuojianai-staging-backups-hz` 已建，不能把建桶或本地备份成功描述为 OSS 机外备份成功；同在杭州也不等于跨地域容灾。部署规则仓库记录此项后续验收。
+凌晨交接时专用 OSS 凭据尚待手机验证；该项现已完成。2026-09-29 12:19:51 CST，正式 `zhuojian-main-backup.service` 已完成新本地全量及杭州 OSS 精确版本整份读回，8 个 PostgreSQL 实例 / 17 库、7 Redis、3 SQLite，归档 263,981,391 bytes，SHA-256 `675158fe6ae0a5ef919ad0ea37b6f6452e8ca8138473c5a920219325a9687f70`。service/post-step 退出 0，daily timer active/waiting。备份桶 private、版本控制开启、AES256；同在杭州属于机外备份，不等于跨地域容灾。权威运维证据见部署规则仓库的 `docs/handoff/2026-09-29_mainland-final-closure.md`。
 
 旧备份 cron 引用退休容器，由覆盖当前所有数据库的新脚本替代。磁盘 guard 已监测系统盘和数据盘，数据盘挂载缺失也阻断新的部署；保留人工 fence。观察期不启用旧镜像 prune，保留回退所需镜像。
 

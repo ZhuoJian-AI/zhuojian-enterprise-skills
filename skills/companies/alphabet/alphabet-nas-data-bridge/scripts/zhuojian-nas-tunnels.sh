@@ -108,8 +108,8 @@ status_one() {
 }
 
 start_all() {
-    start_one aifabei-hk-01 8.218.208.205 "$HOME_DIR/.ssh/zhuojian_nas_8_218_208_205"
-    start_one aifabei-hk-48 47.243.48.78 "$HOME_DIR/.ssh/zhuojian_nas_47_243_48_78"
+    start_one aifabei-hk-01 47.97.90.161 "$HOME_DIR/.ssh/zhuojian_nas_8_218_208_205"
+    start_one aifabei-hk-48 101.37.173.94 "$HOME_DIR/.ssh/zhuojian_nas_47_243_48_78"
 }
 
 stop_all() {
