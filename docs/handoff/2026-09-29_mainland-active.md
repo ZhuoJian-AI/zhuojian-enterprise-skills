@@ -14,7 +14,7 @@
 
 ## 明确保留的边界
 
-企业内网客户端尚未迁到杭州。商品动销 HTTP、生产 SQL/NAS 暂经受限 SSH 桥访问原香港入口，旧企业主机仍需保留。次日需在内网改连、验证真实业务读取后，按精确 key/单元清单撤临时桥；不能因为云业务已迁完就提前删除香港机器或原 LAN 凭据。
+2026-09-29 中午，公司 Windows goods HTTP / SQL 任务及 NAS 双隧道已直连杭州。goods 正常同步 `ready/error=null`、SQL 只读认证/业务读取、NAS 允许共享与拒绝共享、最终 NAS 容器读取均通过。公司 Windows 机外备份 pull 同时改到新 goods 并验 SHA。13:32:21 CST 两条临时 bridge 的 unit、专用 key / known_hosts、源端对应公钥和迁移 sshd 配置已精确撤除，原 LAN/NAS keys 未动；源临时账号保留 locked/nologin 且无公钥。旧资源和 DNS 缓存入口保留观察，不能据此自动释放。详见 [内网与备份收尾](2026-09-29_mainland-final-closure.md)。
 
 生产协同手机页面既存 overflow 本轮未改；它属于该子系统后续 UI 修复，并非 Skill 更新已解决。既定电脑端/手机端分别设计和验收的规则继续有效。
 
