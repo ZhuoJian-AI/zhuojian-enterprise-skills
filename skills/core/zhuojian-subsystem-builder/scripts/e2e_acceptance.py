@@ -85,6 +85,65 @@ def pending_responsive_results(manifest: dict) -> list[dict]:
     return results
 
 
+def pending_identity_results(manifest: dict) -> list[dict]:
+    """List untested identity boundaries, not evidence or a deployment verdict."""
+
+    results: list[dict] = []
+
+    def pending(check: str, message: str, module: dict | None = None, action: dict | None = None) -> None:
+        results.append({
+            "check": check,
+            "moduleKey": module["moduleKey"] if module else None,
+            "actionKey": action["actionKey"] if action else None,
+            "pageKeys": [
+                page["pageKey"] for page in (module or {}).get("pages", [])
+                if action and action["actionKey"] in page.get("actionKeys", [])
+            ],
+            "passed": None,
+            "failures": [{"type": "pending_identity_acceptance", "messageZh": message}],
+        })
+
+    # Manifest declarations cannot enumerate legacy HTTP paths or local identity tables.
+    pending(
+        "unified_http_authentication",
+        "待审查实际 HTTP 入口（含旧 API、独立入口和 Basic 等本地认证）；"
+        "验证无会话、撤权和 SaaS 不可用时不绕过当前平台授权。Manifest 和单个拒绝探针不能证明全覆盖。",
+    )
+    pending(
+        "employee_identity_relationship_inventory",
+        "待结合本次受影响流程的源码和业务 schema 区分操作者、被选员工及外部联系人，核查员工关系的稳定 ID；"
+        "未声明目录不证明没有身份问题，不按字段名称自动判定。历史修复仅在涉及绑定或迁移时核查，不要求普通改动全量迁移。",
+    )
+    for module in manifest.get("modules", []):
+        for action in module.get("actions", []):
+            policy = action.get("permissionPolicy") or {}
+            supports_self = policy.get("mode") == "self" or (
+                policy.get("mode") == "configurable" and "self" in policy.get("supportedScopes", [])
+            )
+            if supports_self:
+                pending(
+                    "personal_record_identity",
+                    "待用两个独立获权员工验证所声明的本人范围、可信 sub 归属和跨人拒绝；"
+                    "伪造姓名、用户 ID 或记录 ID 不得改变归属，实际允许与撤权须分别验收。",
+                    module, action,
+                )
+                if action.get("operation") in {"create", "update", "delete", "approve"}:
+                    pending(
+                        "nameless_employee_form",
+                        "待在电脑和手机真实业务表单验证业务条件满足时，有姓名与无显示名的获权员工均可办理本人操作；"
+                        "核对无本地名单、同名及错绑场景，不绕过合法参与资格。隔离与员工本人提交分别报告，不代写业务数据。",
+                        module, action,
+                    )
+            if action.get("employeeDirectory") is True:
+                pending(
+                    "trusted_employee_selection",
+                    "待验证真实选人入口和保存前目录 resolve：可信 ID、规范姓名、跨企业/范围拒绝、"
+                    "选择后停用或撤权及目录故障；已有成员纯退出不得借机新增绑定或转移历史记录。",
+                    module, action,
+                )
+    return results
+
+
 def b64(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
 
@@ -504,11 +563,7 @@ def main() -> int:
         "actionKey": args.query_action,
         "sso": sso_summary,
         "legacySelfSignedSso": "rejected" if contract_revision == "2.5" else "accepted",
-        "realSso": (
-            "pending_admin_acceptance"
-            if contract_revision == "2.5"
-            else "technical_ticket_verified"
-        ),
+        "realSso": "pending_admin_acceptance",
         "query": query_summary,
         "authorized_query_pass": "not_run" if args.expect_query_denied else "synthetic_only",
         "export": export_summary,
@@ -520,12 +575,14 @@ def main() -> int:
             True if specialist_capabilities else "not_declared"
         ),
         "saas_specialist_ai_e2e_pass": "not_run",
+        "identity_acceptance_pass": None,
+        "identity_results": pending_identity_results(manifest),
         "responsive_acceptance_pass": None,
         "viewport_results": responsive_results,
     }, ensure_ascii=False))
     print(
-        "技术预检未输出凭证、未执行写操作，也不代表真实员工 SSO、SaaS 专业 AI"
-        " 或全端浏览器验收已通过。"
+        "技术预检未输出凭证、未执行业务写操作，也不代表真实员工 SSO、旧 HTTP 入口统一鉴权、"
+        "员工身份关系、无姓名表单、SaaS 专业 AI或全端浏览器验收已通过；健康与合成拒绝不能替代这些证据。"
     )
     return 0
 

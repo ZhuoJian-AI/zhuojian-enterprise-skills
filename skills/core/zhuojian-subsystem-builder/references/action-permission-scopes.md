@@ -18,6 +18,7 @@
 
 ## 统一执行
 
+- 统一身份检查覆盖可达的旧 REST API、独立入口、文件与 AI Action，不只覆盖 Manifest 中的新接口；本地密码、旧会话等不能成为鉴权失败后的放行路径。入口盘点、合法运维边界和实际行为验收按 [统一身份验收](identity-acceptance.md) 执行。
 - SaaS 将角色中的可选 `page_access.action_scopes` 解析为当前 Action 的有效范围；子系统使用实时 session-check 的同名 `actionDataScopes` 或 Action JWT 的有效范围，不解析浏览器自行提交的授权配置。
 - 多角色只合并真正授予该 Action 的范围；不能借用另一个无关管理角色的 all。AI 与页面调用同一服务函数，AI 开关不扩大范围。
 - 页面初始化分别读取获权公共内容与个人内容。没有管理查询权限时隐藏管理区或报告局部拒绝，不把公共页面整体拒绝；没有公共 Action 授权仍拒绝对应读取。
