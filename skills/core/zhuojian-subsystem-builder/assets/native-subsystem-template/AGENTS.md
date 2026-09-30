@@ -26,7 +26,8 @@
 - 根页面不得非预期横向滚动，宽表格/画布只能在自身容器滚动；不能用整页 overflow:hidden 掩盖裁切。触摸端不能依赖 hover，主要操作至少 44px；保留连续响应式、安全区、软键盘、旋转和嵌入模式适配，尺寸变化不得丢草稿或重复写入。
 - 本地预览和真实页面验收分别覆盖电脑端、手机端的关键流程及独立/嵌入模式，保存截图、浏览器/视口、结果和未测项；按 builder 的 platform-contract.md 双端矩阵执行。浏览器模拟不等于真机，任一端关键操作失败不得报告交付完成。
 - 处理 `zhuojian:refresh` 时只重新读取当前模块数据并返回同请求号的 `zhuojian:refresh-result`；必须校验父窗口、Origin、应用、模块、页面和 `launch_nonce`，合并并发刷新，存在未保存编辑时返回 `deferred`，禁止整页刷新。
-- 完整 SSO claims 只存服务端 `browser_sessions`；页面查看和 Action 必须调用 SaaS session-check 取得当前资源数据范围并在撤权时失败关闭。
+- 完整 SSO claims 只存服务端 `browser_sessions`；浏览器业务读取和页面 Action 逐次调用 SaaS session-check。平台机器 Action 使用 SaaS 当前授权后签发的短期 JWT，子系统复验签名、期限、资源和范围；两条链分别验收撤权，不把静态 HTML 加载或本地签名测试算作实时授权通过。
+- 新增或保留旧 REST、直链、下载等业务入口时也执行同一授权；本地密码/旧 Cookie 不能绕过或在 SaaS 故障时回退放行。操作者从可信 sub 写入，不能使用客户端 createdBy 或被选负责人替换。按 builder 的 identity-acceptance.md 盘点入口并测试实际路由、业务回读、电脑/手机表单，模板与技术预检通过不能代替本系统验收；遗留失败/未测项写入任务及交接。
 - 通用 create/update 禁止直接写 `status` 等受控状态；审批、删除和其他状态迁移只能走对应 Action，其中审批和删除不得取消确认。
 - 不删除已有数据卷；变更前后运行单元测试、协议验证和浏览器冒烟。
 - 不把业务值拼入 `innerHTML`；使用 DOM 节点和 `textContent`。运行 Uvicorn 时关闭 access log，避免一次性 SSO ticket 进入查询字符串日志。

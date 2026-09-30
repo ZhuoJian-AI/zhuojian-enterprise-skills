@@ -350,6 +350,8 @@ SSO 兑换结果包含 SaaS 针对当前子模块计算的最终页面、操作 
 
 模块必须把 allowlist 保存到安全会话，只向前端返回允许的页面与按钮；服务端路由、页面 Action 和页面上下文也必须逐次校验 `pageAccess`。页面读取使用 `dataScopes.view`，页面操作使用对应权限的 `dataScopes`，具体 Action 必须使用同名 `actionDataScopes`，不得把一个角色的宽数据范围拼到另一个角色的操作权限上。伪造 URL、前端显示错误或隐藏按钮均不能绕过服务端检查。
 
+此要求同样覆盖可达的旧业务接口、直链与下载入口，本地密码或旧会话不能成为备用放行路径。按 [统一身份的入口核查与验收](identity-acceptance.md) 核对实际路由、操作者与目标员工、业务资格及前后端行为；静态资源、健康探针和机器协议按自身用途明确边界，不把企业 `public_read` 当匿名公开。
+
 ### Action
 
 Action JWT 使用该系统专属 `zjac_` 密钥和 `typ=zhuojian-action`，至少包含用户、企业、`departmentId`、`departmentIds`、`roleIds`、当前 Action 的 `effectiveDataScope`、`moduleKey`、`pageKey`、`actionKey`、`operation`、`requestId` 和权限。模块不信任请求体中的身份或范围字段，并再次验证模块、页面、Action 和业务数据权限。
