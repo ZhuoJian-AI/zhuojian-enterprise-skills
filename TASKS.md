@@ -1,7 +1,5 @@
 # 当前任务
 
-- [ ] **IDENTITY-ACCEPTANCE-20260930** (@codex)：补齐全部业务入口的 SaaS 鉴权、可信操作者与受控选人、旧入口/真实表单/历史关联验收；同步模板行为回归并发布稳定 Skill。验收：核心测试、独立场景审查、快速校验、PR/main CI、公开安装和本机更新。保持 2.4/2.5，不部署 SaaS 或子系统、不修改业务数据。
-
 
 - [x] **ASSISTANT-CHROME-THEME-20260923 已发布**（@codex）：core 1.1.21 经 PR #39 / `37cffdb` 合并并公开发布 `bundle-v1.4.21`；423 passed／41 skipped、CI、九资产 SHA-256、公开全新安装／CURRENT 与本机 1.1.20→1.1.21 均通过，安装传输使用临时 curl 以绕过本机 Python urllib／代理断流。SaaS 前端已先行受控部署；四个业务子系统未改、未部署。见 [稳定发布补充](docs/handoff/2026-09-23_assistant-chrome-theme-contract.md#稳定发布补充2026-09-23以本节状态为准)。
 
