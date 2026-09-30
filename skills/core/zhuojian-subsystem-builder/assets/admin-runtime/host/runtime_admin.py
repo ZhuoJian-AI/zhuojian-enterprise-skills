@@ -451,6 +451,24 @@ def sanitized_platform_capabilities(value: Any) -> dict[str, Any]:
                 if type(workflow.get(key)) is not type(required) or workflow[key] != required:
                     raise AdminError(invalid)
     expected_features["assistantWorkflowGuidance"] = workflow_declaration
+    directory = features.get("employeeDirectory")
+    directory_declaration = {"supported": False}
+    if "employeeDirectory" in features:
+        if not isinstance(directory, dict) or type(directory.get("supported")) is not bool:
+            raise AdminError(invalid)
+        if directory["supported"]:
+            directory_declaration = {
+                "supported": True,
+                "version": 1,
+                "authentication": "subsystem-sso-client-and-current-employee",
+                "searchEndpoint": "/api/v1/subsystem-sso/employees/search",
+                "resolveEndpoint": "/api/v1/subsystem-sso/employees/resolve",
+                "targetActiveOnly": True,
+            }
+            for key, required in directory_declaration.items():
+                if type(directory.get(key)) is not type(required) or directory[key] != required:
+                    raise AdminError(invalid)
+    expected_features["employeeDirectory"] = directory_declaration
     return {**expected, "supportedContractRevisions": sorted(revisions), "features": expected_features}
 
 

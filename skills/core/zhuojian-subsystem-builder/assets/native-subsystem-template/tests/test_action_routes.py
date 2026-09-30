@@ -597,6 +597,153 @@ class ActionRouteTests(unittest.TestCase):
             self.application.require_record_scope(actor, "finance", "another-user")
         self.assertEqual(raised.exception.status_code, 403)
 
+    def directory_actor(self):
+        return {**self.sso_claims, "sub": "33333333-3333-4333-8333-333333333333",
+                "applicationId": self.sso_exchange_payload["application_id"]}
+
+    def directory_response(self, *, resolve=False):
+        payload = {
+            "organization_id": self.organization_id,
+            "application_id": self.sso_exchange_payload["application_id"],
+            "module_key": self.module_key, "page_key": self.page_key,
+            "action_key": self.actions["create"]["actionKey"],
+            "employees": [{"user_id": "44444444-4444-4444-8444-444444444444",
+                           "username": "member", "display_name": None}],
+        }
+        if not resolve:
+            payload.update(has_more=False, next_offset=None)
+        return payload
+
+    def call_directory(self, payload, *, status=200, actor=None, **parameters):
+        response = mock.Mock(status_code=status, content=b"{}", headers={"content-type": "application/json"})
+        response.json.return_value = payload
+        action = self.actions["create"]
+        with mock.patch.dict(action, {"employeeDirectory": True}), mock.patch.object(
+            self.application.httpx, "post", return_value=response,
+        ) as transport:
+            result = self.application.platform_employee_directory(
+                actor if actor is not None else self.directory_actor(),
+                self.module_key, self.page_key, action["actionKey"], **parameters,
+            )
+        return result, transport
+
+    def test_directory_search_and_resolve_use_trusted_context_and_fixed_transport(self):
+        payload = self.directory_response()
+        result, transport = self.call_directory(payload, query="member", offset=0, limit=20)
+        self.assertEqual(result, payload)
+        request = transport.call_args
+        self.assertEqual(request.args, (self.application.SAAS_ORIGIN + "/api/v1/subsystem-sso/employees/search",))
+        self.assertEqual(request.kwargs["headers"]["Authorization"], "Bearer " + self.sso_token)
+        self.assertFalse(request.kwargs["follow_redirects"])
+        self.assertFalse(request.kwargs["trust_env"])
+        self.assertEqual(request.kwargs["json"], {
+            "user_id": self.directory_actor()["sub"], "auth_epoch": 0,
+            "module_key": self.module_key, "page_key": self.page_key,
+            "action_key": self.actions["create"]["actionKey"], "query": "member", "offset": 0, "limit": 20,
+        })
+        employee_id = payload["employees"][0]["user_id"]
+        resolved, transport = self.call_directory(self.directory_response(resolve=True), user_ids=[employee_id])
+        self.assertEqual(resolved["employees"][0]["user_id"], employee_id)
+        self.assertTrue(transport.call_args.args[0].endswith("/resolve"))
+        self.assertEqual(transport.call_args.kwargs["json"]["user_ids"], [employee_id])
+
+    def test_directory_ui_search_uses_its_own_sso_session_and_rechecks_revocation(self):
+        from fastapi.testclient import TestClient
+
+        payload = json.loads(json.dumps(self.sso_exchange_payload))
+        payload["claims"]["sub"] = self.directory_actor()["sub"]
+        response = mock.Mock(status_code=200, content=b"{}", headers={"content-type": "application/json"})
+        action = self.actions["create"]
+        with TestClient(self.application.app, base_url="https://testserver", headers={"Origin": "https://testserver"}) as client:
+            response.json.return_value = payload
+            with mock.patch.object(self.application.httpx, "post", return_value=response):
+                opened = client.get("/api/integration/sso", params={
+                    "code": "zjsc_" + "e" * 48, "redirect": payload["redirect"], "launch_nonce": payload["launch_nonce"],
+                }, headers={"Referer": self.application.SAAS_ORIGIN + "/terminal", "Sec-Fetch-Dest": "iframe"}, follow_redirects=False)
+            self.assertEqual(opened.status_code, 302, opened.text)
+            response.json.return_value = self.directory_response()
+            with mock.patch.dict(action, {"employeeDirectory": True}), mock.patch.object(
+                self.application.httpx, "post", return_value=response,
+            ) as transport:
+                body = {"moduleKey": self.module_key, "pageKey": self.page_key, "actionKey": action["actionKey"]}
+                found = client.post("/api/ui/employees/search", json=body)
+                self.assertEqual(found.status_code, 200, found.text)
+                self.assertEqual(transport.call_args.kwargs["json"]["user_id"], payload["claims"]["sub"])
+                response.status_code = 403
+                denied = client.post("/api/ui/employees/search", json=body)
+                self.assertEqual(denied.status_code, 403, denied.text)
+
+    def test_directory_rejects_unbound_identity_invalid_parameters_and_disabled_action(self):
+        actor = self.directory_actor()
+        for field in ("applicationId", "authEpoch", "sub"):
+            missing = {key: value for key, value in actor.items() if key != field}
+            with self.subTest(field=field), self.assertRaises(self.application.HTTPException) as caught:
+                self.call_directory({}, actor=missing)
+            self.assertEqual(caught.exception.status_code, 401)
+        for parameters in ({"user_ids": []}, {"user_ids": ["not-a-uuid"]},
+                           {"user_ids": [actor["sub"], actor["sub"]]}, {"limit": True},
+                           {"limit": 51}, {"offset": -1}, {"query": "x" * 101}):
+            with self.subTest(parameters=parameters), self.assertRaises(self.application.HTTPException) as caught:
+                self.call_directory({}, **parameters)
+            self.assertEqual(caught.exception.status_code, 422)
+        with mock.patch.object(self.application.httpx, "post") as transport:
+            with self.assertRaises(self.application.HTTPException) as caught:
+                self.application.platform_employee_directory(
+                    actor, self.module_key, self.page_key, self.actions["create"]["actionKey"],
+                )
+            self.assertEqual(caught.exception.status_code, 403)
+            transport.assert_not_called()
+        response = self.client.post("/api/ui/employees/search", json={
+            "moduleKey": self.module_key, "pageKey": self.page_key,
+            "actionKey": self.actions["create"]["actionKey"], "user_id": actor["sub"],
+        })
+        self.assertEqual(response.status_code, 422)
+
+    def test_directory_rejects_cross_context_partial_duplicate_and_extra_resolutions(self):
+        original = self.directory_response(resolve=True)
+        employee_id = original["employees"][0]["user_id"]
+        cases = []
+        for field in ("organization_id", "application_id", "module_key", "page_key", "action_key"):
+            cases.append({**original, field: "another-context"})
+        cases.extend([
+            {**original, "employees": []},
+            {**original, "employees": original["employees"] * 2},
+            {**original, "employees": [*original["employees"], {
+                "user_id": self.directory_actor()["sub"], "username": "extra", "display_name": "same name",
+            }]},
+            {**original, "employees": [{**original["employees"][0], "user_id": "legacy-name"}]},
+        ])
+        for payload in cases:
+            with self.subTest(payload=payload), self.assertRaises(self.application.HTTPException) as caught:
+                self.call_directory(payload, user_ids=[employee_id])
+            self.assertEqual(caught.exception.status_code, 503)
+        for status in (401, 403, 404, 429, 500, 302):
+            with self.subTest(status=status), self.assertRaises(self.application.HTTPException) as caught:
+                self.call_directory(original, status=status, user_ids=[employee_id])
+            self.assertEqual(caught.exception.status_code, status if status in {401, 403, 404} else 503)
+
+    def test_optional_name_never_changes_created_by_or_sso_identity(self):
+        for display_name in (None, "", "same name"):
+            payload = json.loads(json.dumps(self.sso_exchange_payload))
+            payload["claims"]["displayName"] = display_name
+            actor = self.application.validate_sso_exchange(
+                payload, payload["redirect"], payload["launch_nonce"],
+            )
+            self.assertEqual(actor["sub"], self.sso_claims["sub"])
+            self.assertEqual(actor["applicationId"], payload["application_id"])
+            self.assertEqual(actor["displayName"], display_name or None)
+        record_id = uuid4().hex
+        response = self.client.post(
+            "/api/ui/actions/" + self.actions["create"]["actionKey"],
+            json=self.action_body("create", uuid4().hex, {"id": record_id, "data": {
+                "name": "", "userId": "forged-user", "displayName": "someone else",
+            }}),
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        with closing(sqlite3.connect(os.environ["DATABASE_PATH"])) as connection:
+            owner = connection.execute("SELECT created_by FROM records WHERE id=?", (record_id,)).fetchone()[0]
+        self.assertEqual(owner, self.sso_claims["sub"])
+
     def test_sibling_origin_cannot_use_the_ui_session_with_simple_content_type(self):
         body = self.action_body("delete", uuid4().hex, {"id": "victim"}, expected_version=1)
         response = self.client.post(

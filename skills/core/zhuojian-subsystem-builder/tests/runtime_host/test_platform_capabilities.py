@@ -59,6 +59,14 @@ def capability_payload():
                 "configEndpoint": "/api/v1/terminal/applications/{application_id}/page-assistance",
                 "checkEndpoint": "/api/v1/terminal/applications/{application_id}/page-check",
             },
+            "employeeDirectory": {
+                "supported": True,
+                "version": 1,
+                "authentication": "subsystem-sso-client-and-current-employee",
+                "searchEndpoint": "/api/v1/subsystem-sso/employees/search",
+                "resolveEndpoint": "/api/v1/subsystem-sso/employees/resolve",
+                "targetActiveOnly": True,
+            },
             "backgroundDelegation": {"supported": False},
             "unattendedExecution": {"supported": False},
         },
@@ -203,6 +211,12 @@ def test_unknown_schema_or_changed_assurance_is_rejected(dependencies, key, valu
     ("assistantWorkflowGuidance", "authentication", "runtime-credential"),
     ("assistantWorkflowGuidance", "configEndpoint", "https://other.example/"),
     ("assistantWorkflowGuidance", "checkEndpoint", "/arbitrary-run"),
+    ("employeeDirectory", "supported", "true"),
+    ("employeeDirectory", "version", True),
+    ("employeeDirectory", "authentication", "employee-session"),
+    ("employeeDirectory", "searchEndpoint", "https://other.example/"),
+    ("employeeDirectory", "resolveEndpoint", "/arbitrary-run"),
+    ("employeeDirectory", "targetActiveOnly", False),
     ("backgroundDelegation", "supported", True),
     ("unattendedExecution", "supported", True),
 ])
@@ -340,3 +354,22 @@ def test_legacy_backend_without_either_optional_feature_keeps_original_capabilit
     assert result["features"]["assistantWorkflowGuidance"] == {"supported": False}
     assert result["features"]["assistantSuggestions"] == {"supported": False}
     assert result["supportedContractRevisions"] == ["2.4", "2.5"]
+
+
+@pytest.mark.parametrize("declaration", [None, {"supported": False}])
+def test_old_backend_does_not_invent_employee_directory_support(declaration):
+    payload = capability_payload()
+    if declaration is None:
+        del payload["features"]["employeeDirectory"]
+    else:
+        payload["features"]["employeeDirectory"] = declaration
+    result = runtime.sanitized_platform_capabilities(payload)
+    assert result["features"]["employeeDirectory"] == {"supported": False}
+
+
+@pytest.mark.parametrize("declaration", [None, [], {}, {"supported": True}, {"supported": 1}])
+def test_invalid_employee_directory_feature_is_unknown(declaration):
+    payload = capability_payload()
+    payload["features"]["employeeDirectory"] = declaration
+    with pytest.raises(runtime.AdminError, match="unknown"):
+        runtime.sanitized_platform_capabilities(payload)

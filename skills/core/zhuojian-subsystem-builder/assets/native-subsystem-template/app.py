@@ -106,6 +106,7 @@ SAAS_ORIGIN = canonical_https_origin(
 )
 SSO_EXCHANGE_URL = f"{SAAS_ORIGIN}/api/v1/subsystem-sso/exchange"
 SSO_SESSION_CHECK_URL = f"{SAAS_ORIGIN}/api/v1/subsystem-sso/session-check"
+EMPLOYEE_DIRECTORY_URL = f"{SAAS_ORIGIN}/api/v1/subsystem-sso/employees"
 SAAS_ORIGINS = [
     canonical_https_origin(item.strip(), "ZHUOJIAN_SAAS_ORIGINS")
     for item in os.getenv(
@@ -1487,8 +1488,111 @@ def validate_live_session(
         raise HTTPException(503, "SaaS authorization check returned invalid data")
     actor = dict(session)
     actor["effectiveDataScope"] = data_scope
+    if "display_name" in payload:
+        actor["displayName"] = optional_display_name(payload["display_name"])
     normalized_data_scope(actor)
     return actor
+
+
+def optional_display_name(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    return value.strip() or None
+
+
+def platform_employee_directory(
+    actor: dict, module_key: str, page_key: str, action_key: str,
+    *, user_ids: list[str] | None = None, query: str = "", offset: int = 0, limit: int = 20,
+) -> dict:
+    """Use only a server-verified actor; resolve again immediately before binding."""
+    action = ACTIONS.get(action_key)
+    if (
+        not action or action.get("employeeDirectory") is not True
+        or action.get("operation") not in {"create", "update"}
+        or (action.get("permissionPolicy") or {}).get("mode") == "public_read"
+        or action["moduleKey"] != module_key or actor.get("moduleKey") != module_key
+        or not page_allows(module_key, page_key, action_key)
+    ):
+        raise HTTPException(403, "Employee directory is not enabled for this Action")
+    try:
+        actor_id = str(UUID(actor["sub"]))
+        application_id = str(UUID(actor["applicationId"]))
+        organization_id = str(UUID(actor["organizationId"]))
+    except (KeyError, ValueError, TypeError, AttributeError) as exc:
+        raise HTTPException(401, "Reopen this module from ZhuoJian SaaS") from exc
+    if (
+        organization_id != str(UUID(EXPECTED_ORGANIZATION_ID))
+        or type(actor.get("authEpoch")) is not int or actor["authEpoch"] < 0
+    ):
+        raise HTTPException(401, "Reopen this module from ZhuoJian SaaS")
+    context = {
+        "user_id": actor_id, "auth_epoch": actor["authEpoch"],
+        "module_key": module_key, "page_key": page_key, "action_key": action_key,
+    }
+    requested_ids = None
+    if user_ids is not None:
+        try:
+            if not isinstance(user_ids, list) or not 1 <= len(user_ids) <= 100:
+                raise ValueError
+            requested_ids = [str(UUID(value)) for value in user_ids]
+            if len(set(requested_ids)) != len(requested_ids):
+                raise ValueError
+        except (ValueError, TypeError, AttributeError) as exc:
+            raise HTTPException(422, "Employee IDs must be 1 to 100 unique UUIDs") from exc
+        endpoint, parameters = "resolve", {"user_ids": requested_ids}
+    else:
+        if (not isinstance(query, str) or len(query) > 100
+                or type(offset) is not int or not 0 <= offset <= 10000
+                or type(limit) is not int or not 1 <= limit <= 50):
+            raise HTTPException(422, "Invalid employee search parameters")
+        endpoint, parameters = "search", {"query": query, "offset": offset, "limit": limit}
+    try:
+        response = httpx.post(
+            f"{EMPLOYEE_DIRECTORY_URL}/{endpoint}",
+            headers={"Authorization": f"Bearer {SSO_EXCHANGE_TOKEN}", "Accept": "application/json"},
+            json={**context, **parameters}, timeout=10.0, follow_redirects=False, trust_env=False,
+        )
+    except httpx.HTTPError as exc:
+        raise HTTPException(503, "Employee directory is unavailable") from exc
+    if response.status_code in {401, 403, 404}:
+        raise HTTPException(response.status_code, "Employee selection is no longer available")
+    if (response.status_code != 200 or len(response.content) > 64 * 1024
+            or response.headers.get("content-type", "").split(";", 1)[0].lower() != "application/json"):
+        raise HTTPException(503, "Employee directory returned invalid data")
+    try:
+        payload = response.json()
+        expected_keys = {"organization_id", "application_id", "module_key", "page_key", "action_key", "employees"}
+        if requested_ids is None:
+            expected_keys |= {"has_more", "next_offset"}
+        bindings = {"organization_id": organization_id, "application_id": application_id,
+                    "module_key": module_key, "page_key": page_key, "action_key": action_key}
+        if not isinstance(payload, dict) or set(payload) != expected_keys:
+            raise ValueError
+        if any(payload.get(key) != value for key, value in bindings.items()):
+            raise ValueError
+        employees = payload["employees"]
+        if not isinstance(employees, list) or len(employees) > (limit if requested_ids is None else 100):
+            raise ValueError
+        returned_ids = []
+        for employee in employees:
+            if (not isinstance(employee, dict) or set(employee) != {"user_id", "username", "display_name"}
+                    or not isinstance(employee["username"], str) or not employee["username"]
+                    or (employee["display_name"] is not None and not isinstance(employee["display_name"], str))):
+                raise ValueError
+            returned_ids.append(str(UUID(employee["user_id"])))
+        if len(set(returned_ids)) != len(returned_ids):
+            raise ValueError
+        if requested_ids is not None:
+            if set(returned_ids) != set(requested_ids):
+                raise ValueError
+        elif (type(payload["has_more"]) is not bool
+              or (payload["has_more"] and (not employees or type(payload["next_offset"]) is not int
+                  or payload["next_offset"] != offset + len(employees)))
+              or (not payload["has_more"] and payload["next_offset"] is not None)):
+            raise ValueError
+    except (ValueError, TypeError, KeyError, AttributeError) as exc:
+        raise HTTPException(503, "Employee directory returned invalid data") from exc
+    return payload
 
 
 def require_file_action(
@@ -2089,7 +2193,7 @@ def ui_bootstrap(request: Request, moduleKey: str, pageKey: str):
         or pageKey not in (session.get("pageKeys") or [])
     ):
         raise HTTPException(403, "Page context mismatch")
-    validate_live_session(session, moduleKey, pageKey)
+    actor = validate_live_session(session, moduleKey, pageKey)
     platform_ai_capabilities = []
     for action_key in page.get("actionKeys", []):
         action = ACTIONS.get(action_key)
@@ -2115,7 +2219,27 @@ def ui_bootstrap(request: Request, moduleKey: str, pageKey: str):
         "navigationEntry": session.get("navigationEntry"),
         "actionKeys": list(page_access.get("actionKeys") or []),
         "platformAiCapabilities": platform_ai_capabilities,
+        "actor": {"userId": actor["sub"], "displayName": optional_display_name(actor.get("displayName"))},
     }
+
+
+@app.post("/api/ui/employees/search")
+async def search_employees(request: Request):
+    body = await request.json()
+    if (not isinstance(body, dict)
+            or set(body) - {"moduleKey", "pageKey", "actionKey", "query", "offset", "limit"}
+            or any(not isinstance(body.get(key), str) for key in ("moduleKey", "pageKey", "actionKey"))):
+        raise HTTPException(422, "Invalid employee search context")
+    session = request.session
+    module_key, page_key, action_key = body["moduleKey"], body["pageKey"], body["actionKey"]
+    if not session.get("sub"):
+        raise HTTPException(401, "Open this module from ZhuoJian SaaS")
+    if not session_allows(session, module_key, page_key, action_key):
+        raise HTTPException(403, "Employee directory Action is not authorized")
+    return await run_in_threadpool(
+        platform_employee_directory, session, module_key, page_key, action_key,
+        query=body.get("query", ""), offset=body.get("offset", 0), limit=body.get("limit", 20),
+    )
 
 
 @app.post("/api/ui/confirmations", status_code=201)
@@ -2872,7 +2996,9 @@ def validate_sso_exchange(
 
     return {
         "sub": claims["sub"],
+        "applicationId": str(UUID(payload["application_id"])),
         "organizationId": claims["organizationId"],
+        "displayName": optional_display_name(claims.get("displayName")),
         "departmentId": claims.get("departmentId"),
         "departmentIds": department_ids,
         "roleIds": role_ids,

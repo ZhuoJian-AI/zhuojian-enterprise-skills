@@ -520,6 +520,16 @@ def validate_manifest_semantics(manifest: object, *, require_semantics: bool) ->
                 f"Action {action_key} {error}"
                 for error in validate_permission_policy(action.get("permissionPolicy"), action.get("operation"))
             )
+            if "employeeDirectory" in action:
+                directory = action["employeeDirectory"]
+                policy = action.get("permissionPolicy") or {}
+                if type(directory) is not bool:
+                    failures.append(f"Action {action_key} employeeDirectory 必须是布尔值")
+                elif directory and (
+                    action.get("operation") not in {"create", "update"}
+                    or (isinstance(policy, dict) and policy.get("mode") == "public_read")
+                ):
+                    failures.append(f"Action {action_key} employeeDirectory 仅允许非公开 create/update")
             platform_ai = action.get("platformAiCapability")
             if platform_ai is not None:
                 if not require_semantics:

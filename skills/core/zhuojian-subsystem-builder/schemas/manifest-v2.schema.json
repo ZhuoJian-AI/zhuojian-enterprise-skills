@@ -252,6 +252,7 @@
         "description": {"type": "string", "minLength": 1, "maxLength": 1000},
         "operation": {"enum": ["query", "create", "update", "delete", "export", "approve"]},
         "aiEnabled": {"type": "boolean"}, "requiresConfirmation": {"type": "boolean"},
+        "employeeDirectory": {"type": "boolean", "description": "Opt in to authorized employee selection for this create/update Action; never grants access by itself"},
         "permissionPolicy": {
           "type": "object", "additionalProperties": false,
           "required": ["group", "mode"],
