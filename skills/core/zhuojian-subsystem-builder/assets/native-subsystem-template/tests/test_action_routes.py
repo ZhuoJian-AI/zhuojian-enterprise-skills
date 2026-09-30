@@ -9,7 +9,7 @@ import tempfile
 import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import closing
+from contextlib import closing, contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
@@ -32,6 +32,7 @@ class ActionRouteTests(unittest.TestCase):
             raise unittest.SkipTest("install requirements-dev.txt to run route tests") from exc
 
         cls.jwt = jwt
+        cls.TestClient = TestClient
         cls.temporary = tempfile.TemporaryDirectory()
         temporary_root = Path(cls.temporary.name)
         cls.previous_environment = {
@@ -79,6 +80,7 @@ class ActionRouteTests(unittest.TestCase):
         sys.path.insert(0, str(PROJECT_ROOT))
         sys.modules.pop("app", None)
         cls.application = importlib.import_module("app")
+        cls.real_validate_live_session = staticmethod(cls.application.validate_live_session)
         cls.client_context = TestClient(
             cls.application.app,
             base_url="https://testserver",
@@ -743,6 +745,328 @@ class ActionRouteTests(unittest.TestCase):
         with closing(sqlite3.connect(os.environ["DATABASE_PATH"])) as connection:
             owner = connection.execute("SELECT created_by FROM records WHERE id=?", (record_id,)).fetchone()[0]
         self.assertEqual(owner, self.sso_claims["sub"])
+
+    @contextmanager
+    def identity_client(self, *, display_name=None, authenticated=True):
+        """Use real SSO/session handling; only the remote SaaS transport is simulated."""
+        with self.TestClient(
+            self.application.app, base_url="https://testserver",
+            headers={"Origin": "https://testserver"},
+        ) as client:
+            claims = json.loads(json.dumps(self.sso_claims))
+            claims.update({
+                "sub": str(uuid4()), "jti": uuid4().hex,
+                "launchNonce": uuid4().hex, "displayName": display_name,
+                "iat": datetime.now(timezone.utc).isoformat(),
+                "exp": (datetime.now(timezone.utc) + timedelta(seconds=90)).isoformat(),
+            })
+            own_scope = {
+                "unrestricted": False, "include_self": True,
+                "own_only": True, "department_ids": [],
+            }
+            claims["effectiveDataScope"] = own_scope
+            access = claims["pageAccess"][self.page_key]
+            access["dataScopes"] = {key: own_scope for key in access["dataScopes"]}
+            access["actionDataScopes"] = {key: own_scope for key in access["actionDataScopes"]}
+            if authenticated:
+                payload = {
+                    **self.sso_exchange_payload, "claims": claims,
+                    "launch_nonce": claims["launchNonce"],
+                }
+                remote = mock.Mock(status_code=200, content=b"{}", headers={
+                    "content-type": "application/json",
+                })
+                remote.json.return_value = payload
+                with mock.patch.object(self.application.httpx, "post", return_value=remote):
+                    response = client.get("/api/integration/sso", params={
+                        "code": "zjsc_" + uuid4().hex + uuid4().hex,
+                        "redirect": payload["redirect"],
+                        "launch_nonce": payload["launch_nonce"],
+                    }, headers={
+                        "Referer": self.application.SAAS_ORIGIN + "/terminal",
+                        "Sec-Fetch-Dest": "iframe",
+                    }, follow_redirects=False)
+                self.assertEqual(response.status_code, 302, response.text)
+                self.assertTrue(client.cookies.get("zjsid"))
+            with mock.patch.object(
+                self.application, "validate_live_session", self.real_validate_live_session,
+            ):
+                yield client, claims
+
+    def identity_business_requests(self, *, include_directory=False):
+        context = {"moduleKey": self.module_key, "pageKey": self.page_key}
+        requests = [
+            ("GET", "/api/ui/bootstrap", {"params": context}),
+            ("POST", "/api/ui/actions/" + self.actions["query"]["actionKey"], {
+                "json": self.action_body("query", uuid4().hex, {}),
+            }),
+            ("POST", "/api/ui/actions/" + self.actions["create"]["actionKey"], {
+                "json": self.action_body("create", uuid4().hex, {"data": {"name": "test"}}),
+            }),
+            ("POST", "/api/ui/confirmations", {"json": {
+                **self.action_body("delete", uuid4().hex, {"id": "test-record"}, 1),
+                "actionKey": self.actions["delete"]["actionKey"], "confirmed": True,
+            }}),
+            ("GET", "/api/ui/files", {"params": {
+                **context, "actionKey": self.actions["query"]["actionKey"],
+            }}),
+            ("POST", "/api/ui/files", {
+                "params": {**context, "actionKey": self.actions["create"]["actionKey"],
+                           "filename": "identity-test.txt"},
+                "content": b"must not be stored",
+            }),
+        ]
+        if include_directory:
+            requests.append(("POST", "/api/ui/employees/search", {"json": {
+                **context, "actionKey": self.actions["create"]["actionKey"], "query": "test",
+            }}))
+        return requests
+
+    def identity_database_state(self):
+        with closing(sqlite3.connect(os.environ["DATABASE_PATH"])) as connection:
+            return {
+                table: connection.execute(f"SELECT * FROM {table} ORDER BY rowid").fetchall()
+                for table in (
+                    "records", "request_results", "outbox", "page_confirmations", "stored_files",
+                )
+            }
+
+    @staticmethod
+    def forged_identity_headers():
+        return {
+            "Authorization": "Basic dGVzdDp0ZXN0",
+            "X-User-Id": "forged-owner", "X-Forwarded-User": "forged-owner",
+            "X-Display-Name": "forged name",
+        }
+
+    def test_identity_http_missing_sso_rejects_basic_and_forged_headers(self):
+        before = self.identity_database_state()
+        forged = self.forged_identity_headers()
+        header_cases = (
+            {}, {"Authorization": forged["Authorization"]},
+            {key: value for key, value in forged.items() if key != "Authorization"}, forged,
+        )
+        with self.identity_client(authenticated=False) as (client, _):
+            with mock.patch.object(self.application.httpx, "post") as remote:
+                for headers in header_cases:
+                    for method, path, kwargs in self.identity_business_requests(include_directory=True):
+                        with self.subTest(method=method, path=path, headers=tuple(headers)):
+                            response = client.request(method, path, headers=headers, **kwargs)
+                            self.assertEqual(response.status_code, 401, response.text)
+                remote.assert_not_called()
+        self.assertEqual(self.identity_database_state(), before)
+
+    def test_identity_http_expired_session_cannot_fall_back_to_headers(self):
+        before = self.identity_database_state()
+        with self.identity_client() as (client, _):
+            cookie = client.cookies.get("zjsid")
+            middleware = self.application.ServerSideSessionMiddleware
+            session_id = middleware._verified_id(cookie)
+            with sqlite3.connect(os.environ["DATABASE_PATH"]) as connection:
+                changed = connection.execute(
+                    "UPDATE browser_sessions SET expires_at=? WHERE session_hash=?",
+                    (int(time.time()) - 1, middleware._digest(session_id)),
+                )
+                self.assertEqual(changed.rowcount, 1)
+            with mock.patch.object(self.application.httpx, "post") as remote:
+                for method, path, kwargs in self.identity_business_requests(include_directory=True):
+                    with self.subTest(method=method, path=path):
+                        response = client.request(method, path, headers={
+                            **self.forged_identity_headers(), "Cookie": "zjsid=" + cookie,
+                        }, **kwargs)
+                        self.assertEqual(response.status_code, 401, response.text)
+                remote.assert_not_called()
+        self.assertEqual(self.identity_database_state(), before)
+
+    def test_identity_http_revoked_session_clears_cookie_and_rejects_reuse(self):
+        before = self.identity_database_state()
+        for status in (401, 403):
+            for method, path, kwargs in self.identity_business_requests():
+                with self.subTest(status=status, method=method, path=path):
+                    with self.identity_client() as (client, claims):
+                        cookie = client.cookies.get("zjsid")
+                        remote_response = mock.Mock(status_code=status, content=b"{}")
+                        with mock.patch.object(
+                            self.application.httpx, "post", return_value=remote_response,
+                        ) as remote:
+                            response = client.request(
+                                method, path, headers=self.forged_identity_headers(), **kwargs,
+                            )
+                            self.assertEqual(response.status_code, status, response.text)
+                            self.assertIn("Max-Age=0", response.headers.get("set-cookie", ""))
+                            remote.assert_called_once()
+                            self.assertEqual(remote.call_args.args, (self.application.SSO_SESSION_CHECK_URL,))
+                            self.assertEqual(remote.call_args.kwargs["json"]["user_id"], claims["sub"])
+                            retried = client.request(method, path, headers={
+                                **self.forged_identity_headers(), "Cookie": "zjsid=" + cookie,
+                            }, **kwargs)
+                            self.assertEqual(retried.status_code, 401, retried.text)
+                            remote.assert_called_once()
+        self.assertEqual(self.identity_database_state(), before)
+
+    def test_identity_http_authorization_failure_is_closed_and_retryable(self):
+        before = self.identity_database_state()
+        for failure in ("timeout", "server-error", "invalid-epoch", "invalid-json"):
+            for method, path, kwargs in self.identity_business_requests():
+                with self.subTest(failure=failure, method=method, path=path):
+                    with self.identity_client() as (client, claims):
+                        remote_response = mock.Mock(status_code=200, content=b"{}")
+                        remote_response.json.return_value = {
+                            "valid": True, "auth_epoch": 1,
+                            "effective_data_scope": claims["effectiveDataScope"],
+                        }
+                        options = {"return_value": remote_response}
+                        if failure == "timeout":
+                            options = {"side_effect": self.application.httpx.TimeoutException("test timeout")}
+                        elif failure == "server-error":
+                            remote_response.status_code = 500
+                        elif failure == "invalid-json":
+                            remote_response.json.side_effect = ValueError("test invalid JSON")
+                        with mock.patch.object(self.application.httpx, "post", **options) as remote:
+                            response = client.request(
+                                method, path, headers=self.forged_identity_headers(), **kwargs,
+                            )
+                            self.assertEqual(response.status_code, 503, response.text)
+                            remote.assert_called_once()
+                        recovered = mock.Mock(status_code=200, content=b"{}")
+                        recovered.json.return_value = {
+                            "valid": True, "auth_epoch": 0,
+                            "effective_data_scope": claims["effectiveDataScope"],
+                        }
+                        with mock.patch.object(self.application.httpx, "post", return_value=recovered):
+                            response = client.get("/api/ui/bootstrap", params={
+                                "moduleKey": self.module_key, "pageKey": self.page_key,
+                            })
+                            self.assertEqual(response.status_code, 200, response.text)
+                            self.assertEqual(response.json()["actor"]["userId"], claims["sub"])
+        self.assertEqual(self.identity_database_state(), before)
+
+    def test_identity_http_nameless_employee_writes_reads_and_keeps_trusted_owner(self):
+        for display_name in (None, "", "same name"):
+            with self.subTest(display_name=display_name), self.identity_client(
+                display_name=display_name,
+            ) as (client, claims):
+                remote = mock.Mock(status_code=200, content=b"{}")
+                remote.json.return_value = {
+                    "valid": True, "auth_epoch": 0, "display_name": display_name,
+                    "effective_data_scope": claims["effectiveDataScope"],
+                }
+                record_id = uuid4().hex
+                forged_data = {
+                    "name": "", "created_by": "forged-owner", "userId": "forged-owner",
+                    "displayName": "forged name", "note": "first",
+                }
+                with mock.patch.object(self.application.httpx, "post", return_value=remote) as transport:
+                    bootstrap = client.get("/api/ui/bootstrap", params={
+                        "moduleKey": self.module_key, "pageKey": self.page_key,
+                    }, headers=self.forged_identity_headers())
+                    self.assertEqual(bootstrap.status_code, 200, bootstrap.text)
+                    self.assertEqual(bootstrap.json()["actor"], {
+                        "userId": claims["sub"], "displayName": display_name or None,
+                    })
+                    for operation, params, version in (
+                        ("create", {"id": record_id, "data": forged_data}, None),
+                        ("update", {"id": record_id, "changes": {**forged_data, "note": "updated"}}, 1),
+                    ):
+                        response = client.post("/api/ui/actions/" + self.actions[operation]["actionKey"],
+                            headers=self.forged_identity_headers(),
+                            json=self.action_body(operation, uuid4().hex, params, version))
+                        self.assertEqual(response.status_code, 200, response.text)
+                    response = client.post("/api/ui/actions/" + self.actions["query"]["actionKey"],
+                        json=self.action_body("query", uuid4().hex, {}))
+                    self.assertEqual(response.status_code, 200, response.text)
+                    self.assertEqual([(item["id"], item["note"]) for item in response.json()["items"]],
+                                     [(record_id, "updated")])
+                    for call in transport.call_args_list:
+                        self.assertEqual(call.args, (self.application.SSO_SESSION_CHECK_URL,))
+                        self.assertEqual(call.kwargs["json"]["user_id"], claims["sub"])
+                        self.assertFalse(call.kwargs["trust_env"])
+                with closing(sqlite3.connect(os.environ["DATABASE_PATH"])) as connection:
+                    owner, version = connection.execute(
+                        "SELECT created_by,version FROM records WHERE id=?", (record_id,),
+                    ).fetchone()
+                self.assertEqual((owner, version), (claims["sub"], 2))
+                # A same-name employee cannot take ownership through JSON or headers.
+                with self.identity_client(display_name=display_name) as (other_client, other_claims):
+                    remote.json.return_value["effective_data_scope"] = other_claims["effectiveDataScope"]
+                    with mock.patch.object(self.application.httpx, "post", return_value=remote):
+                        response = other_client.post(
+                            "/api/ui/actions/" + self.actions["query"]["actionKey"],
+                            json=self.action_body("query", uuid4().hex, {}))
+                        self.assertEqual(response.status_code, 200, response.text)
+                        self.assertEqual(response.json()["items"], [])
+                        before = self.identity_database_state()
+                        response = other_client.post(
+                            "/api/ui/actions/" + self.actions["update"]["actionKey"],
+                            headers={"X-User-Id": claims["sub"]},
+                            json=self.action_body("update", uuid4().hex, {
+                                "id": record_id, "changes": {"created_by": other_claims["sub"]},
+                            }, 2))
+                        self.assertEqual(response.status_code, 403, response.text)
+                        self.assertEqual(self.identity_database_state(), before)
+
+    def test_identity_http_action_rejects_bad_credentials_despite_valid_browser_session(self):
+        before = self.identity_database_state()
+        body = self.action_body("create", uuid4().hex, {"data": {"name": "test"}})
+        token = self.action_token("create", body["requestId"], body["params"])
+        claims = self.jwt.decode(token, self.action_secret, algorithms=["HS256"],
+                                 audience=self.application.APP_SLUG)
+        expired = {**claims, "iat": int(time.time()) - 120, "exp": int(time.time()) - 60}
+        credentials = [
+            self.forged_identity_headers(),
+            {"Authorization": "Bearer " + self.jwt.encode(expired, self.action_secret, algorithm="HS256")},
+            {"Authorization": "Bearer " + self.jwt.encode(claims, "wrong-test-key-" * 4, algorithm="HS256")},
+        ]
+        with mock.patch.object(self.application.httpx, "post") as remote:
+            for headers in credentials:
+                with self.subTest(credential=headers["Authorization"].split()[0]):
+                    response = self.client.post(
+                        "/api/integration/actions/" + self.actions["create"]["actionKey"],
+                        headers=headers, json=body,
+                    )
+                    self.assertEqual(response.status_code, 401, response.text)
+            remote.assert_not_called()
+        self.assertEqual(self.identity_database_state(), before)
+
+    def test_identity_http_signed_action_owns_records_without_browser_or_display_name(self):
+        owner = str(uuid4())
+        record_id = uuid4().hex
+
+        def invoke(client, operation, params, *, actor=owner, version=None):
+            body = self.action_body(operation, uuid4().hex, params, version)
+            original = self.action_token(operation, body["requestId"], params)
+            claims = self.jwt.decode(original, self.action_secret, algorithms=["HS256"],
+                                     audience=self.application.APP_SLUG)
+            claims.update({
+                "sub": actor,
+                "effectiveDataScope": {
+                    "unrestricted": False, "include_self": True,
+                    "own_only": True, "department_ids": [],
+                },
+            })
+            self.assertNotIn("displayName", claims)
+            return client.post("/api/integration/actions/" + self.actions[operation]["actionKey"],
+                headers={**self.forged_identity_headers(), "Authorization": "Bearer " +
+                         self.jwt.encode(claims, self.action_secret, algorithm="HS256")},
+                json=body)
+
+        with self.identity_client(authenticated=False) as (client, _):
+            response = invoke(client, "create", {"id": record_id, "data": {
+                "name": "", "created_by": "forged-owner", "userId": "forged-owner",
+                "displayName": "forged name",
+            }})
+            self.assertEqual(response.status_code, 200, response.text)
+            response = invoke(client, "query", {})
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual([item["id"] for item in response.json()["items"]], [record_id])
+            with closing(sqlite3.connect(os.environ["DATABASE_PATH"])) as connection:
+                row = connection.execute("SELECT created_by FROM records WHERE id=?", (record_id,)).fetchone()
+            self.assertEqual(row[0], owner)
+            before = self.identity_database_state()
+            response = invoke(client, "update", {"id": record_id, "changes": {"name": "attempt"}},
+                              actor=str(uuid4()), version=1)
+            self.assertEqual(response.status_code, 403, response.text)
+            self.assertEqual(self.identity_database_state(), before)
 
     def test_sibling_origin_cannot_use_the_ui_session_with_simple_content_type(self):
         body = self.action_body("delete", uuid4().hex, {"id": "victim"}, expected_version=1)
