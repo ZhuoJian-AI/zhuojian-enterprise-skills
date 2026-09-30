@@ -1,7 +1,5 @@
 # 当前任务
 
-- [ ] **TRUSTED-DIRECTORY-RELEASE-20260930** (@codex): Publish core 1.1.27 / bundle-v1.4.28 after the verified SaaS release; verify all nine public assets and original-updater fresh/local installs, notify affected downstream owners, then record release evidence. Scope: Skill release/docs only; no downstream runtime deployment or role changes. Wiki maintenance is owned by the parent task.
-
 
 - [x] **ASSISTANT-CHROME-THEME-20260923 已发布**（@codex）：core 1.1.21 经 PR #39 / `37cffdb` 合并并公开发布 `bundle-v1.4.21`；423 passed／41 skipped、CI、九资产 SHA-256、公开全新安装／CURRENT 与本机 1.1.20→1.1.21 均通过，安装传输使用临时 curl 以绕过本机 Python urllib／代理断流。SaaS 前端已先行受控部署；四个业务子系统未改、未部署。见 [稳定发布补充](docs/handoff/2026-09-23_assistant-chrome-theme-contract.md#稳定发布补充2026-09-23以本节状态为准)。
 

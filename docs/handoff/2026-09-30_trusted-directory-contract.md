@@ -1,5 +1,7 @@
 # Trusted Employee Directory Candidate
 
+This file preserves the implementation checkpoint. Stable publication, public-install verification and downstream notification subsequently completed; the current evidence is in [the release handoff](2026-09-30_2010_trusted-directory-release.md).
+
 - Owner/task: Codex / TRUSTED-DIRECTORY-CONTRACT-20260930. Base: fresh `origin/main` at `bce651f`; isolated branch `codex/trusted-directory-contract-20260930`. Rules read: `fa8415fc48cf9291f3c4030b69f78c33cc291a88`.
 - Candidate: core 1.1.27, intended next bundle 1.4.28. Existing stable publication remains core 1.1.26 / bundle 1.4.27. No stable build, push, merge, release, Runtime install or business deployment was performed by this task.
 
