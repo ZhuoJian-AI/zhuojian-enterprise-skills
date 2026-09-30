@@ -77,3 +77,28 @@ def test_navigation_theme_requires_readable_controlled_palette():
             "selectedTextColor": "#E8F4EF",
         }
     })
+
+
+@pytest.mark.parametrize("operation,directory,policy,valid", [
+    ("create", True, None, True),
+    ("update", True, {"group": "personal", "mode": "self"}, True),
+    ("query", False, None, True),
+    ("query", True, None, False),
+    ("delete", True, None, False),
+    ("create", True, {"group": "public_read", "mode": "public_read"}, False),
+    ("create", "true", None, False),
+    ("create", 1, None, False),
+])
+def test_employee_directory_is_optional_and_restricted_to_binding_operations(operation, directory, policy, valid):
+    action = {"actionKey": "example.member", "operation": operation, "aiEnabled": False,
+              "employeeDirectory": directory}
+    if policy is not None:
+        action["permissionPolicy"] = policy
+    manifest = {
+        "presentation": {"moduleNavigationTheme": {
+            "accentColor": "#176B57", "backgroundColor": "#FFFFFF",
+            "selectedBackgroundColor": "#E8F4EF", "selectedTextColor": "#174F43",
+        }},
+        "modules": [{"moduleKey": "example", "actions": [action]}],
+    }
+    assert bool(validate_manifest_semantics(manifest, require_semantics=False)) is not valid

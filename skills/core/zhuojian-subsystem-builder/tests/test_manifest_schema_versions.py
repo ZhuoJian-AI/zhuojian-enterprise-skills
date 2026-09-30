@@ -77,6 +77,28 @@ def test_schema_accepts_v25_authorization_code_shape():
     )
 
 
+@pytest.mark.parametrize("revision", ["2.4", "2.5"])
+@pytest.mark.parametrize("value,valid", [(True, True), (False, True), ("true", False), (1, False), (None, False)])
+def test_employee_directory_boolean_is_optional_for_both_revisions(revision, value, valid):
+    auth = {"ssoPath": "/api/integration/sso", "algorithm": "HS256"} if revision == "2.4" else {
+        "ssoPath": "/api/integration/sso", "mode": "authorization_code",
+    }
+    payload = manifest(revision, auth)
+    action = {
+        "actionKey": "orders.member", "name": "Member", "description": "Select an employee",
+        "operation": "create", "aiEnabled": False, "requiresConfirmation": False,
+        "inputSchema": {"type": "object"}, "resultSchema": {"type": "object"},
+    }
+    payload["modules"][0]["actions"] = [action]
+    validate(payload)
+    action["employeeDirectory"] = value
+    if valid:
+        validate(payload)
+    else:
+        with pytest.raises(jsonschema.ValidationError):
+            validate(payload)
+
+
 def test_schema_accepts_closed_module_navigation_theme():
     payload = manifest(
         "2.5",

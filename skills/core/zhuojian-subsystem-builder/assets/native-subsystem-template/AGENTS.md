@@ -6,6 +6,7 @@
 - 有真实业务检查依据时，可用同一适配器的 suggest 协商 assistant-suggestions.v1 后提交当前员工当前来源的建议快照；相同 ID/证据版本不因渲染更新，解决后用空数组撤回。accepted 仅是提示接收；用户选择才进入助手草稿，不自动发送、不录屏或采集所有点击，不给无价值页面硬加 AI。确定性检查、权限与写入保护仍在业务服务端。
 - 助手需要理解办理流程时，从真实代码与已确认业务事实提取可选 aiSemantics.workflowGuides，绑定真实页面/Action、前提、完成证据和异常；不是把 docs/ai-delivery.json 上线执行，也不凭说明断言当前阶段。当前页提醒仅在平台真实支持、员工开启、页面可见且登记合法 proactiveCheck 时调用只读 query；参数固定 context，返回显式 assistantCheck，不调用模型、不创建 Run/不写业务；保留旧版本与人工入口。完整边界按 builder 的 assistant-workflow-guidance.md。
 - 页面可打开、Action 获权与记录归属分开校验。公共读取仅返回当前企业已发布内容，本人操作绑定可信用户 ID，管理查询按同名 actionDataScopes；不按姓名认领历史记录，不以非全企业范围为由拒绝整页。permissionPolicy 必须与真实实现一致，既有未声明操作保留旧范围。
+- 显示名可空，不能阻断获权本人表单。业务名单只存参与/分组等状态；需要选人的 create/update 才声明 employeeDirectory，后端用 platform_employee_directory 搜索并在保存时精确 resolve，不接受手输任意平台 ID 或姓名认领。历史身份修复须核查全部业务引用、条件事务及积分/快照不变，按 builder 的 employee-identity.md 验收。
 - 数据只写本模块数据库；跨模块使用版本化事件，不直连其他数据库。
 - 修改、审批和删除要求 `expectedVersion`；Action 的 `requestId` 必须满足模板 schema，并绑定用户、参数和版本，业务提交、Outbox、确认消费与幂等结果必须同事务完成。
 - 页面高风险按钮与平台 Action 共用服务端确认校验；必须检查一次性 `confirmationId`、确认人、五分钟时效和规范 JSON 参数哈希。文件删除也不得提供绕过该流程的裸路由。

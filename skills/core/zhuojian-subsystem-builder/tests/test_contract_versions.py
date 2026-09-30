@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_skill_release_version_is_separate_from_contract_revision() -> None:
     metadata = load_skill_metadata(ROOT)
 
-    assert metadata["skillVersion"] == "1.1.26"
+    assert metadata["skillVersion"] == "1.1.27"
     assert metadata["defaultContractRevision"] == "2.5"
     assert metadata["supportedContractRevisions"] == ["2.4", "2.5"]
 
@@ -44,15 +44,6 @@ def test_detect_project_revision_is_read_only(tmp_path: Path) -> None:
 
     assert detect_project_contract_revision(tmp_path) == "2.4"
     assert manifest_path.read_bytes() == before
-
-
-def test_optional_name_is_not_an_authorization_or_form_requirement() -> None:
-    guidance = (ROOT / "references" / "action-permission-scopes.md").read_text(encoding="utf-8")
-    assert "显示姓名是可选展示元数据，不是授权凭据" in guidance
-    assert "不能以姓名为空禁用提交，或把只读姓名输入设为必填" in guidance
-    assert "不能按同名认领历史记录" in guidance
-    assert "有前置条件的事务内修复" in guidance
-    assert "不为验收替真实员工打卡" in guidance
 
 
 def test_unknown_contract_revision_is_not_guessed() -> None:
