@@ -1,6 +1,6 @@
 # 当前任务
 
-- [ ] **AI-BUSINESS-ACCEPTANCE-20261001 候选完成，稳定发布待办**（@codex-remediation-files，version/release single-flight）：core 1.1.29 补强真实完成、长输出/失败恢复、文件版本回执、来源时间未知、关系字段证据、冷热加载与实时撤权验收；保留模型自然推理、2.4/2.5、现有权限与人工操作，不引入业务回答模板。Python 3.10 核心 522 passed / 53 skipped，聚焦验收及 quick validation 通过；仅本地候选，合并 main 后重建正式 bundle-v1.4.30，公开安装/本机更新与运行时验收分别完成。见 [候选交接](docs/handoff/2026-10-01_business-ai-acceptance.md)。
+- [x] **AI-BUSINESS-ACCEPTANCE-20261001 稳定规范已发布**（@codex-remediation-files，version/release single-flight）：core 1.1.29 / bundle-v1.4.30 于 2026-10-01 22:32:29 CST 从 PR #60 / `a7caac9b` 发布。真实完成、持久化/流式、文件版本回执与视觉覆盖、上下文、历史来源/关系、冷热首屏及撤权增量验收已同步；不限制模型业务答案或工具顺序。干净合并源码 522 passed / 53 skipped、PR/main CI、九匿名资产摘要、原始更新器新装/本机 1.1.28→1.1.29/CURRENT、两处 156 文件逐字节匹配通过；其他四个 Skill ZIP 不变。2.4/2.5、权限/DLP/人工操作保持，本次没有 SaaS、Runtime 或子系统部署，不关闭未测业务/图片理解问题。见 [正式发布证据](docs/handoff/2026-10-01_business-ai-acceptance-release.md)。
 
 
 - [x] **ASSISTANT-CHROME-THEME-20260923 已发布**（@codex）：core 1.1.21 经 PR #39 / `37cffdb` 合并并公开发布 `bundle-v1.4.21`；423 passed／41 skipped、CI、九资产 SHA-256、公开全新安装／CURRENT 与本机 1.1.20→1.1.21 均通过，安装传输使用临时 curl 以绕过本机 Python urllib／代理断流。SaaS 前端已先行受控部署；四个业务子系统未改、未部署。见 [稳定发布补充](docs/handoff/2026-09-23_assistant-chrome-theme-contract.md#稳定发布补充2026-09-23以本节状态为准)。
