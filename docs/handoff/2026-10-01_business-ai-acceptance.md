@@ -36,6 +36,14 @@ git diff --check
 - `quick_validate`: Skill is valid. `git diff --check`: passed.
 - Packaging smoke verification uses the existing deterministic package helper plus original updater extraction/candidate validation against an isolated temporary destination. This is an offline candidate archive, not a stable Release or public-install proof. Packaging evidence is appended after execution below.
 
+## Offline Candidate Package Evidence
+
+- Clean candidate source `d9cf68a43466b03dfe353954a1a703b0562679c8`. `package_skill` only: all five ZIP CRC checks, archive SHA-256 and every packaged tracked file byte comparison passed. No formal builder entrypoint, stable catalog, remote write or installation replacement was used.
+- Core archive: 1.1.29, 156 tracked files, 604,580 bytes, SHA-256 `7130a897c988933ba0a8342f5b86af720eb3d4eec983a2ee1183ccd73fb040dc`. Original updater `safe_extract` and `verify_candidate(..., "1.1.29")` passed in a temporary directory, which was removed afterwards.
+- Source differences against the baseline are empty for the other four Skills, catalog and release builder. Their smoke ZIP hashes: legacy `4cc7c708d5357a6626d322cd3b3d4a5212b2f5c02db30dbcf2715ce25f0f3940`; SQL handoff `0a8667a8e34251f5468fe9f7d3f43f8b3c96a16895198ab3c46a4aafe23ec37f`; goods handoff `5fb6f81cd82b14f35893f5d99843af670fe4a2738cb53f308883e095d995c62f`; NAS handoff `7a78812f1ad72efb517b9ad484f7b10e7ec6a209c5f45bbc784f460bf645192e`. These are local candidate bytes, not a verified public Release comparison.
+- All 42 local links in the edited entry/reference resolve; incremental acceptance anchor discovery passed.
+- One initial standalone packaging harness missed registering a dynamically imported dataclass module; the harness was corrected and the complete checks reran successfully. No release/updater source changed for that harness error.
+
 ## Publication And Remaining Work
 
 1. Independent review and PR/main CI, then merge the scoped branch. Update the organization's wiki milestone card through the authorized workflow.
