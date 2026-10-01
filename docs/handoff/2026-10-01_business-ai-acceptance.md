@@ -1,5 +1,7 @@
 # Business AI Acceptance Candidate
 
+**Publication update:** core 1.1.29 / bundle-v1.4.30 was subsequently published from PR #60 merged source `a7caac9b299f27573156990711e2c5c2d1464c20` at 2026-10-01 22:32:29 CST. Public asset hashes, original-updater fresh/local installation and CURRENT checks passed. The sections below preserve the earlier candidate checkpoint; current evidence is in [the stable release handoff](2026-10-01_business-ai-acceptance-release.md). No runtime deployment or employee-business acceptance is implied.
+
 ## Scope And Status
 
 - Skill owns this reusable development and acceptance guidance. SaaS owns public assistant orchestration, completion, persistence/streaming, source context, artifacts, permissions and shared loading; each subsystem owns its business facts, relationships, state semantics and initialization.
