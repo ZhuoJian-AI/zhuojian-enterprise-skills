@@ -242,6 +242,33 @@ class DeliveryValidationTests(unittest.TestCase):
         document["journeys"][0]["gaps"][0]["evidenceRefs"] = ["synthetic/closure"]
         self.assertEqual(MODULE.validate_delivery(document, manifest()), [])
 
+    def test_successful_auxiliary_steps_do_not_hide_unfinished_final_delivery(self):
+        for status, evidence in (("fail", ["synthetic/final-failure"]), ("not_run", []), ("pass", [])):
+            with self.subTest(status=status, evidence=evidence):
+                document = delivery()
+                document["journeys"][0]["acceptance"].append({
+                    "scenario": "Verify actual file version and authorized download after a successful draft",
+                    "status": status, "evidenceRefs": evidence,
+                })
+                self.assertTrue(MODULE.validate_delivery(document, manifest(), True))
+
+    def test_unavailable_original_stays_blocked_despite_successful_metadata_query(self):
+        document = delivery()
+        journey = document["journeys"][0]
+        journey["delivery"] = "blocked"
+        journey["acceptance"].append({
+            "scenario": "Inspect the authorized original version; original bytes not yet acquired",
+            "status": "not_run", "evidenceRefs": [],
+        })
+        unresolved = gap()
+        unresolved.update(
+            problem="Original source cannot yet be inspected", acceptance="Inspect actual fixed-version bytes",
+            fallback="Keep successful metadata result without claiming source content",
+        )
+        journey["gaps"] = [unresolved]
+        self.assertEqual(MODULE.validate_delivery(document, manifest()), [])
+        self.assertTrue(MODULE.validate_delivery(document, manifest(), True))
+
     def test_background_requires_delegation_and_recorded_acceptance(self):
         document = delivery()
         journey = document["journeys"][0]
