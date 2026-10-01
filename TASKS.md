@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **AI-BUSINESS-ACCEPTANCE-20261001**（@codex-remediation-files）：补强业务提效交付的真实完成、长输出/失败恢复、文件版本回执、来源时间未知、关系字段证据、冷热加载与实时撤权验收；保留模型自然推理、2.4/2.5、现有权限与人工操作，不引入业务回答模板。验收：核心参考可发现、受影响测试和 quick validation 通过；Skill 候选与 SaaS/子系统修复及稳定发布分别报告。
+
 
 - [x] **ASSISTANT-CHROME-THEME-20260923 已发布**（@codex）：core 1.1.21 经 PR #39 / `37cffdb` 合并并公开发布 `bundle-v1.4.21`；423 passed／41 skipped、CI、九资产 SHA-256、公开全新安装／CURRENT 与本机 1.1.20→1.1.21 均通过，安装传输使用临时 curl 以绕过本机 Python urllib／代理断流。SaaS 前端已先行受控部署；四个业务子系统未改、未部署。见 [稳定发布补充](docs/handoff/2026-09-23_assistant-chrome-theme-contract.md#稳定发布补充2026-09-23以本节状态为准)。
 
