@@ -1,6 +1,7 @@
 # __APPLICATION_NAME__ 开发规则
 
 - 本系统属于 __COMPANY_NAME__ 企业，企业标识 `__COMPANY_SLUG__`，应用标识 `__APPLICATION_SLUG__`，当前子模块 `__MODULE_KEY__`。
+- 界面默认使用原生光标和静态入口卡片，不加 TargetCursor、四角鼠标跟随或翻转后二次进入。电脑单击、手机单次轻触、键盘激活直接走原授权入口；保留焦点、选中反馈和触摸滚动/取消保护。已确认背景及 AI 语义锚点提示保留，新增装饰动效须用户明确指定；两端分别验收。
 - 页面按钮和 AI Action 必须调用同一个业务服务函数，禁止两套业务规则。
 - 业务页面“让助手处理”入口复用 `static/zhuojian-assistant.js`，仅在可信 host-ready 声明 assistant-open.v1 后交接目标草稿；先发送当前页面 context，保留人工功能，不自动发送或把 draft_ready 当业务成功。SaaS 与本系统不共享数据库、会话存储或模型密钥。
 - 有真实业务检查依据时，可用同一适配器的 suggest 协商 assistant-suggestions.v1 后提交当前员工当前来源的建议快照；相同 ID/证据版本不因渲染更新，解决后用空数组撤回。accepted 仅是提示接收；用户选择才进入助手草稿，不自动发送、不录屏或采集所有点击，不给无价值页面硬加 AI。确定性检查、权限与写入保护仍在业务服务端。
