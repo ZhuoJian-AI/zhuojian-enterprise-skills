@@ -1,5 +1,7 @@
 # 当前任务
 
+- [x] **UNIFIED-MODEL-GATEWAY-20261008 源码候选**（@codex-builder-gateway，唯一 Builder 规则/版本写入者）：明确网关上游主配置与 SaaS 员工业务 AI 控制面，子系统仍不持供应商/网关 Key、不直连网关。准备 core 1.1.31 / bundle-v1.4.32，保持契约 2.4/2.5、现有专业通路及 Runtime 不变。基线 `539d060`；完整核心测试522 passed/53 skipped，core快速校验及新增链接通过，随包“模块需求”中文name的既存校验限制单列。未推送、合并、发布或修改两账号安装版，协调线后续发行与同步；见 `docs/handoff/2026-10-08_unified-model-gateway.md`。
+
 - [x] **AI-BUSINESS-ACCEPTANCE-20261001 稳定规范已发布**（@codex-remediation-files，version/release single-flight）：core 1.1.29 / bundle-v1.4.30 于 2026-10-01 22:32:29 CST 从 PR #60 / `a7caac9b` 发布。真实完成、持久化/流式、文件版本回执与视觉覆盖、上下文、历史来源/关系、冷热首屏及撤权增量验收已同步；不限制模型业务答案或工具顺序。干净合并源码 522 passed / 53 skipped、PR/main CI、九匿名资产摘要、原始更新器新装/本机 1.1.28→1.1.29/CURRENT、两处 156 文件逐字节匹配通过；其他四个 Skill ZIP 不变。2.4/2.5、权限/DLP/人工操作保持，本次没有 SaaS、Runtime 或子系统部署，不关闭未测业务/图片理解问题。见 [正式发布证据](docs/handoff/2026-10-01_business-ai-acceptance-release.md)。
 
 
