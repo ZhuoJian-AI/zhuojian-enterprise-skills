@@ -6,7 +6,7 @@
 
 - **子系统**负责真实检查结果、业务依据及权限过滤；规则、记录版本、手工按钮和 Action 的写入保护仍在子系统服务器。提示不是权限证明，前端不能代替后端对象归属、版本、确认和幂等校验。
 - **SaaS**负责当前员工、当前来源的有界提示区与唯一助手。只有员工选择建议，才沿 [目标入口 Bridge](assistant-entry-bridge.md) 预检并带入可编辑草稿；员工另行发送后才进入模型、获权工具和必要的确认。不能把接收建议或点击“让助手处理”算作已调用 AI、已批准或已执行业务。
-- **Skill**负责接入约定和验收，不创建线上后台任务。跨服务器只走既有 HTTPS、签名 Action 和可信 Bridge，不共享数据库、root、供应商/网关 Key 或员工对话；员工模型能力仍由 SaaS 授权，上游配置分工见 [平台 AI 与模块边界](platform-contract.md#平台-ai-与模块边界)。
+- **Skill**负责接入约定和验收，不创建线上后台任务。跨服务器只走既有 HTTPS、签名 Action 和可信 Bridge，不共享数据库、root、模型密钥或员工对话；供应商和模型仍由 SaaS 统一配置。
 
 接入前核对 Runtime `platform-capabilities` 的 `features.assistantSuggestions`：支持时为 `{supported:true,version:1,bridgeCapability:"assistant-suggestions.v1",authentication:"employee-session",mode:"suggestion-only"}`。旧后端未声明时新版 CLI 输出 `supported:false`，表示未声明支持，不能猜测已部署。此结果仅证明后端实现声明；浏览器仍须收到当前可信 host-ready 的 `assistant-suggestions.v1`，员工权限仍须实时预检。`contractRevision=2.4/2.5` 不变。
 
