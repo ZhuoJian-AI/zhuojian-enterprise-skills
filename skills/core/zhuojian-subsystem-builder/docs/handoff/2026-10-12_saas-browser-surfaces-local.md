@@ -1,6 +1,6 @@
 # SaaS 三入口契约的本地补充
 
-本轮主责为 Skill 接入契约，依据 SaaS `docs/development/browser-surfaces.md` 与三端发布交接。源码基线为 `ZhuoJian-AI/zhuojian-enterprise-skills` main `9b5d03dd3fcb6f7b5ffe2be5dfe2cc36a8030da5`；已安装版本为 core `1.1.31`。本地只补正文，不分配新稳定版本、不构建 Release；源码未推送/合并，不能将本次文件称为新的公开稳定包。
+本轮主责为 Skill 接入契约，依据 SaaS `docs/development/browser-surfaces.md` 与三端发布交接。源码基线为 `ZhuoJian-AI/zhuojian-enterprise-skills` main `9b5d03dd3fcb6f7b5ffe2be5dfe2cc36a8030da5`；原已安装版本为 core `1.1.31`。先完成本地正文与双账号同步；用户随后授权正式发布，预留 core `1.1.32` / `bundle-v1.4.33`，只在合并 main、完整验证与公开包安装通过后记录发布完成。此准备记录不表示 Release 已公开或生产已切换。
 
 ## 范围
 
@@ -13,4 +13,4 @@
 - `python -m pytest -q tests/test_ai_delivery.py tests/test_runtime_auto_release_contract.py tests/test_contract_versions.py`：39 passed。
 - `skill-creator/scripts/quick_validate.py`：通过；Markdown 相对链接、YAML 与 `git diff --check` 另作静态核对。
 - 指定的上述三份正文及本交接同步至 `codex02`、`王鑫涛` 两账号同名 Skill，保留无关文件；先备份旧字节，再核对两份结果。同步回执和备份保存在本机 SaaS 审查目录 `audit-2026-10-12/skill-surface-sync/`。
-- 本轮为文档契约补充，不重跑生产业务、真机或 Runtime 测试，也不以 Skill 同步证明 SaaS 三端上线。后续公开发布需单独分配版本、更新 changelog 并按既有稳定 Release 流程验收。
+- 本轮为文档契约补充，不重跑生产业务、真机或 Runtime 测试，也不以 Skill 同步证明 SaaS 三端上线。正式发布需从干净合并 main 构建九个资产，核对旧四个 Skill ZIP 未变，并验证匿名安装、CURRENT 与两账号本次授权文件一致；公开发布回执另存仓库根 `docs/handoff/`，不重打已发布包。
