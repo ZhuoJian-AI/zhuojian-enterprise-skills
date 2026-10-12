@@ -2,6 +2,8 @@
 
 2026-10-12。用户授权实施通用企业插件、保留浏览器助手并更新 Builder Skill。本项从 `origin/main` 的 `1997f35e5af3bddde47ed5d117775555496e6485` 建立独立工作树及 `codex/enterprise-client-action-contract-20261012` 分支；源仓库主工作树及其他分支未改。core `1.1.31` 是本地候选，尚未推送、合并或发布稳定 Release。
 
+后续用户明确要求推送并部署，本轮已推送候选并创建非草稿 [PR #66](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/pull/66)。发布路线沿用原 bundle 构建器，候选为 core `1.1.31` / `bundle-v1.4.32`；须 PR 与合并源码 CI、干净主分支构建、其他四个 Skill ZIP 不变及匿名公开安装验证分别通过后补正式回执。此段只记录发布准备，不宣称合并或 Release 已完成；正文中未推送等描述保留为最初检查点。
+
 ## 责任与范围
 
 - Skill 主责：补充 `references/external-agent-access.md`，在入口、平台契约、业务交付和文件存储说明中按调用宿主区分责任，保留 `2.4/2.5`、Manifest Schema、Runtime 模板及更新器。
