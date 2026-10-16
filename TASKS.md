@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **PLATFORM-PROJECT-REGISTRATION-20261016**（@codex-root）：补齐新系统在平台管理员端的归属、域名和管理入口登记与实点验收；企业子系统沿用所属企业/Runtime/IAM，独立项目保留原站原密码并行。仅核心Skill规范与稳定发布、两个账号精确同步，不修改平台或业务运行时。
+
 - [x] **SHARED-MODEL-CATALOG-20261016**（@codex-shared-gateway）：PR68/main `6622588`、main CI `38851040609`成功；1.1.33 / bundle-v1.4.34正式发布，九资产匿名hash、原更新器新装/CURRENT与隔离1.1.32升级通过；双账号备份后各5指定文件与公开包一致、CURRENT1.1.33，无关内容保持。未改Runtime/Schema/模板或其他Skill，旧学院和业务服务未发布；见shared-model-catalog-contract正式发布补充。
 
 - [x] **BUILDER-GATEWAY-SCOPE-REVERT-20261008 源码修正**（@codex-builder-gateway，唯一回退写入者）：用户纠正本轮只修改“灼见服务器部署”Skill；精确撤回误纳入 Builder 的 PR #64 / merge `e8ecda8`，保留其他历史变更。基于当时最新 `origin/main` 新工作树执行 `git revert --no-commit -m 1 e8ecda8`，Builder 包内容与第一父提交 `539d060` 相同、版本恢复1.1.30；完整核心522 passed/53 skipped/1 warning、quick_validate通过，PR合并待完成。公开稳定通道及两账号均仍1.1.30，两处156个包文件全部匹配；codex02另有4个既存pycache未清理。无Release/tag发布、无安装修改，本地未发行资产仅保留。见 `docs/handoff/2026-10-08_builder-gateway-scope-revert.md`。
