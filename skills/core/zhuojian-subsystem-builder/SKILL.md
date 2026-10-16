@@ -20,6 +20,8 @@ description: "让 AI 把业务需求转成页面与统一助手可完成的业�
 
 涉及 SaaS 平台管理、企业管理与员工入口分离或变更域名时，读 [三入口与来源边界](references/platform-contract.md#saas-三入口与来源边界)。三个前端由 SaaS 独立发布；子系统沿用已登记的员工入口、SSO 与 Bridge，管理域名不能替代业务来源或 MCP 资源地址。是否上线以目标环境登记和验收为准。
 
+新系统首次上线，或本次修改归属、域名、管理入口时，必须读 [平台项目归属与入口验收](references/platform-project-registration.md)。企业子系统必须在平台管理员端的所属企业下可见，沿用 SaaS 身份和授权；独立项目归平台独立项目清单，由服务器部署 Skill 承接。验收真实可点击域名与已有管理后台的授权入口；登记成功不能代替页面实点，保留原站原密码也不能成为企业子系统绕过 SaaS 的新通道。
+
 涉及模型接入或专业 AI 能力时，读 [共享模型目录与子系统委托](references/platform-contract.md#共享模型目录与子系统委托)：供应商与可用模型统一由网关管理，SaaS 子系统只委托 SaaS，不持模型 Key、不另建目录或直连 fallback；保留按能力选择、项目默认型号、授权与任务审计隔离，`registered` 不代表实测可用。
 
 ## 前端交互默认
@@ -42,7 +44,7 @@ description: "让 AI 把业务需求转成页面与统一助手可完成的业�
 4. 按已确认的业务目标完成页面、数据库和操作能力，并按 [平台接入协议](references/platform-contract.md) 接入。把助手需要的查询、分析依据、草稿与确认后操作映射到真实页面和 Action，不只交付一组通用 CRUD。通用业务助手由 SaaS 提供；页面需要 OCR、语音转写、图片判断等专业 AI 时也由 SaaS 受控执行，子系统不保存模型密钥。开发 AI 自动维护 `docs/ai-delivery.json` 的能力核对、业务验收和跨层缺口；它是交付资料，不进入 Manifest、不驱动线上执行。
 5. 使用 Runtime 当前提供的文件存储；不要询问用户 Bucket、令牌或服务器目录。需求涉及上传、附件、导入导出或持久文件时，读取 [文件存储与 OSS 迁移](references/object-storage.md)，校验源码时加 `--requires-file-storage`；只有 Runtime 已启用 OSS 时再加 `--requires-object-storage`。
    外部 NAS／共享盘按需只读访问不等于附件上传或存储迁移。负责人要求原件留在内网时，同时读取 [外部资料源只读访问](references/external-readonly-files.md)，不得因 Runtime 默认启用 OSS 就复制原件。
-6. 完成测试、部署和平台登记。除已有契约验收外，对本次承诺的 AI 业务流程执行 [提效交付验收](references/business-ai-delivery.md#验收与交付)，未测、受阻和业务负责人明确不采用的部分分别记录；不得把登记成功当作业务闭环成功。Runtime 自动处理域名、目录和平台接入信息，AI 不读取、不复制、不展示这些秘密。
+6. 完成测试、部署和平台登记，并按 [平台入口验收](references/platform-project-registration.md) 核对所属企业、域名与管理入口在平台管理员端的实际结果。除已有契约验收外，对本次承诺的 AI 业务流程执行 [提效交付验收](references/business-ai-delivery.md#验收与交付)，未测、受阻和业务负责人明确不采用的部分分别记录；不得把登记成功当作业务闭环成功。Runtime 自动处理域名、目录和平台接入信息，AI 不读取、不复制、不展示这些秘密。
 7. Runtime 校验通过后自动登记并生效，不等待管理员逐版本审核。新系统先只自动授权“系统研发者”；其他员工仍按企业管理员已绑定的业务角色访问，既有角色只在原权限上限内继承新增能力，管理员停用始终优先。
 
 常用入口如下，参数以 `--help` 为准：

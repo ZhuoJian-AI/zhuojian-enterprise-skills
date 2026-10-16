@@ -1,6 +1,6 @@
 # 当前任务
 
-- [ ] **PLATFORM-PROJECT-REGISTRATION-20261016**（@codex-root）：补齐新系统在平台管理员端的归属、域名和管理入口登记与实点验收；企业子系统沿用所属企业/Runtime/IAM，独立项目保留原站原密码并行。仅核心Skill规范与稳定发布、两个账号精确同步，不修改平台或业务运行时。
+- [ ] **PLATFORM-PROJECT-REGISTRATION-20261016 待稳定发布与双账号同步**（@codex-root）：企业子系统/独立项目归属、可点击域名、真实管理入口及原站兼容规范已完成；核心521 passed/54 skipped/124 subtests、quick_validate、44本地链接和独立四场景审查通过。仅核心Skill1.1.34 / 待bundle-v1.4.35，不改2.4/2.5、Runtime、平台或业务系统。见[交接](docs/handoff/2026-10-16_platform-project-registration.md)。
 
 - [x] **SHARED-MODEL-CATALOG-20261016**（@codex-shared-gateway）：PR68/main `6622588`、main CI `38851040609`成功；1.1.33 / bundle-v1.4.34正式发布，九资产匿名hash、原更新器新装/CURRENT与隔离1.1.32升级通过；双账号备份后各5指定文件与公开包一致、CURRENT1.1.33，无关内容保持。未改Runtime/Schema/模板或其他Skill，旧学院和业务服务未发布；见shared-model-catalog-contract正式发布补充。
 
