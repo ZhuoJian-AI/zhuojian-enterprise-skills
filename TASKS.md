@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **SHARED-MODEL-CATALOG-20261016**（@codex-shared-gateway）：1.1.33契约候选已完成，核心521 passed/54 skipped/124subtests、quick_validate及diff通过；待PR审查合并、稳定Release及备份后双账号精确同步，来源与元数据保持一致。未改Runtime/Schema/模板或其他Skill，旧学院和业务服务不发布；见shared-model-catalog-contract交接。
+
 - [x] **BUILDER-GATEWAY-SCOPE-REVERT-20261008 源码修正**（@codex-builder-gateway，唯一回退写入者）：用户纠正本轮只修改“灼见服务器部署”Skill；精确撤回误纳入 Builder 的 PR #64 / merge `e8ecda8`，保留其他历史变更。基于当时最新 `origin/main` 新工作树执行 `git revert --no-commit -m 1 e8ecda8`，Builder 包内容与第一父提交 `539d060` 相同、版本恢复1.1.30；完整核心522 passed/53 skipped/1 warning、quick_validate通过，PR合并待完成。公开稳定通道及两账号均仍1.1.30，两处156个包文件全部匹配；codex02另有4个既存pycache未清理。无Release/tag发布、无安装修改，本地未发行资产仅保留。见 `docs/handoff/2026-10-08_builder-gateway-scope-revert.md`。
 
 - [x] **AI-BUSINESS-ACCEPTANCE-20261001 稳定规范已发布**（@codex-remediation-files，version/release single-flight）：core 1.1.29 / bundle-v1.4.30 于 2026-10-01 22:32:29 CST 从 PR #60 / `a7caac9b` 发布。真实完成、持久化/流式、文件版本回执与视觉覆盖、上下文、历史来源/关系、冷热首屏及撤权增量验收已同步；不限制模型业务答案或工具顺序。干净合并源码 522 passed / 53 skipped、PR/main CI、九匿名资产摘要、原始更新器新装/本机 1.1.28→1.1.29/CURRENT、两处 156 文件逐字节匹配通过；其他四个 Skill ZIP 不变。2.4/2.5、权限/DLP/人工操作保持，本次没有 SaaS、Runtime 或子系统部署，不关闭未测业务/图片理解问题。见 [正式发布证据](docs/handoff/2026-10-01_business-ai-acceptance-release.md)。

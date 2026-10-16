@@ -20,6 +20,8 @@ description: "让 AI 把业务需求转成页面与统一助手可完成的业�
 
 涉及 SaaS 平台管理、企业管理与员工入口分离或变更域名时，读 [三入口与来源边界](references/platform-contract.md#saas-三入口与来源边界)。三个前端由 SaaS 独立发布；子系统沿用已登记的员工入口、SSO 与 Bridge，管理域名不能替代业务来源或 MCP 资源地址。是否上线以目标环境登记和验收为准。
 
+涉及模型接入或专业 AI 能力时，读 [共享模型目录与子系统委托](references/platform-contract.md#共享模型目录与子系统委托)：供应商与可用模型统一由网关管理，SaaS 子系统只委托 SaaS，不持模型 Key、不另建目录或直连 fallback；保留按能力选择、项目默认型号、授权与任务审计隔离，`registered` 不代表实测可用。
+
 ## 前端交互默认
 
 - 使用原生鼠标光标，默认不加入 React Bits TargetCursor、四角方框或鼠标跟随装饰；新增此类效果须由用户明确指定。
