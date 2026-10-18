@@ -99,6 +99,32 @@ def test_employee_directory_boolean_is_optional_for_both_revisions(revision, val
             validate(payload)
 
 
+@pytest.mark.parametrize("revision", ["2.4", "2.5"])
+@pytest.mark.parametrize("overrides,valid", [
+    ({}, True), ({"messageDelivery": False, "operation": "query"}, True),
+    ({"messageDelivery": "true"}, False), ({"messageDelivery": 1}, False),
+    ({"messageDelivery": None}, False), ({"employeeDirectory": False}, False),
+    ({"employeeDirectory": None}, False), ({"requiresConfirmation": False}, False),
+    ({"operation": "update"}, False), ({"operation": "delete"}, False),
+])
+def test_message_delivery_schema_is_optional_but_requires_complete_confirmation(revision, overrides, valid):
+    auth = {"ssoPath": "/api/integration/sso", "algorithm": "HS256"} if revision == "2.4" else {
+        "ssoPath": "/api/integration/sso", "mode": "authorization_code",
+    }
+    payload = manifest(revision, auth)
+    payload["modules"][0]["actions"] = [{
+        "actionKey": "orders.send", "name": "Send", "description": "Deliver a confirmed message",
+        "operation": "create", "aiEnabled": True, "requiresConfirmation": True,
+        "employeeDirectory": True, "messageDelivery": True,
+        "inputSchema": {"type": "object"}, "resultSchema": {"type": "object"}, **overrides,
+    }]
+    if valid:
+        validate(payload)
+    else:
+        with pytest.raises(jsonschema.ValidationError):
+            validate(payload)
+
+
 def test_schema_accepts_closed_module_navigation_theme():
     payload = manifest(
         "2.5",

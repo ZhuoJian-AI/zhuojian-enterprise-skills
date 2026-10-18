@@ -106,7 +106,7 @@ def _bindings(items: list, modules: dict, path: str, checks: _Checks) -> None:
     seen = set()
     for index, value in enumerate(items):
         item_path = f"{path}[{index}]"
-        item = checks.obj(value, item_path, {"moduleKey", "pageKey", "actionKey"})
+        item = checks.obj(value, item_path, {"moduleKey", "pageKey", "actionKey"}, {"privateDraft"})
         valid = [checks.text(item.get(key), f"{item_path}.{key}") for key in ("moduleKey", "pageKey", "actionKey")]
         if not all(valid):
             continue
@@ -125,8 +125,24 @@ def _bindings(items: list, modules: dict, path: str, checks: _Checks) -> None:
         if action.get("aiEnabled") is not True:
             checks.error(item_path, "Action must have aiEnabled=true")
         operation = action.get("operation")
+        private_draft = False
+        if "privateDraft" in item:
+            draft_path = f"{item_path}.privateDraft"
+            draft = checks.obj(item["privateDraft"], draft_path, {"owner", "effects", "evidenceRefs"})
+            checks.enum(draft.get("owner"), f"{draft_path}.owner", {"actor"})
+            checks.enum(draft.get("effects"), f"{draft_path}.effects", {"local_only"})
+            checks.evidence(draft.get("evidenceRefs"), f"{draft_path}.evidenceRefs", required=True)
+            private_draft = (
+                operation in {"create", "update"}
+                and action.get("requiresConfirmation") is False
+                and action.get("messageDelivery", False) is False
+                and draft.get("owner") == "actor"
+                and draft.get("effects") == "local_only"
+            )
+            if not private_draft:
+                checks.error(draft_path, "only actor-owned local create/update drafts without message delivery qualify")
         if checks.enum(operation, f"{item_path}.manifest.operation", WRITES | {"query", "export"}):
-            if operation in WRITES and action.get("requiresConfirmation") is not True:
+            if operation in WRITES and action.get("requiresConfirmation") is not True and not private_draft:
                 checks.error(item_path, "assisted write Action must have requiresConfirmation=true")
 
 

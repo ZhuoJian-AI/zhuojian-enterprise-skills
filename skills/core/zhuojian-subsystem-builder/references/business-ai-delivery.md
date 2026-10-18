@@ -68,6 +68,7 @@
 
 - 页面/Action/记录权限逐层校验，部门归属、审批人身份和留痕都不能替代授权。沿用 [平台接入协议](platform-contract.md)，不另造授权体系。
 - 本次默认确认式协作流程中的写 Action 声明 `requiresConfirmation=true`。既有低风险人工功能的维护不被此条整体改写。确认绑定具体目标、参数和版本，授权变化或参数变化后旧确认失效；删除、审批和其他高风险规则仍必守。
+- 仅保存当前操作者本人私有草稿的 create/update，可声明 `requiresConfirmation=false`，但必须经源码与真实测试确认：服务端取可信操作者归属、跨人访问被拒绝、只保存本地草稿、不通知他人、不提交审批、不占资源、不修改共享业务状态。对应交付 binding 增加 `privateDraft: {"owner":"actor","effects":"local_only","evidenceRefs":["脱敏验收引用"]}`；校验器仅检查声明，不替代证据审查，也不授予运行权限。没有这些证据仍按默认确认；发送、删除、审批不能使用此例外。
 - “草稿”若会提交审批、发通知、占库存或更新状态，就已经有副作用，必须按真实写操作设计，不能靠名称逃避确认。专业 AI 返回草稿后仍走普通 Action。
 - 查询返回稳定实体引用、真实关联字段、业务状态、版本及来源时间；下一步按原关系字段核对对象，不靠展示文字、同名、排序或相似编号猜 ID。跨记录汇总必须能追溯原始关联，不能把有依据的业务关联错误解释成 SSO 错绑。
 - 区分查询/采集时刻、源数据更新时间和历史快照范围；来源时间未知时保留空值或 `unknown` 及原因，不用请求时间、文件修改时间或部署时间补成“实时”。查询失败、无权或部分覆盖不能写成“无异常”；员工看不到某能力也不证明全企业没有部署。
@@ -83,7 +84,7 @@
 
 每条 journey 记录目标、基线、目标值、负责人决定、入口、状态、真实页面/Action 映射、平台核对、确认规则、验收结果与跨层缺口。未实现的 Action 不填虚构绑定，写进 gaps；跨应用链分别在对应项目记录真实绑定及关联证据。无 AI 收益或明确只要人工时用 `not_applicable`，写真实原因并留空绑定：负责人确认普通自动化方案用 `ownerDecision=confirmed`，明确拒绝助手用 `declined`，开发 AI 尚未得到确认则用 `proposed`、不能通过严格完成检查。只是不允许 AI 修改，但仍要求查询的，是正常只读 journey，不是整条不适用。纯样式修复用根 `scope=out_of_scope` 加理由。
 
-`schemaVersion=1` 的状态值：`ownerDecision=proposed/confirmed/declined`，`entryPoint=on_demand/in_page/background`，`delivery=planned/blocked/verified/not_applicable`；平台三项核对使用 `yes/no/unknown`，测试为 `pass/fail/not_run`，缺口为 `open/closed`。绑定仅含真实 `moduleKey/pageKey/actionKey`，不填 URL 或凭证。`background` 若要标 verified，还须给出 `delegation` 的 `actorRef/scope/expiresAt/revocation/limits/approvalEvidence/timezone`，到期时间带时区、timezone 为 `Asia/Shanghai`；这些只是证据引用及说明，不是运行时委托令牌。到期/撤销的委托不能继续作为当前可用证明。
+`schemaVersion=1` 的状态值：`ownerDecision=proposed/confirmed/declined`，`entryPoint=on_demand/in_page/background`，`delivery=planned/blocked/verified/not_applicable`；平台三项核对使用 `yes/no/unknown`，测试为 `pass/fail/not_run`，缺口为 `open/closed`。绑定使用真实 `moduleKey/pageKey/actionKey`，仅本人私有草稿可附上述 `privateDraft` 证据，不填 URL 或凭证。`background` 若要标 verified，还须给出 `delegation` 的 `actorRef/scope/expiresAt/revocation/limits/approvalEvidence/timezone`，到期时间带时区、timezone 为 `Asia/Shanghai`；这些只是证据引用及说明，不是运行时委托令牌。到期/撤销的委托不能继续作为当前可用证明。
 
 缺口需写明责任方 `SaaS/Skill/subsystem`、缺什么、验收条件、当前替代方式和状态。平台缺口在已获授权的协作渠道自动提交并回填引用；没有渠道或权限就产出脱敏待办文件，明确“待提交”，不能声称平台已受理，也不要求小白去解释 API。业务未确认和平台未实现分别记录，避免来回推责。
 
