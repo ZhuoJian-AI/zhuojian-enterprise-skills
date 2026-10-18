@@ -102,3 +102,27 @@ def test_employee_directory_is_optional_and_restricted_to_binding_operations(ope
         "modules": [{"moduleKey": "example", "actions": [action]}],
     }
     assert bool(validate_manifest_semantics(manifest, require_semantics=False)) is not valid
+
+
+@pytest.mark.parametrize("overrides,valid", [
+    ({}, True), ({"messageDelivery": False}, True),
+    ({"messageDelivery": "true"}, False), ({"messageDelivery": 1}, False),
+    ({"operation": "update"}, False), ({"operation": "query"}, False),
+    ({"employeeDirectory": False}, False), ({"requiresConfirmation": False}, False),
+    ({"requiresConfirmation": 1}, False),
+    ({"permissionPolicy": {"group": "public_read", "mode": "public_read"}}, False),
+])
+def test_message_delivery_requires_confirmed_authorized_create(overrides, valid):
+    action = {
+        "actionKey": "example.send", "operation": "create", "aiEnabled": False,
+        "messageDelivery": True, "employeeDirectory": True, "requiresConfirmation": True,
+        **overrides,
+    }
+    manifest = {
+        "presentation": {"moduleNavigationTheme": {
+            "accentColor": "#176B57", "backgroundColor": "#FFFFFF",
+            "selectedBackgroundColor": "#E8F4EF", "selectedTextColor": "#174F43",
+        }},
+        "modules": [{"moduleKey": "example", "actions": [action]}],
+    }
+    assert bool(validate_manifest_semantics(manifest, require_semantics=False)) is not valid

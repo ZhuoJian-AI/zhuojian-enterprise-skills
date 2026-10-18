@@ -253,6 +253,7 @@
         "operation": {"enum": ["query", "create", "update", "delete", "export", "approve"]},
         "aiEnabled": {"type": "boolean"}, "requiresConfirmation": {"type": "boolean"},
         "employeeDirectory": {"type": "boolean", "description": "Opt in to authorized employee selection for this create/update Action; never grants access by itself"},
+        "messageDelivery": {"type": "boolean", "description": "Opt in to platform-owned confirmed delivery; requires a create Action, employeeDirectory and requiresConfirmation"},
         "permissionPolicy": {
           "type": "object", "additionalProperties": false,
           "required": ["group", "mode"],
@@ -267,7 +268,17 @@
         "inputSchema": {"$ref": "#/$defs/inputSchema"},
         "resultSchema": {"$ref": "#/$defs/schema"},
         "platformAiCapability": {"$ref": "#/$defs/platformAiCapability"}
-      }
+      },
+      "allOf": [{
+        "if": {"required": ["messageDelivery"], "properties": {"messageDelivery": {"const": true}}},
+        "then": {
+          "required": ["employeeDirectory", "requiresConfirmation"],
+          "properties": {
+            "operation": {"const": "create"}, "employeeDirectory": {"const": true},
+            "requiresConfirmation": {"const": true}
+          }
+        }
+      }]
     },
     "events": {
       "type": "object", "additionalProperties": false,

@@ -209,6 +209,47 @@ class DeliveryValidationTests(unittest.TestCase):
                     app["modules"][0]["actions"][1].update(operation=operation, requiresConfirmation=confirmed)
                     self.assertTrue(MODULE.validate_delivery(delivery(), app))
 
+    def test_explicit_actor_private_draft_exception_accepts_create_update_only(self):
+        for operation in ("create", "update"):
+            document, app = delivery(), manifest()
+            app["modules"][0]["actions"][1].update(operation=operation, requiresConfirmation=False)
+            document["journeys"][0]["bindings"][1]["privateDraft"] = {
+                "owner": "actor", "effects": "local_only", "evidenceRefs": ["synthetic/own-draft-no-channel"],
+            }
+            before = copy.deepcopy((document, app))
+            self.assertEqual(MODULE.validate_delivery(document, app, True), [])
+            self.assertEqual((document, app), before)
+
+    def test_private_draft_declaration_cannot_relax_send_delete_approve_or_hide_missing_evidence(self):
+        for change in ("delete", "approve", "query", "export", "send", "invalid_send_flag", "missing_evidence",
+                       "other_owner", "shared_effects", "malformed", "extra_field", "numeric_confirmation"):
+            with self.subTest(change=change):
+                document, app = delivery(), manifest()
+                action = app["modules"][0]["actions"][1]
+                action.update(operation="create", requiresConfirmation=False)
+                binding = document["journeys"][0]["bindings"][1]
+                draft = {"owner": "actor", "effects": "local_only", "evidenceRefs": ["synthetic/draft-proof"]}
+                binding["privateDraft"] = draft
+                if change in {"delete", "approve", "query", "export"}:
+                    action["operation"] = change
+                elif change == "send":
+                    action["messageDelivery"] = True
+                elif change == "invalid_send_flag":
+                    action["messageDelivery"] = 0
+                elif change == "missing_evidence":
+                    draft["evidenceRefs"] = []
+                elif change == "other_owner":
+                    draft["owner"] = "department"
+                elif change == "shared_effects":
+                    draft["effects"] = "published"
+                elif change == "malformed":
+                    binding["privateDraft"] = True
+                elif change == "extra_field":
+                    draft["allowSend"] = True
+                elif change == "numeric_confirmation":
+                    action["requiresConfirmation"] = 0
+                self.assertTrue(MODULE.validate_delivery(document, app, True))
+
     def test_verified_requires_each_platform_dimension_and_evidence(self):
         for field in ("deployed", "tenantEnabled", "actorAuthorized"):
             for value in ("unknown", "no"):

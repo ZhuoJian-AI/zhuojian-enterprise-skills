@@ -520,6 +520,16 @@ def validate_manifest_semantics(manifest: object, *, require_semantics: bool) ->
                 f"Action {action_key} {error}"
                 for error in validate_permission_policy(action.get("permissionPolicy"), action.get("operation"))
             )
+            if "messageDelivery" in action:
+                delivery = action["messageDelivery"]
+                if type(delivery) is not bool:
+                    failures.append(f"Action {action_key} messageDelivery 必须是布尔值")
+                elif delivery and (
+                    action.get("operation") != "create"
+                    or action.get("employeeDirectory") is not True
+                    or action.get("requiresConfirmation") is not True
+                ):
+                    failures.append(f"Action {action_key} messageDelivery 必须是启用员工目录及本人确认的 create")
             if "employeeDirectory" in action:
                 directory = action["employeeDirectory"]
                 policy = action.get("permissionPolicy") or {}
