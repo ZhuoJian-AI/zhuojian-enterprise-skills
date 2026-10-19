@@ -10,6 +10,49 @@ import pytest
 from scripts import publish_subsystem
 
 
+def test_default_registration_preserves_legacy_payload_without_capability_call(monkeypatch):
+    request = mock.Mock(side_effect=AssertionError("unexpected network"))
+    monkeypatch.setattr(publish_subsystem, "call_json", request)
+    assert publish_subsystem.initial_access_payload("https://platform.test", "secret", "runtime_developer") == {}
+    request.assert_not_called()
+
+
+def closed_capabilities():
+    return {"protocol": "zhuojian-platform-capabilities", "features": {
+        "initialApplicationAccess": {"supported": True, "version": 1,
+        "policies": ["runtime_developer", "disabled"], "scope": "new-application-only",
+        "disabledSuppressesAutomaticGrants": True}}}
+
+
+@pytest.mark.parametrize("field,value", [
+    ("supported", False), ("version", 0), ("policies", ["runtime_developer"]),
+    ("scope", "unknown"), ("disabledSuppressesAutomaticGrants", False),
+])
+def test_closed_registration_refuses_incomplete_capability(monkeypatch, field, value):
+    capabilities = closed_capabilities()
+    capabilities["features"]["initialApplicationAccess"][field] = value
+    monkeypatch.setattr(publish_subsystem, "call_json", mock.Mock(return_value=capabilities))
+    with pytest.raises(SystemExit, match="已拒绝登记"):
+        publish_subsystem.initial_access_payload("https://platform.test", "secret", "disabled")
+
+
+@pytest.mark.parametrize("capabilities", [{}, {"features": {}}, {"features": {"initialApplicationAccess": {}}}])
+def test_closed_registration_refuses_old_server(monkeypatch, capabilities):
+    monkeypatch.setattr(publish_subsystem, "call_json", mock.Mock(return_value=capabilities))
+    with pytest.raises(SystemExit, match="已拒绝登记"):
+        publish_subsystem.initial_access_payload("https://platform.test", "secret", "disabled")
+
+
+def test_closed_registration_requires_authenticated_capability(monkeypatch):
+    request = mock.Mock(return_value=closed_capabilities())
+    monkeypatch.setattr(publish_subsystem, "call_json", request)
+    assert publish_subsystem.initial_access_payload("https://platform.test", "secret", "disabled") == {"initial_access_policy": "disabled"}
+    request.assert_called_once_with("https://platform.test/api/v1/ecs-publisher/platform-capabilities", "secret")
+    request.side_effect = SystemExit("HTTP 401")
+    with pytest.raises(SystemExit, match="401"):
+        publish_subsystem.initial_access_payload("https://platform.test", "secret", "disabled")
+
+
 def runtime_release(commit: str = "a" * 40) -> dict:
     return {
         "managedBy": "zhuojian-runtime-admin/v1",
