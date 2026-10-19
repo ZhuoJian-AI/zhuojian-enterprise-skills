@@ -375,6 +375,26 @@ def registration_auth_payload(
     return {"integration_secret": values["ZHUOJIAN_INTEGRATION_SECRET"].strip()}
 
 
+def initial_access_payload(platform_url: str, token: str, policy: str) -> dict:
+    """Refuse closed registration when an older server would ignore the field."""
+    if policy == "runtime_developer":
+        return {}
+    if policy != "disabled":
+        raise SystemExit("Unsupported initial access policy")
+    capabilities = call_json(platform_url + "/api/v1/ecs-publisher/platform-capabilities", token)
+    feature = (capabilities.get("features") or {}).get("initialApplicationAccess") or {}
+    if not (
+        capabilities.get("protocol") == "zhuojian-platform-capabilities"
+        and feature.get("supported") is True
+        and feature.get("version") == 1
+        and "disabled" in feature.get("policies", [])
+        and feature.get("scope") == "new-application-only"
+        and feature.get("disabledSuppressesAutomaticGrants") is True
+    ):
+        raise SystemExit("平台未确认关闭权限登记能力，已拒绝登记；请先发布匹配的平台版本")
+    return {"initial_access_policy": "disabled"}
+
+
 @with_runtime_lock
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -396,6 +416,11 @@ def main() -> int:
         help="回滚后按 Runtime 当前运行镜像登记，不使用 Git HEAD",
     )
     parser.add_argument("--runtime-release-file", type=Path)
+    parser.add_argument(
+        "--initial-access-policy", choices=("runtime_developer", "disabled"),
+        default="runtime_developer",
+        help="新应用使用 disabled 时停用应用与助手，并禁止自动授权；不撤销既有应用权限",
+    )
     args = parser.parse_args()
 
     project = args.project_path.resolve()
@@ -476,6 +501,7 @@ def main() -> int:
     registration_auth = registration_auth_payload(app_environment, contract_revision)
 
     metadata = load_object(args.release_metadata, "发布元数据") if args.release_metadata else {}
+    access_payload = initial_access_payload(platform_url, runtime_credential, args.initial_access_policy)
     result = call_json(
         platform_url + "/api/v1/ecs-publisher/modules/register",
         runtime_credential,
@@ -488,6 +514,7 @@ def main() -> int:
             "source_commit": commit,
             "image_ref": image_ref,
             "release_metadata": metadata,
+            **access_payload,
         },
     )
     summary = {
@@ -496,7 +523,12 @@ def main() -> int:
         "applicationId": result.get("application_id"),
         "contractRevision": result.get("contract_revision"),
         "sourceCommit": result.get("last_success_commit"),
-        "authorization": "runtime developer managed; business grants inherited within ceiling",
+        "requestedInitialAccessPolicy": args.initial_access_policy,
+        "authorization": (
+            "disabled registration requested; verify persisted flags and zero grants"
+            if args.initial_access_policy == "disabled"
+            else "existing persisted policy or runtime developer managed; verify grants"
+        ),
     }
     manifest_digest = hashlib.sha256(
         json.dumps(
