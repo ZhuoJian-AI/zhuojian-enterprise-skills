@@ -1,7 +1,5 @@
 # 当前任务
 
-- [ ] **COMPANY-SINGLE-SERVER-20261019**（@company-server-policy）：通用 Builder 明确一家公司一台正式业务 ECS／现役 Runtime，多个项目同机隔离；同步部署 Skill 入口。仅规范和配套稳定发布，不迁移现有主机，不覆盖正在收尾的 PR73／1.1.36 发布。
-
 - [x] **PLATFORM-PROJECT-REGISTRATION-20261016 已发布并双账号同步**（@codex-root）：PR70/main `b4bb1b6`、PR/main CI通过；core1.1.34 / bundle-v1.4.35已发布，九资产匿名SHA、原更新器新装/隔离升级/CURRENT通过。两个账号各6项Builder及5项部署Skill授权更新SHA一致，原有非范围文件保留；实际账号均CURRENT1.1.34。企业子系统归所属企业，独立项目归平台项目清单，强制域名/管理入口实点及原站兼容。未部署任何运行时。见[交接](docs/handoff/2026-10-16_platform-project-registration.md)。
 
 - [x] **SHARED-MODEL-CATALOG-20261016**（@codex-shared-gateway）：PR68/main `6622588`、main CI `38851040609`成功；1.1.33 / bundle-v1.4.34正式发布，九资产匿名hash、原更新器新装/CURRENT与隔离1.1.32升级通过；双账号备份后各5指定文件与公开包一致、CURRENT1.1.33，无关内容保持。未改Runtime/Schema/模板或其他Skill，旧学院和业务服务未发布；见shared-model-catalog-contract正式发布补充。

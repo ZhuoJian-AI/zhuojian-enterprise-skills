@@ -15,6 +15,7 @@ description: "让 AI 把业务需求转成页面与统一助手可完成的业�
 
 - 用户明确说“初始化服务器”时，执行管理员模式。
 - 其他情况均执行业务模式。
+- 一家公司使用一台正式业务 ECS，同一台服务器上的一个现役 Runtime 承载多个项目／子系统。新增项目先复用该企业已登记的服务器，不按项目另开服务器；选址、容量和历史多机边界见 [企业单服务器与多项目](references/company-server-policy.md)。
 - 优先扩展服务器上的现有系统；只有确实需要独立域名、数据库、发布周期或故障隔离时才新建系统。
 - 暂时只能 iframe 接入的旧系统要标记“兼容模式”，不能说成已经完成原生接入。
 
@@ -103,6 +104,8 @@ python <skill>/scripts/e2e_acceptance.py --help
 - 新系统使用契约 `2.5`；已有 `2.4/2.5` 系统的普通维护保持原版本。`2.4 → 2.5` 只在用户明确要求迁移时执行。登录、权限和平台接入的技术细节由模板、Runtime 与 [平台接入协议](references/platform-contract.md) 自动落实，不转嫁给业务用户。
 
 ## 管理员模式
+
+先按 [企业单服务器与多项目](references/company-server-policy.md) 核对公司的既有业务服务器；已初始化则复用 Runtime，不因新增项目重复初始化或另开服务器。
 
 管理员只需为每台 ECS 初始化一次。按 [管理员与服务器初始化](references/admin-bootstrap.md) 完成 Runtime、Docker、域名、数据目录、监控、备份和平台登记；发现未初始化数据盘、磁盘告警或需要调整宿主机容量布局时，必须再按 [ECS 数据盘与容量迁移](references/data-disk-capacity.md) 执行只读盘点、授权确认、精确迁移和持久化验证；网络问题按 [SSH、VPN 与代理访问](references/ssh-access.md) 排查。初始化不能以 Runtime 健康为结束：必须继续执行 [企业交接 Skill 自动同步](references/managed-handoff-skills.md) 的“初始化后的强制收尾”，检查既有系统、数据通道和服务器特例。有特殊事实时自动创建或更新独立交接 Skill，以 `enterpriseKey + runtimeId` 为主、当前公网地址为兜底登记到唯一企业 Skills 总仓库，完成 PR、稳定 Release 和无缓存解析验证；没有特殊事实时不创建空壳 Skill，并明确报告“不需要专属交接 Skill”。管理员明确要求初始化该 ECS，即授权完成这项不含秘密的配套登记，不再另问“是否登记”。发布未成功时不得把初始化任务报告为全部完成。
 
