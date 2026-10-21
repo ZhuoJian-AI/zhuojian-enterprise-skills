@@ -99,7 +99,8 @@ def write_valid_project(tmp_path: Path, contract_revision: str = "2.5") -> Path:
                     "name": "查询订单",
                     "operation": "query",
                     "aiEnabled": True,
-                    "description": "按当前角色的数据范围查询订单列表。",
+                    "description": "查看本企业全部订单列表。",
+                    "permissionPolicy": {"group": "management", "mode": "configurable", "supportedScopes": ["all"]},
                     "inputSchema": {
                         "type": "object",
                         "additionalProperties": False,

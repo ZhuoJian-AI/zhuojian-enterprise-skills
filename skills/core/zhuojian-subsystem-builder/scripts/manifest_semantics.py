@@ -107,7 +107,7 @@ def validate_permission_policy(policy: object, operation: object) -> list[str]:
         return []
     if not isinstance(policy, dict):
         return ["permissionPolicy 必须是对象"]
-    if set(policy) - {"group", "mode", "supportedScopes"}:
+    if set(policy) - {"group", "mode", "supportedScopes", "scopeLabels"}:
         return ["permissionPolicy 含未支持字段"]
     mode = policy.get("mode")
     groups = {"public_read": "public_read", "self": "personal", "configurable": "management"}
@@ -124,7 +124,82 @@ def validate_permission_policy(policy: object, operation: object) -> list[str]:
         return ["permissionPolicy 固定模式不得配置范围，管理模式必须声明支持范围"]
     if mode == "public_read" and operation != "query":
         return ["permissionPolicy 企业内公开读取仅允许 query"]
+    if "scopeLabels" in policy:
+        labels = policy["scopeLabels"]
+        if (mode != "configurable" or not isinstance(labels, dict) or set(labels) != set(scopes)
+                or any(not isinstance(label, str) or not label.strip() or len(label.strip()) > 160 for label in labels.values())):
+            return ["permissionPolicy scopeLabels 必须为每个 supportedScopes 提供完整业务能力名，且仅用于 management"]
     return []
+
+
+def permission_boundary(action: dict) -> dict:
+    """Fields that must remain identical for a reviewed legacy grant to survive."""
+    policy = action.get("permissionPolicy")
+    boundary = {field: policy.get(field) for field in ("group", "mode", "supportedScopes")} if isinstance(policy, dict) else policy
+    return {"operation": action.get("operation"), "permissionPolicy": boundary}
+
+
+def checkbox_permission_report(manifest: object, baseline: object = None) -> dict:
+    """Release gate for business capabilities; wire compatibility stays unchanged.
+
+    Older multi-scope declarations are still valid protocol 2.4/2.5 input. They
+    must be audited against the deployed baseline before a release, rather than
+    silently inheriting a role's unrelated default scope.
+    """
+    errors: list[str] = []
+    legacy: list[str] = []
+    if isinstance(manifest, dict) and isinstance(baseline, dict):
+        for field in ("applicationSlug", "enterprise"):
+            if field in manifest and manifest.get(field) != baseline.get(field):
+                errors.append(f"权限基线 {field} 与当前应用不一致，不能复用其他应用或企业的兼容清单")
+                baseline = None
+                break
+    baseline_actions = {
+        (module.get("moduleKey"), action.get("actionKey")): action
+        for module in (baseline or {}).get("modules", [])
+        for action in module.get("actions", [])
+    } if isinstance(baseline, dict) else {}
+    modules = manifest.get("modules", []) if isinstance(manifest, dict) else []
+    for module in modules if isinstance(modules, list) else []:
+        if not isinstance(module, dict):
+            continue
+        actions = module.get("actions", [])
+        for action in actions if isinstance(actions, list) else []:
+            if not isinstance(action, dict):
+                continue
+            label = f"Action {action.get('actionKey') or '<empty>'}"
+            previous = baseline_actions.get((module.get("moduleKey"), action.get("actionKey")))
+            unchanged_boundary = (
+                previous is not None and permission_boundary(previous) == permission_boundary(action)
+            )
+            policy = action.get("permissionPolicy")
+            if policy is None:
+                (legacy if unchanged_boundary else errors).append(
+                    f"{label} 必须声明 permissionPolicy，不能让管理员配置或沿用角色数据范围"
+                )
+            else:
+                policy_errors = validate_permission_policy(policy, action.get("operation"))
+                if policy_errors:
+                    errors.extend(f"{label} {error}" for error in policy_errors)
+                    continue
+                if policy.get("mode") == "configurable" and len(policy["supportedScopes"]) != 1:
+                    (legacy if unchanged_boundary else errors).append(
+                        f"{label} 旧多范围操作仅按基线兼容，须已由 SaaS 展示明确业务边界勾选；新能力应拆分固定范围 Action"
+                    )
+                    if "scopeLabels" not in policy:
+                        legacy.append(f"{label} 缺少完整 scopeLabels；管理员只能保留或取消旧授权，不能新授未说明的边界")
+            for field, maximum in (("name", 120), ("description", 1000)):
+                if not _bounded_text(action.get(field), maximum):
+                    errors.append(f"{label} {field} 必须说明业务能力及处理对象")
+            if any(marker in str(action.get("name") or "") + str(action.get("description") or "") for marker in (
+                "沿用角色范围", "按当前角色的数据范围", "管理员选择数据范围", "本人记录", "范围未声明", "修复范围",
+            )):
+                errors.append(f"{label} 说明必须讲清业务对象，不能把数据范围选择交给管理员")
+    return {"errors": errors, "legacyUpgradeRequired": legacy, "grantsModified": False}
+
+
+def validate_checkbox_permissions(manifest: object, baseline: object = None) -> list[str]:
+    return checkbox_permission_report(manifest, baseline)["errors"]
 
 
 def _bounded_text(value: object, maximum: int) -> bool:

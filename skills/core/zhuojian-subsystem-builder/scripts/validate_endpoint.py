@@ -13,7 +13,7 @@ from urllib.parse import urlencode, urljoin, urlsplit
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 from contract_versions import require_supported_contract_revision
-from manifest_semantics import validate_manifest_semantics
+from manifest_semantics import checkbox_permission_report, validate_manifest_semantics
 from publish_subsystem import load_app_environment
 
 
@@ -292,6 +292,7 @@ def main() -> int:
     parser.add_argument("--app-env-file", type=Path, help="Runtime 管理的应用凭证文件；默认按域名推断")
     parser.add_argument("--expect-min-modules", type=int, default=1, help="至少应发现多少个子模块")
     parser.add_argument("--expect-module-key", action="append", default=[], help="必须存在的 moduleKey，可重复")
+    parser.add_argument("--permission-baseline", type=Path, help="已部署且已核对业务勾选界面的旧 Manifest；仅兼容未改变的 Action 边界")
     args = parser.parse_args()
     if args.expect_min_modules < 1:
         parser.error("--expect-min-modules 必须大于等于 1")
@@ -344,6 +345,10 @@ def main() -> int:
         manifest,
         require_semantics=contract_revision == "2.5",
     )
+    baseline = json.loads(args.permission_baseline.read_text(encoding="utf-8")) if args.permission_baseline else None
+    permission_report = checkbox_permission_report(manifest, baseline)
+    semantic_failures.extend(permission_report["errors"])
+    VALIDATION_WARNINGS.extend(permission_report["legacyUpgradeRequired"])
     if semantic_failures:
         raise SystemExit("Manifest 业务语义与工具契约不合格：\n- " + "\n- ".join(semantic_failures))
     if contract_revision != token_kind:

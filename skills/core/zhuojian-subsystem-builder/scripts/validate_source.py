@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 
 from contract_versions import detect_project_contract_revision
-from manifest_semantics import validate_manifest_semantics
+from manifest_semantics import checkbox_permission_report, validate_manifest_semantics
 
 TEXT_SUFFIXES = {
     ".html", ".js", ".jsx", ".ts", ".tsx", ".vue", ".svelte", ".py",
@@ -177,7 +177,9 @@ def main() -> int:
         action="store_true",
         help="环境已明确启用 OSS 时追加；校验企业文件网关标记",
     )
+    parser.add_argument("--permission-baseline", type=Path, help="已部署且已核对业务勾选界面的旧 Manifest；仅兼容未改变的 Action 边界")
     args = parser.parse_args()
+    baseline = json.loads(args.permission_baseline.read_text(encoding="utf-8")) if args.permission_baseline else None
     root = Path(args.path).expanduser().resolve()
     if not root.is_dir():
         parser.error(f"目录不存在：{root}")
@@ -203,6 +205,10 @@ def main() -> int:
             manifest,
             require_semantics=contract_revision == "2.5",
         )
+        permission_report = checkbox_permission_report(manifest, baseline)
+        semantic_failures.extend(permission_report["errors"])
+        for upgrade in permission_report["legacyUpgradeRequired"]:
+            print("PERMISSION UPGRADE REQUIRED: " + upgrade)
         platform_ai_actions: list[str] = []
         modules = manifest.get("modules") if isinstance(manifest, dict) else []
         for module in modules if isinstance(modules, list) else []:

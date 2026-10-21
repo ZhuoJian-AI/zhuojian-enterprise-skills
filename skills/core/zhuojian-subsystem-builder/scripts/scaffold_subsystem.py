@@ -43,6 +43,10 @@ def main() -> int:
     parser.add_argument("--application-name", required=True)
     parser.add_argument("--module-key", required=True)
     parser.add_argument("--module-name", required=True)
+    parser.add_argument(
+        "--record-access", required=True, choices=("personal-created", "enterprise-shared"),
+        help="开发者按已确认业务选择骨架：自己创建的记录或企业共享记录；不从CRUD或管理员角色猜测。",
+    )
     parser.add_argument("--department", action="append", default=[], help="可重复：key:显示名:role")
     parser.add_argument(
         "--platform-ai-capability",
@@ -173,6 +177,8 @@ def main() -> int:
         }},
     }
     action_rows = []
+    record_subject = "自己创建的" if args.record_access == "personal-created" else "本企业全部"
+    record_scope = "self" if args.record_access == "personal-created" else "all"
     for operation, confirm in actions:
         verb = operation_name[operation]
         writes_data = operation in {"create", "update", "delete", "approve"}
@@ -196,12 +202,12 @@ def main() -> int:
             ai_tool["confirmationPrompt"] = f"即将{verb}{args.module_name}业务数据，是否确认继续？"
         action_rows.append({
             "actionKey": f"{module_key}.{operation}",
-            "name": f"{verb}{args.module_name}",
-            "description": f"{verb}{args.module_name}业务数据，并返回可供页面和平台 AI 继续处理的结构化结果。",
+            "name": f"{verb}{record_subject}{args.module_name}",
+            "description": f"{verb}{record_subject}{args.module_name}记录；只处理当前企业的数据。",
             "operation": operation,
             "permissionPolicy": {
                 "group": "management", "mode": "configurable",
-                "supportedScopes": ["self", "department", "department_and_children", "custom_departments", "all"],
+                "supportedScopes": [record_scope],
             },
             "aiEnabled": True,
             "requiresConfirmation": confirm,
@@ -264,15 +270,15 @@ def main() -> int:
         name, input_kinds, properties = specialist_specs[capability]
         action_rows.append({
             "actionKey": f"{module_key}.{capability.replace('.', '_')}",
-            "name": name,
+            "name": f"{record_subject}{args.module_name}：{name}",
             "description": (
-                f"通过灼见 SaaS 对{args.module_name}输入执行{name}，"
+                f"通过灼见 SaaS 对{record_subject}{args.module_name}输入执行{name}，"
                 "只返回可人工校正的草稿，不直接写业务数据。"
             ),
             "operation": "query",
             "permissionPolicy": {
                 "group": "management", "mode": "configurable",
-                "supportedScopes": ["self", "department", "department_and_children", "custom_departments", "all"],
+                "supportedScopes": [record_scope],
             },
             "aiEnabled": True,
             "requiresConfirmation": False,

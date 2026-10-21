@@ -24,9 +24,9 @@ try:
 except ModuleNotFoundError:  # imported as scripts.publish_subsystem in tests
     from scripts.contract_versions import require_supported_contract_revision
 try:
-    from manifest_semantics import validate_navigation_theme
+    from manifest_semantics import checkbox_permission_report, validate_navigation_theme
 except ModuleNotFoundError:  # imported as scripts.publish_subsystem in tests
-    from scripts.manifest_semantics import validate_navigation_theme
+    from scripts.manifest_semantics import checkbox_permission_report, validate_navigation_theme
 
 try:  # Linux production dependency; Windows remains usable for --help/tests.
     import fcntl
@@ -375,6 +375,14 @@ def registration_auth_payload(
     return {"integration_secret": values["ZHUOJIAN_INTEGRATION_SECRET"].strip()}
 
 
+def require_publishable_checkbox_permissions(manifest: dict, baseline: dict | None = None) -> None:
+    report = checkbox_permission_report(manifest, baseline)
+    if report["errors"]:
+        raise SystemExit("业务能力勾选授权未通过登记校验：\n- " + "\n- ".join(report["errors"]))
+    for upgrade in report["legacyUpgradeRequired"]:
+        print("PERMISSION UPGRADE REQUIRED: " + upgrade)
+
+
 def initial_access_payload(platform_url: str, token: str, policy: str) -> dict:
     """Refuse closed registration when an older server would ignore the field."""
     if policy == "runtime_developer":
@@ -410,6 +418,7 @@ def main() -> int:
     parser.add_argument("--runtime-credential-file", type=Path)
     parser.add_argument("--app-env-file", type=Path)
     parser.add_argument("--release-metadata", type=Path)
+    parser.add_argument("--permission-baseline", type=Path, help="已部署且已核对业务勾选界面的旧 Manifest；不修改角色或放宽边界")
     parser.add_argument(
         "--use-running-release",
         action="store_true",
@@ -476,6 +485,8 @@ def main() -> int:
 
     manifest = call_json(base_url + "/api/integration/manifest", manifest_token)
     require_publishable_navigation_theme(manifest)
+    permission_baseline = load_object(args.permission_baseline, "已核对权限基线") if args.permission_baseline else None
+    require_publishable_checkbox_permissions(manifest, permission_baseline)
     application_slug = str(manifest.get("applicationSlug") or "")
     application_name = str(manifest.get("applicationName") or "")
     enterprise_key = str((manifest.get("enterprise") or {}).get("key") or "")

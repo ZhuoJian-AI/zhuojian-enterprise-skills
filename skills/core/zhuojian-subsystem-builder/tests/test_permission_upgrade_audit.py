@@ -7,7 +7,7 @@ from audit_permission_upgrade import audit
 
 
 def manifest(policy=None):
-    action = {"actionKey": "records.query", "operation": "query"}
+    action = {"actionKey": "records.query", "operation": "query", "name": "查看本企业商品", "description": "查看本企业全部商品资料。"}
     if policy is not None:
         action["permissionPolicy"] = policy
     return {"contractRevision": "2.4", "modules": [{"moduleKey": "records", "actions": [action]}]}
