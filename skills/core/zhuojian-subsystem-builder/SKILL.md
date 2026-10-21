@@ -66,7 +66,7 @@ python <skill>/scripts/e2e_acceptance.py --help
 
 涉及外部宿主接入、新增或变更面向 AI 的 Action、发现目录或文件交付时，读取 [企业插件与外部宿主接入](references/external-agent-access.md)。插件通用，企业与员工由 SaaS 授权服务绑定；稳定发现/调用入口每次读取最新获权目录，Schema 摘要过期须拒绝并重新发现。业务 Wiki 只作背景，客户端工具批准不替代业务确认；不向员工下发 SSH/root，不承诺所有客户端即时热刷新，也不因插件接入关闭浏览器助手。
 
-涉及角色、公共内容或个人记录时，读取 [操作权限与记录归属](references/action-permission-scopes.md)。可打开页面、可执行操作、可处理的记录分别校验；不能以角色不是全企业范围为由拒绝整页。新建及本次新增 Action 必须声明并实际实现 `permissionPolicy`；既有 2.4/2.5 缺失策略仍兼容，但必须输出待升级清单，不自动放宽。
+涉及角色、公共内容或个人记录时，读取 [操作权限与记录归属](references/action-permission-scopes.md)。企业管理员只勾选业务能力，名称和说明讲清操作与处理对象，不展示“本人／部门／全企业”“沿用角色范围”等通用范围配置。新建、新增及改变权限边界的 Action 必须声明并实现固定含义的 `permissionPolicy`（management 仅单项 supportedScopes）；不同边界拆独立业务能力，不能按 CRUD 猜测或统一放宽。源码、端点和登记脚本强制校验；既有 2.4/2.5 缺失或多范围操作仅凭已部署精确基线兼容并输出升级清单，SaaS 须以明确业务勾选承载，旧授权不得悄悄改变。
 
 新建、接入旧系统或修改登录、权限、人员归属时，必须读取 [统一身份的入口核查与验收](references/identity-acceptance.md)。核查全部实际业务入口而不只看 Manifest；旧密码/接口不能绕过 SaaS，操作者与被选择人员分开，真实业务表单和遗留项必须闭环，技术预检不能代替业务验收。
 

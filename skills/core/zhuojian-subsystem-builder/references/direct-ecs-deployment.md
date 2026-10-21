@@ -27,7 +27,7 @@
 ## 首次发布
 
 1. 读取 `/etc/zhuojian/runtime.json`，确认企业、组织 UUID、域名后缀、目录、端口范围、构建能力和登记凭证引用。
-2. 用 `scripts/scaffold_subsystem.py` 在规范项目目录建立骨架，把 Runtime 档案中的 `enterpriseKey` 传给 `--company-slug`，把平台组织资料或已核对的公司名称传给 `--company-name`；若目录已存在，改为检查现有项目，禁止覆盖。
+2. 用 `scripts/scaffold_subsystem.py` 在规范项目目录建立骨架，把 Runtime 档案中的 `enterpriseKey` 传给 `--company-slug`，把平台组织资料或已核对的公司名称传给 `--company-name`；开发AI按已确认业务显式传 `--record-access personal-created|enterprise-shared`，不让管理员选择技术范围，混合业务逐Action设计。若目录已存在，检查现有项目，禁止覆盖。
 3. 在开发代码前先设计 Action 目录；页面按钮和 `/api/integration/actions/{actionKey}` 必须调用同一个业务服务函数。
 4. 初始化本地 Git，提交可审查的初始版本。不得创建 GitHub 仓库、GitLab 仓库或 Coolify Application。
 5. 运行源码、Schema 和业务测试。失败时修代码，不发布半成品。

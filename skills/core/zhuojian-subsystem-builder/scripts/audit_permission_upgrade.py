@@ -5,7 +5,7 @@ import argparse
 import json
 from pathlib import Path
 
-from manifest_semantics import validate_permission_policy
+from manifest_semantics import checkbox_permission_report
 
 
 def action_index(manifest: dict) -> dict[tuple[str, str], dict]:
@@ -19,14 +19,10 @@ def action_index(manifest: dict) -> dict[tuple[str, str], dict]:
 def audit(current: dict, baseline: dict | None = None) -> dict:
     old = action_index(baseline or {})
     new = action_index(current)
-    errors, legacy, changes = [], [], []
+    report = checkbox_permission_report(current, baseline)
+    errors, legacy, changes = report["errors"], report["legacyUpgradeRequired"], []
     for key, action in sorted(new.items()):
         label = "/".join(key)
-        policy = action.get("permissionPolicy")
-        if policy is None:
-            (legacy if key in old else errors).append(label + ": 范围未声明")
-        else:
-            errors.extend(label + ": " + message for message in validate_permission_policy(policy, action.get("operation")))
         if key not in old:
             changes.append({"resource": label, "status": "新增，核对授权"})
         elif action != old[key]:

@@ -10,14 +10,15 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from pathlib import Path
 from urllib.error import HTTPError
 from urllib.parse import urljoin
 from urllib.request import Request, urlopen
 
 try:
-    from manifest_semantics import validate_navigation_theme
+    from manifest_semantics import checkbox_permission_report, validate_navigation_theme
 except ModuleNotFoundError:  # imported as scripts.register_subsystem in tests
-    from scripts.manifest_semantics import validate_navigation_theme
+    from scripts.manifest_semantics import checkbox_permission_report, validate_navigation_theme
 
 
 def require_navigation_theme(manifest: dict) -> None:
@@ -47,12 +48,19 @@ def main() -> int:
     parser.add_argument("--admin-token-env", default="ZHUOJIAN_ADMIN_TOKEN")
     parser.add_argument("--integration-token-env", default="ZHUOJIAN_SUBSYSTEM_TOKEN")
     parser.add_argument("--apply", action="store_true", help="真正创建并同步；省略时只做发现")
+    parser.add_argument("--permission-baseline", type=Path, help="已部署且已核对业务勾选界面的旧 Manifest")
     args = parser.parse_args()
     admin_token, integration_token = os.getenv(args.admin_token_env, ""), os.getenv(args.integration_token_env, "")
     if not admin_token or not integration_token:
         raise SystemExit("管理员 Token 和模块接入 Token 必须通过环境变量提供。")
     manifest = call(args.base_url.rstrip("/") + "/api/integration/manifest", integration_token, "GET")
     require_navigation_theme(manifest)
+    baseline = json.loads(args.permission_baseline.read_text(encoding="utf-8")) if args.permission_baseline else None
+    permission_report = checkbox_permission_report(manifest, baseline)
+    if permission_report["errors"]:
+        raise SystemExit("业务能力勾选授权未通过登记校验：\n- " + "\n- ".join(permission_report["errors"]))
+    for upgrade in permission_report["legacyUpgradeRequired"]:
+        print("PERMISSION UPGRADE REQUIRED: " + upgrade)
     api = args.platform_url.rstrip("/") + "/api/v1/"
     discovery = call(
         urljoin(api, f"organizations/{args.organization_id}/applications/discover"), admin_token, "POST",
@@ -73,7 +81,7 @@ def main() -> int:
     })
     synced = call(urljoin(api, f"applications/{app_id}/integration/sync"), admin_token, "POST")
     print(json.dumps({**summary, "status": "registered", "applicationId": app_id, "sync": synced.get("status"), "grants": "none"}, ensure_ascii=False))
-    print("应用已发现和同步，但没有自动授权。请管理员在“角色与模块权限”中把页面和 Action 授权给 SaaS 中已有的平台角色，并设置角色数据范围。")
+    print("应用已发现和同步，但没有自动授权。请管理员在“角色与模块权限”中为已有业务角色勾选页面和业务能力。")
     return 0
 
 
