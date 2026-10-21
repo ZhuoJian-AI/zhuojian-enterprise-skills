@@ -1,0 +1,13 @@
+# Permission metadata rollback contract
+
+Core candidate 1.1.38 is a documentation-only follow-up to core1.1.37 / bundle-v1.4.38. The only packaged paths changed are the action-permission reference, version metadata, changelog and existing version assertion. No Schema, template, updater or execution logic changes; integration revisions remain 2.4/2.5. Existing Releases stay immutable.
+
+The integration review reproduced an actual compatibility boundary: the old strict ActionPermissionPolicy rejects persisted scopeLabels with extra_forbidden, and scope_for_action normalizes the stored policy during ordinary authorization. A database-compatible old image therefore cannot be described as a direct rollback after a new Manifest is registered.
+
+Isolated validation used the exact old/new Pydantic policy source, with no database access, business records, production write or Runtime switch. For the three affected applications, old manifests contained 14/8/9 Actions and all were accepted by both old and new validators. Candidate manifests were all accepted by the new validator; the old validator rejected exactly 7/2/1 Actions, solely for scopeLabels. The old Control and business validators were byte-identical. The old product query still supports all, so restoring the old contract need not undo the approved shared-query selection.
+
+The required sequence is now explicit: deploy all real SaaS consumers first; only then register new metadata. Before returning to a SaaS version that rejects the field, restore each affected subsystem's actual old endpoint through its original Runtime rollback and formally publish its old Manifest while the newer SaaS still accepts both formats. Confirm that every stored Action is readable by the old validator before restoring SaaS/Control/static slots. Preserve role grants, write/export boundaries and explicit denials. Direct database editing or a stored-field-only cleanup is not an acceptable rollback and can be undone by source synchronization.
+
+Candidate verification: 73 focused permission/version/audit tests passed; the full canonical suite passed 597 tests with 53 existing conditional skips. Skill quick validation and git diff checks passed. No new tests mirror the prose-only addition; existing version assertions and authorization regressions remain the release gate.
+
+At candidate preparation this is a reviewed contract change, not a production rollback. PR checks, stable publication, anonymous asset verification and scoped two-account synchronization are recorded separately. The release owner maintains the executable runtime rollback plan and live acceptance.
