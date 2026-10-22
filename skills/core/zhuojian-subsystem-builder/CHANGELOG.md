@@ -1,5 +1,12 @@
 # 更新记录
 
+## 1.1.40 - 2026-10-22
+
+- 明确角色workspace_access/platform_access保存后的role-workspaces-v1完整鉴权语义下限：schema桥、旧Manifest兼容或能力标记均不构成安全回退证明；未经审查和验证的完整授权逆迁移，不得清空JSON、降库或回旧SaaS复活旧权限码／通配授权。
+- 内置文件／语音按模块key退役该角色的旧权限来源；已迁移key保留显式关闭，不能删除或置null恢复旧码，基础个人owner／企业公共／D0查看下载来源独立。
+- 文件复制、归档打包、原件派生、原始字节及MCP下载签票重核源download，目标写入另核create；解析文本读取仍按read/query，不因缺下载许可而整体拒绝。
+- 仅同步契约参考和版本；保持接入2.4/2.5、现有Schema、模板和执行代码，不部署SaaS、Runtime或业务系统，不覆盖旧Release。
+
 ## 1.1.39 - 2026-10-22
 
 - 新增显式management/workspaces固定岗位业务策略：D0默认部门加授予精确Action的同角色追加部门，wire维持既有department_ids；无部门不回退all，部门实时存活/企业校验及撤权由SaaS负责。共享、固定个人、旧configurable边界不自动转换。
