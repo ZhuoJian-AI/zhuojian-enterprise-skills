@@ -36,6 +36,17 @@ def test_single_business_capability_is_valid_for_both_revisions(revision, scope)
     assert not validate_checkbox_permissions(current)
 
 
+@pytest.mark.parametrize("revision", ["2.4", "2.5"])
+def test_fixed_workspaces_is_explicit_and_cannot_be_whitelisted_as_unchanged_legacy(revision):
+    baseline = manifest(["all"])
+    current = copy.deepcopy(baseline)
+    current["contractRevision"] = revision
+    current["modules"][0]["actions"][0]["permissionPolicy"] = {"group": "management", "mode": "workspaces"}
+    assert not validate_checkbox_permissions(current)
+    assert audit(current, baseline)["runtimeVerificationRequired"] is True
+    assert current["modules"][0]["actions"][0]["permissionPolicy"] != baseline["modules"][0]["actions"][0]["permissionPolicy"]
+
+
 def test_wire_compatibility_does_not_remove_the_new_publish_gate():
     current = manifest(["self", "all"])
     action = current["modules"][0]["actions"][0]

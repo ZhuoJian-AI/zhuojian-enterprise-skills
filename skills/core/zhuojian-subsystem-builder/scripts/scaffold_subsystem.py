@@ -44,8 +44,8 @@ def main() -> int:
     parser.add_argument("--module-key", required=True)
     parser.add_argument("--module-name", required=True)
     parser.add_argument(
-        "--record-access", required=True, choices=("personal-created", "enterprise-shared"),
-        help="开发者按已确认业务选择骨架：自己创建的记录或企业共享记录；不从CRUD或管理员角色猜测。",
+        "--record-access", required=True, choices=("personal-created", "enterprise-shared", "department-workspaces"),
+        help="开发者按已确认业务选择骨架：自己创建、企业共享或有稳定归属部门的岗位业务；不从CRUD或角色猜测。",
     )
     parser.add_argument("--department", action="append", default=[], help="可重复：key:显示名:role")
     parser.add_argument(
@@ -177,8 +177,13 @@ def main() -> int:
         }},
     }
     action_rows = []
-    record_subject = "自己创建的" if args.record_access == "personal-created" else "本企业全部"
+    record_subject = {"personal-created": "自己创建的", "enterprise-shared": "本企业全部", "department-workspaces": "工作部门内的"}[args.record_access]
     record_scope = "self" if args.record_access == "personal-created" else "all"
+    record_policy = (
+        {"group": "management", "mode": "workspaces"}
+        if args.record_access == "department-workspaces"
+        else {"group": "management", "mode": "configurable", "supportedScopes": [record_scope]}
+    )
     for operation, confirm in actions:
         verb = operation_name[operation]
         writes_data = operation in {"create", "update", "delete", "approve"}
@@ -205,10 +210,7 @@ def main() -> int:
             "name": f"{verb}{record_subject}{args.module_name}",
             "description": f"{verb}{record_subject}{args.module_name}记录；只处理当前企业的数据。",
             "operation": operation,
-            "permissionPolicy": {
-                "group": "management", "mode": "configurable",
-                "supportedScopes": [record_scope],
-            },
+            "permissionPolicy": dict(record_policy),
             "aiEnabled": True,
             "requiresConfirmation": confirm,
             "aiTool": ai_tool,
@@ -276,10 +278,7 @@ def main() -> int:
                 "只返回可人工校正的草稿，不直接写业务数据。"
             ),
             "operation": "query",
-            "permissionPolicy": {
-                "group": "management", "mode": "configurable",
-                "supportedScopes": [record_scope],
-            },
+            "permissionPolicy": dict(record_policy),
             "aiEnabled": True,
             "requiresConfirmation": False,
             "aiTool": {

@@ -1,5 +1,12 @@
 # 更新记录
 
+## 1.1.39 - 2026-10-22
+
+- 新增显式management/workspaces固定岗位业务策略：D0默认部门加授予精确Action的同角色追加部门，wire维持既有department_ids；无部门不回退all，部门实时存活/企业校验及撤权由SaaS负责。共享、固定个人、旧configurable边界不自动转换。
+- 骨架显式支持department-workspaces，保留稳定部门归属，新增检查目标，普通修改不转部门；固定策略拒绝宽泛scope。专用路由可固定expected_context并拒绝另一资源的合法同operation授权；补畸形scope和业务行为负例。
+- 明确批量导入新增/更新各自鉴权及原子性、文件/语音统一模块与基础能力来源、旧会话/确认/导出撤权验收；技术预检输出authorization_results待验收，不冒充真实鉴权通过。
+- 先发布全部兼容SaaS消费者再登记新mode，回退先恢复旧Manifest；保持2.4/2.5，不修改旧角色、客户数据或现网Manifest，Skill更新不等于运行时修复。
+
 ## 1.1.38 - 2026-10-22
 
 - 明确展示元数据也有持久化与旧消费者兼容边界：登记前隔离验证旧／候选Manifest与旧／新策略校验器，先上线所有实际SaaS消费端。

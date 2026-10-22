@@ -110,9 +110,11 @@ def validate_permission_policy(policy: object, operation: object) -> list[str]:
     if set(policy) - {"group", "mode", "supportedScopes", "scopeLabels"}:
         return ["permissionPolicy 含未支持字段"]
     mode = policy.get("mode")
-    groups = {"public_read": "public_read", "self": "personal", "configurable": "management"}
+    groups = {"public_read": "public_read", "self": "personal", "configurable": "management", "workspaces": "management"}
     if not isinstance(mode, str) or mode not in groups or policy.get("group") != groups[mode]:
         return ["permissionPolicy 分组与模式不匹配"]
+    if mode == "workspaces" and ("supportedScopes" in policy or "scopeLabels" in policy):
+        return ["permissionPolicy workspaces 为固定岗位工作范围，不得声明 supportedScopes 或 scopeLabels"]
     scopes = policy.get("supportedScopes", [])
     supported = {"self", "department", "department_and_children", "custom_departments", "all"}
     if (not isinstance(scopes, list) or len(scopes) > 5

@@ -1601,7 +1601,14 @@ def require_file_action(
     page_key: str,
     action_key: str,
     allowed_operations: set[str],
+    *,
+    expected_context: tuple[str, str, str] | None = None,
 ) -> tuple[dict, dict]:
+    # Resource-specific routes must pass a server-owned tuple before reading a
+    # body, issuing an import token, or touching their fixed business table.
+    # Generic routes may omit it only when every lookup is bound to module_key.
+    if expected_context is not None and (module_key, page_key, action_key) != expected_context:
+        raise HTTPException(403, "Business route action context mismatch")
     session = request.session
     if not session.get("sub"):
         raise HTTPException(401, "Open this module from ZhuoJian SaaS")
@@ -1617,6 +1624,7 @@ def require_file_action(
     if "view" not in permissions or required_permission(action["operation"]) not in permissions:
         raise HTTPException(403, "File action permission denied")
     actor = validate_live_session(session, module_key, page_key, action_key)
+    require_action_policy_scope(action, actor)
     return action, actor
 
 
@@ -1666,13 +1674,17 @@ def normalized_data_scope(actor: dict) -> tuple[bool, bool, bool, set[str]]:
     if not isinstance(role_ids, list) or not isinstance(scope, dict):
         raise HTTPException(403, "Platform role data scope is required")
     department_ids = scope.get("department_ids")
-    if not isinstance(department_ids, (list, tuple)):
+    if (
+        not isinstance(department_ids, (list, tuple))
+        or any(not isinstance(value, str) or not value.strip() for value in department_ids)
+        or any(type(scope.get(flag)) is not bool for flag in ("unrestricted", "include_self", "own_only"))
+    ):
         raise HTTPException(403, "Platform department data scope is invalid")
     return (
         scope.get("unrestricted") is True,
         scope.get("include_self") is True,
         scope.get("own_only") is True,
-        {str(value) for value in department_ids if value},
+        set(department_ids),
     )
 
 
@@ -1691,6 +1703,13 @@ def scoped_records_clause(actor: dict) -> tuple[str, list[str]]:
     if not clauses:
         raise HTTPException(403, "Platform role grants no business data scope")
     return " AND (" + " OR ".join(clauses) + ")", values
+
+
+def require_action_policy_scope(action: dict, actor: dict) -> None:
+    if (action.get("permissionPolicy") or {}).get("mode") == "workspaces":
+        unrestricted, include_self, own_only, _ = normalized_data_scope(actor)
+        if unrestricted or include_self or own_only:
+            raise HTTPException(403, "Workspace Action requires an explicit current department scope")
 
 
 def require_record_scope(actor: dict, department_id: str | None, created_by: str | None) -> None:
@@ -1911,6 +1930,7 @@ def execute_business_action(
             )
     operation = action["operation"]
     module_key = action["moduleKey"]
+    require_action_policy_scope(action, actor)
     now = datetime.now(timezone.utc).isoformat()
     if operation == "export":
         return execute_export_action(action, params, actor, connection)
@@ -1968,6 +1988,11 @@ def execute_business_action(
             raise HTTPException(422, "Update params.changes must be an object")
         if "status" in changes:
             raise HTTPException(422, "Record status can only be changed by a dedicated status action")
+        if (
+            (action.get("permissionPolicy") or {}).get("mode") == "workspaces"
+            and "departmentId" in changes and changes["departmentId"] != row["department_id"]
+        ):
+            raise HTTPException(403, "Record department can only be changed by a dedicated reassignment action")
         data = json.loads(row["data"])
         data.update(changes)
         department_id = str(data.get("departmentId") or row["department_id"] or "")
