@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **ZHUOJIAN-SHARED-RUNTIME-20261022** (@codex-root)：企业 Runtime 身份已登记，主机适配/备份/双应用验收 pending。新增窄选择器企业交接草稿，待 reviewed PR、稳定 Release 及无缓存 runtime/host 解析；不能报告完整初始化或原生 Lab 上线。核心 Skill/安装器未修改。
+
 - [x] **PLATFORM-PROJECT-REGISTRATION-20261016 已发布并双账号同步**（@codex-root）：PR70/main `b4bb1b6`、PR/main CI通过；core1.1.34 / bundle-v1.4.35已发布，九资产匿名SHA、原更新器新装/隔离升级/CURRENT通过。两个账号各6项Builder及5项部署Skill授权更新SHA一致，原有非范围文件保留；实际账号均CURRENT1.1.34。企业子系统归所属企业，独立项目归平台项目清单，强制域名/管理入口实点及原站兼容。未部署任何运行时。见[交接](docs/handoff/2026-10-16_platform-project-registration.md)。
 
 - [x] **SHARED-MODEL-CATALOG-20261016**（@codex-shared-gateway）：PR68/main `6622588`、main CI `38851040609`成功；1.1.33 / bundle-v1.4.34正式发布，九资产匿名hash、原更新器新装/CURRENT与隔离1.1.32升级通过；双账号备份后各5指定文件与公开包一致、CURRENT1.1.33，无关内容保持。未改Runtime/Schema/模板或其他Skill，旧学院和业务服务未发布；见shared-model-catalog-contract正式发布补充。

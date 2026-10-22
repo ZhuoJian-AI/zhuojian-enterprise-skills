@@ -2,6 +2,13 @@
   "schemaVersion": 1,
   "repository": "ZhuoJian-AI/zhuojian-enterprise-skills",
   "skills": {
+    "zhuojian-shared-runtime-handover": {
+      "path": "skills/companies/zhuojian/zhuojian-shared-runtime-handover",
+      "kind": "handoff",
+      "enterpriseKeys": ["zhuojian"],
+      "runtimeIds": ["zhuojian-hz-shared-01"],
+      "hosts": ["47.114.61.74"]
+    },
     "zhuojian-subsystem-builder": {
       "path": "skills/core/zhuojian-subsystem-builder",
       "kind": "core",
