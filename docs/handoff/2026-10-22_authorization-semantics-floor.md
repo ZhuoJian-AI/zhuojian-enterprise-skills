@@ -1,0 +1,7 @@
+# Authorization semantic rollback floor
+
+Scope: core `zhuojian-subsystem-builder` 1.1.40 only, prepared from main `b9485ba17c69d1cc9191c0a30fa4e3281ac8f9ce`. SaaS owns runtime authorization and protected deployment; the Skill documents the contract and does not deploy any runtime or rewrite customer grants.
+
+The references now distinguish Manifest format rollback from persisted authorization rollback. After role `workspace_access/platform_access` is saved, every actual consumer and recovery image must retain the full `role-workspaces-v1` behavior until an audited, fully tested authorization inverse migration exists. Schema compatibility, a restored old Manifest, and a marker alone do not establish that behavior. Per-native-module migration retires that role's legacy codes for that module; explicit off must remain explicit. File copying, archives, original derivatives and download-ticket issuance require source download, while parsed text remains subject to read/query.
+
+Validation: core full suite `607 passed, 56 skipped` in 27.40s (one pre-existing Starlette deprecation warning), `quick_validate.py` and `git diff --check` passed. Publication is pending review. The patch changes two references, changelog, Skill version and its existing version assertion. Contracts 2.4/2.5, schemas, templates, updater and unrelated four Skill packages remain unchanged. The prior bundle-v1.4.40 is immutable; publication must use a new clean-merged source and bundle-v1.4.41, followed by anonymous asset/updater checks and precise two-account synchronization.
