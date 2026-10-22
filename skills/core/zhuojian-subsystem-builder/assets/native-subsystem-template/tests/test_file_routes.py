@@ -26,6 +26,44 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
     "route integration test runs in a project produced by scaffold_subsystem.py",
 )
 class FileRouteTests(unittest.TestCase):
+    def test_specialized_route_rejects_another_valid_action_context_before_live_check(self):
+        from types import SimpleNamespace
+
+        request = SimpleNamespace(session=self.sso_claims)
+        supplied = (self.module_key, self.page_key, self.query_action)
+        # This context is otherwise a valid, authorized query for this employee.
+        action, actor = self.application.require_file_action(request, *supplied, {"query"})
+        self.assertEqual(action["actionKey"], self.query_action)
+        self.assertEqual(actor["sub"], self.sso_claims["sub"])
+        for index in range(3):
+            expected = list(supplied)
+            expected[index] = "another.business.resource"
+            with self.subTest(resource_part=index), mock.patch.object(
+                self.application, "validate_live_session"
+            ) as check:
+                with self.assertRaises(self.application.HTTPException) as rejected:
+                    self.application.require_file_action(
+                        request, *supplied, {"query"}, expected_context=tuple(expected)
+                    )
+                self.assertEqual(rejected.exception.status_code, 403)
+                check.assert_not_called()
+        action, _ = self.application.require_file_action(
+            request, *supplied, {"query"}, expected_context=supplied
+        )
+        self.assertEqual(action["actionKey"], self.query_action)
+
+    def test_malformed_trusted_scope_never_becomes_a_department_string(self):
+        scope = {"unrestricted": False, "include_self": False, "own_only": False, "department_ids": ["ops"]}
+        actor = {"roleIds": ["test-role"], "effectiveDataScope": scope}
+        self.assertEqual(self.application.normalized_data_scope(actor)[3], {"ops"})
+        for value in ([None], [123], [True], [{}], [""], ["   "], "ops"):
+            with self.subTest(departments=value), self.assertRaises(self.application.HTTPException) as rejected:
+                self.application.normalized_data_scope({**actor, "effectiveDataScope": {**scope, "department_ids": value}})
+            self.assertEqual(rejected.exception.status_code, 403)
+        for flag in ("unrestricted", "include_self", "own_only"):
+            with self.subTest(flag=flag), self.assertRaises(self.application.HTTPException):
+                self.application.normalized_data_scope({**actor, "effectiveDataScope": {**scope, flag: "false"}})
+
     @classmethod
     def setUpClass(cls):
         try:
@@ -172,6 +210,7 @@ class FileRouteTests(unittest.TestCase):
             "iat": now.isoformat(),
             "exp": (now + timedelta(seconds=120)).isoformat(),
         }
+        cls.sso_claims = claims
         exchange_response = mock.Mock(
             status_code=200,
             content=b"{}",

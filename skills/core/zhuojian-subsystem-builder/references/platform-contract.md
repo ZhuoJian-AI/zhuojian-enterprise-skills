@@ -326,9 +326,11 @@ applicationSlug
 
 员工最终权限仍是角色并集，但数据范围不是全局一次合并：SaaS 对当前资源逐个筛选授权角色，再生成该资源的 `effectiveDataScope`（`unrestricted/include_self/own_only/department_ids`）。`departments[].role=owner` 只表示责任，不能替代授权。页面 `view` 与 Action 分开；模块的查询、导出、修改、删除和审批都必须执行本次收到的数据范围。旧系统可暂时按兼容模式接入，但必须清楚标记。
 
+岗位工作范围通过明确的 `permissionPolicy:{group:'management',mode:'workspaces'}` 声明，保持2.4/2.5及effectiveDataScope wire。员工账号所属部门D0默认加入；每个精确Action仅合并授予它的有效角色的D0+追加部门，再与当前企业存活部门相交。角色无追加部门也可在D0执行已授操作；D0也缺失时不回退all。系统研发者在此mode同样返回存活部门ID集合而非unrestricted。RoleConfiguration的workspaces及platform_modules由SaaS保存/解释，不进入子系统Manifest、浏览器授权参数或本地范围计算。企业共享、固定个人和历史可配置模式保持原边界，不能按字段或CRUD自动转换。
+
 “系统研发者”是 SaaS 内置且系统托管的员工角色，稳定可见编码为 `zj-runtime-developer`。管理员只能把它绑定或解绑员工，不能改名、删除、停用或修改权限；平台不得把它实现成管理员账号。该角色对本企业 Runtime 管理应用使用不受部门限制的业务数据范围，但不能借此进入 SaaS 管理端、读取模型供应商密钥、管理工作空间或访问另一企业。
 
-企业管理员只勾选业务能力，Action名称／说明讲清处理对象，不向管理员提供“本人／部门／全企业”通用技术范围选择。`permissionPolicy`、固定单一业务边界及已部署精确基线兼容见 [操作权限与记录归属](action-permission-scopes.md)。新建、新增及本次改变权限边界的Action必须声明并实现，management只含一个supportedScopes；旧未变多范围由SaaS明确业务勾选承载，输出升级清单。源码、端点与登记校验强制检查，不改变2.4/2.5协议、不自动修改角色绑定；只有真实实现对应边界才能声明。拆分旧页面时遵循 [模块导航与安全迁移](module-navigation-migration.md)，不得复制授权造成扩权。
+企业管理员只勾选业务能力，Action名称／说明讲清处理对象，不向管理员提供通用技术范围选择。`permissionPolicy`及已部署精确基线兼容见 [操作权限与记录归属](action-permission-scopes.md)。新建、新增及改变边界的Action必须实现固定策略：workspaces不带supportedScopes，旧configurable新能力只含一个supportedScope；旧未变多范围输出升级清单。先发布全部兼容SaaS消费端再登记workspaces，回退先恢复旧子系统Manifest，不能用2.4/2.5未变或健康代替兼容证明。只有真实实现对应边界才能声明，拆分旧页面不得复制授权扩权。
 
 旧数据没有可用的负责部门或创建人字段时，不能仅新增空列或按姓名猜测归属。先生成未归属引用清单，受限操作保持隐藏或拒绝，业务负责人确认后才能回填；公共已发布内容独立读取，不因历史私有记录无归属而拒绝整页。系统研发者也不能绕过固定本人规则。
 

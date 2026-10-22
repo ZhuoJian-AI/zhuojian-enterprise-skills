@@ -144,6 +144,23 @@ def pending_identity_results(manifest: dict) -> list[dict]:
     return results
 
 
+def pending_authorization_results(manifest: dict) -> list[dict]:
+    """Never turn a healthy endpoint or synthetic JWT into real IAM evidence."""
+    checks = {
+        "exact_business_route_binding": "业务专用REST路由固定应用/模块/页面/Action；持有另一模块同operation的合法权限仍须拒绝，且不得读取文件或分配导入token。",
+        "paired_role_work_departments": "默认部门D0加授予当前精确Action的同一有效角色追加部门；无关角色不贡献范围，无D0及追加部门时不回退全企业。",
+        "department_lifecycle_revocation": "覆盖部门删除/移树、员工转部门、角色停用/解绑和Action停用后的旧会话、旧票、分页游标与确认后执行前检查。",
+        "import_create_update_atomicity": "若存在导入，按实际新增/更新分别实时校验对应Action及范围，任一无权或版本冲突时全批无写入；无导入须记录入口盘点依据。",
+        "business_boundary_preservation": "分别保留企业共享库、固定个人owner、NAS敏感目录及通知接收人/草稿owner的真实边界；工作位置不自动授予文件或业务操作。",
+        "web_api_ai_file_parity": "用非研发普通测试员工覆盖网页、直接API、独立SSO、AI、附件和导出的允许/拒绝/撤权；旧已签发下载URL的有效窗口另记。",
+    }
+    return [{
+        "check": check, "applicationSlug": manifest.get("applicationSlug"),
+        "passed": None,
+        "failures": [{"type": "pending_authorization_acceptance", "messageZh": message}],
+    } for check, message in checks.items()]
+
+
 def b64(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
 
@@ -577,6 +594,8 @@ def main() -> int:
         "saas_specialist_ai_e2e_pass": "not_run",
         "identity_acceptance_pass": None,
         "identity_results": pending_identity_results(manifest),
+        "authorization_acceptance_pass": None,
+        "authorization_results": pending_authorization_results(manifest),
         "responsive_acceptance_pass": None,
         "viewport_results": responsive_results,
     }, ensure_ascii=False))

@@ -16,6 +16,7 @@ from manifest_semantics import (
     ({"group": "public_read", "mode": "public_read"}, "query"),
     ({"group": "personal", "mode": "self"}, "create"),
     ({"group": "management", "mode": "configurable", "supportedScopes": ["department", "all"]}, "approve"),
+    ({"group": "management", "mode": "workspaces"}, "create"),
 ])
 def test_valid(policy, operation):
     assert not validate_permission_policy(policy, operation)
@@ -30,6 +31,10 @@ def test_valid(policy, operation):
     ({"group": "management", "mode": "configurable", "supportedScopes": ["cross_tenant"]}, "query"),
     ({"group": "personal", "mode": []}, "query"),
     ({"group": "personal", "mode": "self", "allowAll": True}, "query"),
+    ({"group": "personal", "mode": "workspaces"}, "query"),
+    ({"group": "management", "mode": "workspaces", "supportedScopes": []}, "query"),
+    ({"group": "management", "mode": "workspaces", "supportedScopes": ["all"]}, "query"),
+    ({"group": "management", "mode": "workspaces", "scopeLabels": {}}, "query"),
 ])
 def test_invalid(policy, operation):
     assert validate_permission_policy(policy, operation)

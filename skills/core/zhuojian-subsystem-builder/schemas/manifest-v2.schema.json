@@ -259,14 +259,21 @@
           "required": ["group", "mode"],
           "properties": {
             "group": {"enum": ["public_read", "personal", "management"]},
-            "mode": {"enum": ["public_read", "self", "configurable"]},
+            "mode": {"enum": ["public_read", "self", "configurable", "workspaces"]},
             "supportedScopes": {"type": "array", "maxItems": 5, "uniqueItems": true,
               "items": {"enum": ["self", "department", "department_and_children", "custom_departments", "all"]}},
             "scopeLabels": {"type": "object", "minProperties": 1, "maxProperties": 5,
               "propertyNames": {"enum": ["self", "department", "department_and_children", "custom_departments", "all"]},
               "additionalProperties": {"type": "string", "minLength": 1, "maxLength": 160, "pattern": "\\S"},
               "description": "Optional presentation-only complete business capability names for every supportedScope; equal labels require verified identical business effects and never grant or widen access"}
-          }
+          },
+          "allOf": [{
+            "if": {"properties": {"mode": {"const": "workspaces"}}, "required": ["mode"]},
+            "then": {
+              "properties": {"group": {"const": "management"}},
+              "not": {"anyOf": [{"required": ["supportedScopes"]}, {"required": ["scopeLabels"]}]}
+            }
+          }]
         },
         "aiTool": {"description": "可选的 AI 工具增强说明；缺少或格式不完整不得阻断登记"},
         "inputSchema": {"$ref": "#/$defs/inputSchema"},

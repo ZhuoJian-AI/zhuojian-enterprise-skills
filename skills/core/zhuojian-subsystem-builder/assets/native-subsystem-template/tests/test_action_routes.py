@@ -332,6 +332,45 @@ class ActionRouteTests(unittest.TestCase):
             self.assertEqual(accepted.status_code, 200, accepted.text)
             self.assertEqual(rejected.status_code, 401, rejected.text)
 
+    def test_workspace_records_keep_stable_department_and_do_not_borrow_other_scopes(self):
+        policy = {"group": "management", "mode": "workspaces"}
+        create = {**self.actions["create"], "permissionPolicy": policy}
+        update = {**self.actions["update"], "permissionPolicy": policy}
+        actor = {**self.sso_claims, "departmentId": "ops", "effectiveDataScope": {
+            "unrestricted": False, "include_self": False, "own_only": False,
+            "department_ids": ["ops", "sales"],
+        }}
+        created = self.application.execute_business_action(create, {"data": {"name": "workspace-owned"}}, None, actor)
+        with self.application.db() as connection:
+            row = connection.execute("SELECT department_id FROM records WHERE id=?", (created["id"],)).fetchone()
+            self.assertEqual(row["department_id"], "ops")
+        changed_home = {**actor, "departmentId": "sales"}
+        self.application.execute_business_action(update, {"id": created["id"], "changes": {"name": "retained"}}, 1, changed_home)
+        with self.application.db() as connection:
+            row = connection.execute("SELECT department_id,version FROM records WHERE id=?", (created["id"],)).fetchone()
+            self.assertEqual((row["department_id"], row["version"]), ("ops", 2))
+        with self.assertRaises(self.application.HTTPException) as move:
+            self.application.execute_business_action(update, {"id": created["id"], "changes": {"departmentId": "sales"}}, 2, actor)
+        self.assertEqual(move.exception.status_code, 403)
+        for denied in ("unknown-department", "deleted-department", "foreign-enterprise-department"):
+            with self.subTest(department=denied), self.assertRaises(self.application.HTTPException) as rejected:
+                self.application.execute_business_action(create, {"data": {"name": "denied", "departmentId": denied}}, None, actor)
+            self.assertEqual(rejected.exception.status_code, 403)
+        explicit = self.application.execute_business_action(create, {"data": {"name": "allowed", "departmentId": "sales"}}, None, actor)
+        self.assertTrue(explicit["id"])
+        narrow = {**actor, "effectiveDataScope": {**actor["effectiveDataScope"], "department_ids": ["sales"]}}
+        with self.assertRaises(self.application.HTTPException) as outside:
+            self.application.execute_business_action(update, {"id": created["id"], "changes": {"name": "no-borrowing"}}, 2, narrow)
+        self.assertEqual(outside.exception.status_code, 403)
+        no_target = {**actor, "departmentId": None, "effectiveDataScope": {**actor["effectiveDataScope"], "department_ids": []}}
+        with self.assertRaises(self.application.HTTPException):
+            self.application.execute_business_action(create, {"data": {"name": "no-default"}}, None, no_target)
+        for flag in ("unrestricted", "include_self", "own_only"):
+            with self.subTest(scope_flag=flag), self.assertRaises(self.application.HTTPException) as broad:
+                self.application.execute_business_action(create, {"data": {"name": "wrong-global-scope", "departmentId": "other"}}, None,
+                    {**actor, "effectiveDataScope": {**actor["effectiveDataScope"], flag: True}})
+            self.assertEqual(broad.exception.status_code, 403)
+
     def test_export_returns_one_frozen_opaque_dataset_without_creating_files(self):
         batch = "export-" + uuid4().hex
         for index in range(3):

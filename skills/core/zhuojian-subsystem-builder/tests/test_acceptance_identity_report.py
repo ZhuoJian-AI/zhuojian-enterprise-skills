@@ -141,6 +141,8 @@ def test_cli_technical_outcome_never_completes_real_identity_checks(monkeypatch,
     assert report["realSso"] == "pending_admin_acceptance"
     assert report["identity_acceptance_pass"] is None
     assert report["identity_results"] == acceptance.pending_identity_results(manifest)
+    assert report["authorization_acceptance_pass"] is None
+    assert report["authorization_results"] == acceptance.pending_authorization_results(manifest)
     assert all(item["passed"] is None for item in report["identity_results"])
     assert report["authorized_query_pass"] == ("not_run" if denied else "synthetic_only")
     assert len(calls) == 3

@@ -155,6 +155,22 @@ def test_scaffolded_native_system_runs_its_security_and_recovery_suite(tmp_path:
     )
 
 
+def test_scaffold_explicitly_declares_department_workspaces_without_legacy_scope(tmp_path: Path):
+    project = tmp_path / "workspace-owned"
+    run_checked([
+        sys.executable, str(ROOT / "scripts" / "scaffold_subsystem.py"),
+        "--output", str(project), "--company-slug", "example", "--company-name", "Example",
+        "--application-slug", "workspace-records", "--application-name", "Workspace records",
+        "--module-key", "records", "--module-name", "业务记录",
+        "--record-access", "department-workspaces", "--department", "ops:Operations:owner",
+    ], cwd=ROOT)
+    manifest = json.loads((project / "subsystem.json").read_text(encoding="utf-8"))
+    assert {tuple(sorted(action["permissionPolicy"].items())) for action in manifest["modules"][0]["actions"]} == {
+        (("group", "management"), ("mode", "workspaces")),
+    }
+    run_checked([sys.executable, str(ROOT / "scripts" / "validate_source.py"), "--path", str(project)], cwd=ROOT)
+
+
 def test_scaffold_can_add_reviewable_saas_specialist_ai(tmp_path: Path):
     project = tmp_path / "specialist-ai"
     run_checked(
