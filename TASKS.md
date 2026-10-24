@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **SAME-COMPANY-MODULE-REUSE-20261024**（@skill_process_audit，core1.1.43文档补充）：按已确认的同一家公司、单服务器、多业务负责人场景，默认复用现有应用/模块与权威业务服务；负责人在Codex确认一次业务范围，AI使用既有Runtime调用已获权API。仅文字更正，保持CLI/版本/契约；不实现多企业共用主机、个人凭据或实际迁移，不发布Release、同步个人Skill或修改生产。待文档检查、PR及root审阅。
+
 - [ ] **CODEX-RUNTIME-INTEGRATION-CONFIRMATION-20261024**（@skill_process_audit，core1.1.43候选）：Codex业务澄清/复用选型、逐端本机确认/撤销、requester应用及未知只GET核实已实现；Windows27项、公司CI完整core709通过/58跳过及真实CLI↔API/PG联合11命令通过。保持2.4/2.5，不汇集key、不改业务角色；待正式PR CI/root审阅、合并与分发决策。本轮未发布Release、安装个人Skill或部署SaaS/子系统。交接：docs/handoff/2026-10-24_codex-runtime-confirmation.md。
 
 - [ ] **SAAS-ENTERPRISE-GATEWAY-CONTRACT-20261023** (@codex-gateway-acceptance)：仅对齐核心参考的 SaaS UUID 生命周期／加密 DB 来源／身份鉴权边界；patch1.1.41，正常 PR/CI 后从干净合并 main 构建新稳定 bundle。保留其他 Skill 内容、2.4／2.5及既有本机差异，不重发 Runtime 或业务系统；公开资产和两账号必要元数据同步分别核验。
