@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **ALPHABET-RUNTIME-ORIGIN-ADOPTION-20261025**（@acceptance_finish，Runtime/SDK 本地实施）：基于 SaaS 实际 capability 与 Runtime-authenticated module attestation，窄支持同企业/环境停用来源 Runtime 的既有应用采用原 HTTPS origin；每应用 root-owned 记录约束原 app UUID、来源 Runtime、首个 healthy commit，保留 hk01 档案及七项业务。同步 Runtime expected_names/load_release/backup-all 与 publish_subsystem，受影响测试和 handoff 随代码提交；Root 独占生产、平台写、PR/稳定分发和个人同步。本条认领不代表已迁移或上线。
+
 - [ ] **SAME-COMPANY-MODULE-REUSE-20261024**（@skill_process_audit，core1.1.43文档补充）：默认同一家公司、单服务器、多业务负责人复用现有应用/模块与权威服务；Codex业务确认一次，AI使用既有Runtime调用获权API。独立审查、34项受影响检查、quick_validate及CLI原始摘要/版本保持核对通过；待正式PR CI/root合并后重新冻结bundle-v1.4.45候选。仅文字更正，不实现多企业共用主机、个人凭据或实际迁移；未发布、个人同步或修改生产。见docs/handoff/2026-10-24_same-company-module-reuse.md。
 
 - [ ] **CODEX-RUNTIME-INTEGRATION-CONFIRMATION-20261024**（@skill_process_audit，core1.1.43候选）：Codex业务澄清/复用选型、逐端本机确认/撤销、requester应用及未知只GET核实已实现；Windows27项、公司CI完整core709通过/58跳过及真实CLI↔API/PG联合11命令通过。保持2.4/2.5，不汇集key、不改业务角色；待正式PR CI/root审阅、合并与分发决策。本轮未发布Release、安装个人Skill或部署SaaS/子系统。交接：docs/handoff/2026-10-24_codex-runtime-confirmation.md。
