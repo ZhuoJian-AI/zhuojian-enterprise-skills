@@ -23,4 +23,4 @@ legacy core1.2.0与共享Runtime交接1.0.0不改版本。goods catalog已含01/
 
 主接管、canonical HTTP、完整九应用backup-all、两迁入库隔离恢复/全部归档成员校验、SFTP/Windows八文件实际SHA+受限ACK、目标正规LE/两renew dry-run均已通过，详见实际交接的 `final_acceptance`。目标仅在恢复/ACK后删除本轮已证明重复的历史副本，源原件和Windows历史保留；员工整轮与手机真机仍未验，不因服务器技术检查而自动划掉。
 
-core1.1.44与三公司交接拟由Root从clean merged main构建bundle-v1.4.46；源码、本地提交、部署、公开Release和个人同步分别记录。正式发布后核真实十资产、匿名原更新器及无缓存Runtime/host解析，最后限定同步授权Skill到两账号并验证scope外保持。本次文档提交不进行这些外部写入。
+core1.1.44与三公司交接已从clean merged main bc455构建并公开发布bundle-v1.4.46，真实十资产、匿名三条原更新路径/CURRENT及六组Runtime/host匹配通过，四Skill在两账号各25路径限定同步且scope外保持。真实Release ID/source、失败续程、原GitHub配置、两类额外限定同步和未测边界见[实际终态](2026-10-25_alphabet-consolidation-actual.md#公开发布与个人同步实际终态)。本次收尾仅补文档，不重传附件或重新部署。
