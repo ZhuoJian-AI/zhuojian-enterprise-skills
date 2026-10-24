@@ -8,6 +8,7 @@ All HTTP endpoints and domain fields are supplied by the published SaaS contract
 from __future__ import annotations
 
 import argparse
+from http.client import HTTPException
 import json
 import os
 from pathlib import Path
@@ -270,10 +271,10 @@ class PlatformClient:
                 detail = failure.get("detail") if isinstance(failure, dict) else None
                 if isinstance(detail, dict) and detail.get("code") in ERROR_CODES:
                     code = detail["code"]
-            except (OSError, TypeError, ValueError):
+            except (OSError, HTTPException, TypeError, ValueError):
                 pass
             raise RequestRejected(exc.code, code) from exc
-        except (URLError, OSError, UnicodeError, ValueError) as exc:
+        except (URLError, OSError, HTTPException, UnicodeError, ValueError) as exc:
             if method == "POST":
                 raise RequestOutcomeUnknown("Write outcome unknown; reconcile with GET") from exc
             raise IntegrationPlanError("Platform read failed; no write was performed") from exc

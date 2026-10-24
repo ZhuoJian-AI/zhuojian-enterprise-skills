@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+from http.client import IncompleteRead
 import copy
 import json
 import os
@@ -111,7 +112,7 @@ def test_rejection_preserves_only_a_known_protocol_code():
     assert "read current plan status" in str(failure.value)
 
 
-@pytest.mark.parametrize("error", [URLError("private-key"), TimeoutError("private-key"), HTTPError("https://platform.test", 503, "private-key", {}, None)])
+@pytest.mark.parametrize("error", [URLError("private-key"), TimeoutError("private-key"), IncompleteRead(b"private-key"), HTTPError("https://platform.test", 503, "private-key", {}, None)])
 def test_unknown_write_is_sanitized_and_never_retried(error):
     opener = mock.Mock()
     opener.open.side_effect = error

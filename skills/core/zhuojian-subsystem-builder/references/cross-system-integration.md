@@ -37,6 +37,8 @@ Runtime 登记凭证仍只在企业/Runtime边界内工作，不获得通用管�
 
 在发起计划的原 Runtime 内运行，不把登记 key 复制到开发电脑或命令参数。默认读取 `/etc/zhuojian/runtime.json` 中的 `platform.baseUrl` 与 `deployment.registrationCredentialRef`；文件引用由 Runtime 提供。平台 origin 必须为 HTTPS，脚本不跟随重定向，也不在失败信息中输出服务器响应正文。
 
+Skill 只在开发电脑时，由开发 AI 通过既有获权 SSH 将 `scripts/integration_plan.py` 和脱敏计划复制到该 Runtime 的任务临时目录并用其 Python 3 执行，或使用等效已验证的远程脚本方式。不要为执行助手脚本把 Runtime key 取回本机、给员工安装开发 Skill，或放宽凭证文件权限；这也不要求修改 Runtime 可执行程序。
+
 ```text
 python <skill>/scripts/integration_plan.py catalog
 python <skill>/scripts/integration_plan.py propose --plan <本地脱敏计划.json>
