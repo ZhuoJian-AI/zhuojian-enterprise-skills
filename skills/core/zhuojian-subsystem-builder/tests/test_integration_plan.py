@@ -3,6 +3,7 @@ from __future__ import annotations
 from io import BytesIO
 import copy
 import json
+import os
 from urllib.error import HTTPError, URLError
 from unittest import mock
 
@@ -40,6 +41,41 @@ def test_transport_uses_auth_header_not_url_and_returns_json():
     assert "private-key" not in request.full_url
     assert request.get_header("Authorization") == "Bearer private-key"
     assert "private-key" not in repr(client)
+
+
+def test_capability_discovery_is_authenticated_and_cached_for_one_client():
+    opener = mock.Mock()
+    opener.open.return_value = response({"features": {"integrationPlans": {"supported": True, "version": 1}}})
+    client = integration_plan.PlatformClient("https://platform.test", "private-key", opener=opener)
+    client.require_integration_plans()
+    client.require_integration_plans()
+    assert opener.open.call_count == 1
+    request = opener.open.call_args.args[0]
+    assert request.full_url.endswith("/api/v1/ecs-publisher/platform-capabilities")
+    assert request.get_header("Authorization") == "Bearer private-key"
+
+
+@pytest.mark.parametrize("value", [
+    {}, {"features": {}}, {"features": {"integrationPlans": {"supported": False, "version": 1}}},
+    {"features": {"integrationPlans": {"supported": True, "version": 0}}},
+    {"features": {"integrationPlans": {"supported": True, "version": True}}},
+])
+def test_old_or_incomplete_capability_is_an_explicit_gap(value):
+    opener = mock.Mock()
+    opener.open.return_value = response(value)
+    client = integration_plan.PlatformClient("https://platform.test", "private-key", opener=opener)
+    with pytest.raises(integration_plan.UnsupportedPlatform, match="configuration remains unenabled"):
+        client.require_integration_plans()
+    assert opener.open.call_count == 1
+
+
+def test_missing_old_capability_endpoint_is_an_explicit_gap_not_a_guessed_plan_request():
+    opener = mock.Mock()
+    opener.open.side_effect = HTTPError("https://platform.test", 404, "missing", {}, BytesIO(b"private-key"))
+    client = integration_plan.PlatformClient("https://platform.test", "private-key", opener=opener)
+    with pytest.raises(integration_plan.UnsupportedPlatform):
+        client.require_integration_plans()
+    assert opener.open.call_count == 1
 
 
 @pytest.mark.parametrize("path", ["https://other.test/api/v1/x", "//other.test/api/v1/x", "/api/v1/\\other", "/api/v1/x#fragment"])
@@ -149,7 +185,15 @@ def client_with(*results):
 def test_same_application_distinct_modules_are_supported():
     value = proposal()
     value["edges"][0]["target_application_id"] = SOURCE_ID
-    assert integration_plan.validate_proposal(value) is value
+    assert integration_plan.validate_proposal(value) == value
+
+
+def test_uuid_normalization_does_not_mutate_the_local_plan():
+    value = proposal()
+    value["edges"][0]["source_application_id"] = "ABCDEFAB-1111-4111-8111-111111111111"
+    normalized = integration_plan.validate_proposal(value)
+    assert normalized["edges"][0]["source_application_id"].startswith("abcdefab")
+    assert value["edges"][0]["source_application_id"].startswith("ABCDEFAB")
 
 
 @pytest.mark.parametrize("field,value", [("event_type", "*"), ("source_module_key", "all*"), ("target_module_key", "a b"), ("kind", "admin"), ("key", "../bad")])
@@ -205,6 +249,13 @@ def test_request_id_cannot_be_reused_for_a_changed_plan():
 
 def test_unknown_proposal_only_reconciles_with_get():
     client = client_with([], integration_plan.RequestOutcomeUnknown("unknown"), [plan()])
+    result = integration_plan.propose(client, proposal())
+    assert result["status"] == "reconciled"
+    assert [call.args[0] for call in client.request.call_args_list] == ["GET", "POST", "GET"]
+
+
+def test_incomplete_proposal_response_is_reconciled_without_a_second_post():
+    client = client_with([], {"accepted": True}, [plan()])
     result = integration_plan.propose(client, proposal())
     assert result["status"] == "reconciled"
     assert [call.args[0] for call in client.request.call_args_list] == ["GET", "POST", "GET"]
@@ -313,6 +364,15 @@ def test_platform_claim_of_end_to_end_success_is_not_accepted():
     assert integration_plan.verify(client, PLAN_ID, ["actual-delivery-1"])["status"] == "not_acknowledged"
 
 
+def test_selected_target_acknowledgement_does_not_complete_other_plan_edges():
+    after = acknowledged_plan()
+    after["business_status"] = "not_acknowledged"
+    client = client_with(plan(configuration_status="configured"), after)
+    result = integration_plan.verify(client, PLAN_ID, ["actual-delivery-1"])
+    assert result["status"] == "partially_acknowledged"
+    assert result["end_to_end_verified"] is False
+
+
 def test_catalog_projects_only_nonsecret_contract_metadata():
     value = {"schema_version": 1, "environment": "test", "token": "never-print", "applications": [{
         "id": SOURCE_ID, "slug": "example", "name": "Example", "runtime_id": TARGET_ID,
@@ -335,3 +395,27 @@ def test_summary_keeps_the_real_normal_admin_approval_route(section_key):
     url = "https://admin.platform.test/enterprise-apps/" + SOURCE_ID + "?integration_plan=" + PLAN_ID + "&" + section_key + "=integration"
     result = integration_plan.safe_plan_summary(plan(approval_url=url))
     assert result["approval_url"] == url
+
+
+def test_runtime_profile_rejects_bad_origin_before_opening_a_key(tmp_path):
+    profile = tmp_path / "runtime.json"
+    profile.write_text(json.dumps({"platform": {"baseUrl": "https://user:secret@other.test"}, "deployment": {"registrationCredentialRef": "/protected/key"}}))
+    with mock.patch.object(integration_plan, "read_runtime_key") as read:
+        with pytest.raises(integration_plan.IntegrationPlanError):
+            integration_plan.PlatformClient.from_runtime(profile)
+    read.assert_not_called()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX protected-file semantics")
+def test_runtime_key_refuses_a_permissive_file_and_a_symlink(tmp_path):
+    key = tmp_path / "protected-key"
+    key.write_text("never-print")
+    key.chmod(0o644)
+    with pytest.raises(integration_plan.IntegrationPlanError) as failure:
+        integration_plan.read_runtime_key(key)
+    assert "never-print" not in str(failure.value)
+    key.chmod(0o600)
+    link = tmp_path / "link"
+    link.symlink_to(key)
+    with pytest.raises(integration_plan.IntegrationPlanError):
+        integration_plan.read_runtime_key(link)

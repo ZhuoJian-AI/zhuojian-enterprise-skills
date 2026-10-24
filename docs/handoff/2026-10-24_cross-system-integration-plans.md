@@ -32,7 +32,7 @@ All passed. WSL Python 3.12.3 lacked pytest; this is an environment limitation, 
 python -m pytest -q -p no:cacheprovider tests/test_integration_plan.py
 ```
 
-Result: **58 passed in 0.12s**. The subsequent approval URL `section/tab` compatibility adjustment has an extra parametrized case and needs a focused rerun. Full core pytest and quick validation are pending; root agent coordinates complete candidate validation and publication.
+Result: **58 passed in 0.12s**. After adding `section/tab` approval URL compatibility, the first full core run reported **3 failed, 661 passed, 58 skipped**: one existing test pinned the previous Skill release version (now updated to 1.1.42); two gateway fixtures inherited a permissive default process umask and failed the existing protected-file check. No gateway code or credential checks were weakened. A full rerun with process-local `umask 077` and the updated version assertion is pending; root agent coordinates complete candidate validation and publication.
 
 ## Remaining release boundaries
 

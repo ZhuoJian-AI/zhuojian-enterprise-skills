@@ -31,7 +31,9 @@ Runtime 登记凭证仍只在企业/Runtime边界内工作，不获得通用管�
 
 平台尚不支持计划接口或配置仍待确认时，继续双方已获授权的开发、测试和待发布准备，并在各项目 `docs/ai-delivery.json` 及脱敏交接列出：确切缺口、责任层、已完成部分、计划标识/状态、正常确认入口、验收条件和恢复下一步。未获权操作保持待执行，不泛称“找平台方开通”后结束全部工作。平台待办按 [业务提效设计与交付](business-ai-delivery.md) 提交，未提交不能称已受理。
 
-## Runtime 命令与已发布接口
+## 平台接口与 Runtime 命令
+
+仅在目标 SaaS 的获权 `platform-capabilities` 明确声明 `features.integrationPlans.supported=true`、`version=1`，且下述接口在目标环境实测可用时执行。脚本每轮先做一次获权能力发现；旧平台未声明或没有接口时返回具体 SaaS 缺口和“配置未启用”，继续已授权的双方准备与交接。Skill 文档和发布包不证明新接口已经上线，不得靠猜路径尝试绕过能力缺失。
 
 在发起计划的原 Runtime 内运行，不把登记 key 复制到开发电脑或命令参数。默认读取 `/etc/zhuojian/runtime.json` 中的 `platform.baseUrl` 与 `deployment.registrationCredentialRef`；文件引用由 Runtime 提供。平台 origin 必须为 HTTPS，脚本不跟随重定向，也不在失败信息中输出服务器响应正文。
 
@@ -80,7 +82,7 @@ python <skill>/scripts/integration_plan.py verify --plan-id <计划ID> --deliver
 
 一个计划最多两个应用、八条连通且不重复的精确边；同应用不同模块合法，同一应用同一模块自连不合法。所有端点须属同企业、同环境，发起 Runtime 至少拥有一端；双方模块必须已经登记。事件能力可以在提案后继续开发，应用配置时双方须存活、启用且发布/订阅都已登记。`kind=forward/result` 描述方向，不是业务授权或处理器实现。
 
-| Runtime 请求 | 作用 |
+| Runtime 请求（须目标环境已声明支持并实测可用） | 作用 |
 | --- | --- |
 | `GET /api/v1/ecs-publisher/integration-plans/catalog` | 本企业同环境的非敏感应用、模块、事件目录及 Runtime 所属关系 |
 | `POST /api/v1/ecs-publisher/integration-plans` | 提交上述精确计划，不批准、不自动创建路由 |

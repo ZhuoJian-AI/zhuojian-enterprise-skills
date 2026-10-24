@@ -59,6 +59,10 @@ class RequestOutcomeUnknown(IntegrationPlanError):
     """A mutating request needs a GET reconciliation before further action."""
 
 
+class UnsupportedPlatform(IntegrationPlanError):
+    """The target SaaS has not declared the matching plan API capability."""
+
+
 def canonical_json(value: object) -> bytes:
     try:
         return json.dumps(
@@ -101,6 +105,7 @@ def validate_proposal(proposal: dict) -> dict:
     """Reject local mistakes; SaaS still authorizes every resource and operation."""
     if not isinstance(proposal, dict) or set(proposal) != PROPOSAL_FIELDS:
         raise IntegrationPlanError("Plan must contain only the published proposal fields")
+    proposal = json.loads(canonical_json(proposal))
     require_text(proposal["request_id"], "request_id", 120)
     require_text(proposal["title"], "title", 160)
     for field in ("purpose", "data_description", "ownership_description"):
@@ -125,6 +130,8 @@ def validate_proposal(proposal: dict) -> dict:
         seen.add(edge["key"])
         source = require_uuid(edge["source_application_id"], "source_application_id")
         target = require_uuid(edge["target_application_id"], "target_application_id")
+        edge["source_application_id"] = source
+        edge["target_application_id"] = target
         applications.update((source, target))
         if source == target and edge["source_module_key"] == edge["target_module_key"]:
             raise IntegrationPlanError("An edge must connect distinct application/modules")
@@ -195,6 +202,7 @@ class PlatformClient:
         self.base_url = base_url.rstrip("/")
         self._credential = credential
         self._opener = opener or build_opener(ProxyHandler({}), _NoRedirect())
+        self._integration_capability_checked = False
 
     @classmethod
     def from_runtime(cls, profile_path: Path) -> PlatformClient:
@@ -210,6 +218,21 @@ class PlatformClient:
         client = cls(str(platform.get("baseUrl") or ""), "")
         client._credential = read_runtime_key(Path(reference))
         return client
+
+    def require_integration_plans(self) -> None:
+        if self._integration_capability_checked:
+            return
+        try:
+            capabilities = self.request("GET", "/api/v1/ecs-publisher/platform-capabilities")
+        except RequestRejected as exc:
+            if exc.status == 404:
+                raise UnsupportedPlatform("Target SaaS does not declare integrationPlans v1; configuration remains unenabled") from exc
+            raise
+        features = capabilities.get("features") if isinstance(capabilities, dict) else None
+        feature = features.get("integrationPlans") if isinstance(features, dict) else None
+        if not isinstance(feature, dict) or feature.get("supported") is not True or type(feature.get("version")) is not int or feature["version"] != 1:
+            raise UnsupportedPlatform("Target SaaS does not declare integrationPlans v1; configuration remains unenabled")
+        self._integration_capability_checked = True
 
     def request(self, method: str, path: str, payload: dict | None = None) -> dict | list:
         if method not in {"GET", "POST"}:
@@ -338,15 +361,23 @@ def get_plan(client: PlatformClient, plan_id: str) -> dict:
     return require_plan(client.request("GET", API_ROOT + "/" + quote(plan_id, safe="")), plan_id)
 
 
+def post_plan(client: PlatformClient, path: str, payload: dict) -> dict:
+    value = client.request("POST", path, payload)
+    try:
+        return require_plan(value)
+    except IntegrationPlanError as exc:
+        raise RequestOutcomeUnknown("Write returned an incomplete plan; reconcile with GET") from exc
+
+
 def propose(client: PlatformClient, proposal: dict) -> dict:
-    validate_proposal(proposal)
+    proposal = validate_proposal(proposal)
     existing = find_request(client, proposal["request_id"])
     if existing is not None:
         if canonical_json(proposal_from_plan(existing)) != canonical_json(proposal):
             raise IntegrationPlanError("request_id already belongs to a different plan")
         return {"status": "existing", **safe_plan_summary(existing)}
     try:
-        plan = require_plan(client.request("POST", API_ROOT, proposal))
+        plan = post_plan(client, API_ROOT, proposal)
     except RequestOutcomeUnknown:
         try:
             plan = find_request(client, proposal["request_id"])
@@ -374,7 +405,7 @@ def apply(client: PlatformClient, plan_id: str, expected_version: str | None = N
     if plan.get("configuration_lease_expired") is not False or not isinstance(readiness, dict) or readiness.get("ready") is not True:
         return {"status": "not_ready", **safe_plan_summary(plan)}
     try:
-        result = require_unchanged(plan, client.request("POST", API_ROOT + "/" + quote(plan_id, safe="") + "/apply", {"version": plan["version"]}))
+        result = require_unchanged(plan, post_plan(client, API_ROOT + "/" + quote(plan_id, safe="") + "/apply", {"version": plan["version"]}))
     except RequestOutcomeUnknown:
         try:
             result = require_unchanged(plan, get_plan(client, plan_id))
@@ -430,7 +461,7 @@ def verify(client: PlatformClient, plan_id: str, delivery_ids: list[str], expect
         return {"status": "not_ready", **safe_plan_summary(plan)}
     unknown = False
     try:
-        result = require_unchanged(plan, client.request("POST", API_ROOT + "/" + quote(plan_id, safe="") + "/verification", {"version": plan["version"], "delivery_ids": delivery_ids}))
+        result = require_unchanged(plan, post_plan(client, API_ROOT + "/" + quote(plan_id, safe="") + "/verification", {"version": plan["version"], "delivery_ids": delivery_ids}))
     except RequestOutcomeUnknown:
         unknown = True
         try:
@@ -441,11 +472,13 @@ def verify(client: PlatformClient, plan_id: str, delivery_ids: list[str], expect
         receipts = acknowledged_receipts(result, delivery_ids)
     except IntegrationPlanError as exc:
         return {"status": "unknown" if unknown else "not_acknowledged", **safe_plan_summary(result), "reason": str(exc)}
+    if result.get("business_status") != "business_acknowledged":
+        return {"status": "partially_acknowledged", **safe_plan_summary(result), "target_receipts": receipts, "reason": "Other plan edges still lack completed business receipts", "reconciled": unknown}
     return {"status": "business_acknowledged", **safe_plan_summary(result), "target_receipts": receipts, "reconciled": unknown}
 
 
 def safe_catalog(value: object) -> dict:
-    if not isinstance(value, dict) or value.get("schema_version") != 1 or not isinstance(value.get("applications"), list):
+    if not isinstance(value, dict) or type(value.get("schema_version")) is not int or value["schema_version"] != 1 or not isinstance(value.get("applications"), list):
         raise IntegrationPlanError("Unsupported integration catalog")
     applications = []
     for application in value["applications"]:
@@ -480,6 +513,7 @@ def main(argv: list[str] | None = None) -> int:
             command_parser.add_argument("--delivery-id", action="append", required=True)
     args = parser.parse_args(argv)
     client = PlatformClient.from_runtime(args.runtime_profile)
+    client.require_integration_plans()
     if args.command == "catalog":
         result = safe_catalog(client.request("GET", API_ROOT + "/catalog"))
     elif args.command == "propose":
@@ -492,7 +526,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         result = verify(client, args.plan_id, args.delivery_id, args.version)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))
-    return 2 if isinstance(result, dict) and result.get("status") in {"unknown", "not_ready", "not_approved", "not_acknowledged", "not_found"} else 0
+    return 2 if isinstance(result, dict) and result.get("status") in {"unknown", "not_ready", "not_approved", "not_acknowledged", "partially_acknowledged", "not_found"} else 0
 
 
 if __name__ == "__main__":
@@ -502,5 +536,7 @@ if __name__ == "__main__":
         result = {"status": "blocked", "error": str(exc)}
         if isinstance(exc, RequestRejected):
             result.update({"http_status": exc.status, "code": exc.code, "next_action": "read_status"})
+        elif isinstance(exc, UnsupportedPlatform):
+            result.update({"status": "unsupported", "gap": {"owner": "SaaS", "code": "integration_plans_not_supported"}, "next_action": "continue authorized subsystem preparation; hand off the target environment capability gap"})
         print(json.dumps(result, ensure_ascii=False))
         raise SystemExit(2)
