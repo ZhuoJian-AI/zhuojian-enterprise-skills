@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Use a Runtime-bound integration plan without exposing its registration key.
 
-The helper never approves a plan, changes roles, or performs business test writes.
-All HTTP endpoints and domain fields are supplied by the published SaaS contract.
+Runtime endpoint owners may confirm an exact event-configuration plan after local
+business-intent confirmation. This is machine delegation, not an administrator
+session or business-role grant. The helper never performs business test writes.
 """
 
 from __future__ import annotations
@@ -26,6 +27,8 @@ API_ROOT = "/api/v1/ecs-publisher/integration-plans"
 PROPOSAL_FIELDS = {
     "request_id", "title", "purpose", "data_description", "ownership_description", "edges",
 }
+PROPOSAL_OPTIONS = {"authorization_mode", "configuration_ttl_hours"}
+RUNTIME_MODE = "runtime_endpoints"
 EDGE_FIELDS = {
     "key", "source_application_id", "source_module_key", "target_application_id",
     "target_module_key", "event_type", "kind",
@@ -41,6 +44,9 @@ ERROR_CODES = {
     "plan_not_pending", "invalid_configuration_lease", "plan_not_approved",
     "configuration_lease_expired", "integration_not_ready", "configured_route_changed",
     "existing_route_conflict", "duplicate_delivery_reference", "delivery_reference_not_found",
+    "runtime_authority_not_enabled", "authorization_digest_conflict", "runtime_not_participant",
+    "runtime_authorization_changed", "runtime_confirmation_changed", "invalid_runtime_decision",
+    "participant_confirmations_required",
 }
 
 
@@ -62,6 +68,10 @@ class RequestOutcomeUnknown(IntegrationPlanError):
 
 class UnsupportedPlatform(IntegrationPlanError):
     """The target SaaS has not declared the matching plan API capability."""
+
+
+class UnsupportedRuntimeAuthorization(UnsupportedPlatform):
+    """Legacy plan support does not imply Runtime endpoint confirmation."""
 
 
 def canonical_json(value: object) -> bytes:
@@ -104,9 +114,22 @@ def require_uuid(value: object, label: str) -> str:
 
 def validate_proposal(proposal: dict) -> dict:
     """Reject local mistakes; SaaS still authorizes every resource and operation."""
-    if not isinstance(proposal, dict) or set(proposal) != PROPOSAL_FIELDS:
+    if not isinstance(proposal, dict) or not PROPOSAL_FIELDS <= set(proposal) or set(proposal) - PROPOSAL_FIELDS - PROPOSAL_OPTIONS:
         raise IntegrationPlanError("Plan must contain only the published proposal fields")
     proposal = json.loads(canonical_json(proposal))
+    mode = proposal.get("authorization_mode", "administrator")
+    if mode == RUNTIME_MODE:
+        ttl = proposal.get("configuration_ttl_hours", 72)
+        if type(ttl) is not int or not 1 <= ttl <= 168:
+            raise IntegrationPlanError("configuration_ttl_hours must be an integer from 1 to 168")
+        proposal["configuration_ttl_hours"] = ttl
+    elif mode == "administrator":
+        if "configuration_ttl_hours" in proposal:
+            raise IntegrationPlanError("Legacy administrator plans do not accept configuration_ttl_hours")
+        # Preserve the legacy proposal comparison and specification exactly.
+        proposal.pop("authorization_mode", None)
+    else:
+        raise IntegrationPlanError("Unknown authorization_mode")
     require_text(proposal["request_id"], "request_id", 120)
     require_text(proposal["title"], "title", 160)
     for field in ("purpose", "data_description", "ownership_description"):
@@ -207,6 +230,7 @@ class PlatformClient:
         self._credential = credential
         self._opener = opener or build_opener(ProxyHandler({}), _NoRedirect())
         self._integration_capability_checked = False
+        self._features = {}
 
     @classmethod
     def from_runtime(cls, profile_path: Path) -> PlatformClient:
@@ -237,6 +261,20 @@ class PlatformClient:
         if not isinstance(feature, dict) or feature.get("supported") is not True or type(feature.get("version")) is not int or feature["version"] != 1:
             raise UnsupportedPlatform("Target SaaS does not declare integrationPlans v1; configuration remains unenabled")
         self._integration_capability_checked = True
+        self._features = features
+
+    def require_runtime_authorization(self) -> None:
+        self.require_integration_plans()
+        feature = self._features.get("integrationPlanRuntimeAuthorization")
+        if (
+            not isinstance(feature, dict) or feature.get("supported") is not True
+            or type(feature.get("version")) is not int or feature["version"] != 1
+            or feature.get("authorizationMode") != RUNTIME_MODE
+            or feature.get("authority") != "runtime-owned-app-configuration"
+            or feature.get("allParticipantRuntimesRequired") is not True
+            or feature.get("requiresAdministratorSession") is not False
+        ):
+            raise UnsupportedRuntimeAuthorization("Target SaaS lacks Runtime endpoint confirmation; continue authorized preparation and report the exact capability gap")
 
     def request(self, method: str, path: str, payload: dict | None = None) -> dict | list:
         if method not in {"GET", "POST"}:
@@ -294,6 +332,8 @@ def require_plan(value: object, plan_id: str | None = None) -> dict:
             raise IntegrationPlanError(f"Platform plan lacks a valid {field}")
     if value.get("authorization_status") not in {"pending", "approved", "rejected", "revoked"}:
         raise IntegrationPlanError("Unknown platform plan authorization status")
+    if value.get("authorization_mode", "administrator") not in {"administrator", RUNTIME_MODE}:
+        raise IntegrationPlanError("Unknown platform plan authorization mode")
     return value
 
 
@@ -304,6 +344,8 @@ def proposal_from_plan(plan: dict) -> dict:
     if not all(isinstance(edge, dict) for edge in plan["edges"]):
         raise IntegrationPlanError("Platform plan contains an invalid edge")
     result["edges"] = [{key: edge.get(key) for key in EDGE_FIELDS} for edge in plan["edges"]]
+    if plan.get("authorization_mode") == RUNTIME_MODE:
+        result.update(authorization_mode=RUNTIME_MODE, configuration_ttl_hours=plan.get("configuration_ttl_hours"))
     return validate_proposal(result)
 
 
@@ -311,6 +353,12 @@ def require_unchanged(before: dict, after: dict) -> dict:
     require_plan(after, before["id"])
     if after["spec_digest"] != before["spec_digest"]:
         raise IntegrationPlanError("Platform plan specification changed")
+    if before.get("authorization_mode", "administrator") != after.get("authorization_mode", "administrator"):
+        raise IntegrationPlanError("Platform plan authorization mode changed")
+    if before.get("authorization_mode") == RUNTIME_MODE and before.get("authorization_digest") != after.get("authorization_digest"):
+        raise IntegrationPlanError("Platform plan authorization digest changed")
+    if before.get("authorization_mode") == RUNTIME_MODE and before.get("apply_expires_at") != after.get("apply_expires_at"):
+        raise IntegrationPlanError("Platform plan common configuration deadline changed")
     return after
 
 
@@ -322,6 +370,25 @@ def safe_plan_summary(plan: dict) -> dict:
         "configuration_status", "configuration_lease_expired", "transport_status",
         "business_status", "apply_expires_at",
     )}
+    summary["authorization_mode"] = plan.get("authorization_mode", "administrator")
+    summary["business_scope"] = {
+        key: str(plan.get(key) or "")[:2000]
+        for key in ("title", "purpose", "data_description", "ownership_description")
+    }
+    summary["edges"] = [
+        {key: edge.get(key) for key in EDGE_FIELDS}
+        for edge in plan.get("edges") or [] if isinstance(edge, dict)
+    ]
+    if plan.get("authorization_mode") == RUNTIME_MODE:
+        summary.update({key: plan.get(key) for key in (
+            "authorization_digest", "authorization_authority", "configuration_ttl_hours",
+            "requires_administrator_session", "current_runtime_id", "requester_runtime_id",
+            "current_runtime_application_ids", "current_runtime_can_confirm",
+        )})
+        summary["runtime_confirmations"] = [
+            {key: item.get(key) for key in ("runtime_id", "application_ids", "confirmed", "valid", "confirmed_at")}
+            for item in plan.get("runtime_confirmations") or [] if isinstance(item, dict)
+        ]
     readiness = plan.get("readiness")
     summary["readiness"] = {"ready": False, "gaps": []}
     if isinstance(readiness, dict):
@@ -375,6 +442,8 @@ def post_plan(client: PlatformClient, path: str, payload: dict) -> dict:
 
 def propose(client: PlatformClient, proposal: dict) -> dict:
     proposal = validate_proposal(proposal)
+    if proposal.get("authorization_mode") == RUNTIME_MODE:
+        client.require_runtime_authorization()
     existing = find_request(client, proposal["request_id"])
     if existing is not None:
         if canonical_json(proposal_from_plan(existing)) != canonical_json(proposal):
@@ -397,12 +466,148 @@ def propose(client: PlatformClient, proposal: dict) -> dict:
     return {"status": "proposed", **safe_plan_summary(plan)}
 
 
+def runtime_participant(plan: dict, authorization_digest: str, *, require_snapshot_membership: bool = True) -> dict:
+    """Validate public scope metadata; only the SaaS authorizes the caller."""
+    if plan.get("authorization_mode") != RUNTIME_MODE:
+        raise IntegrationPlanError("Legacy administrator plan has no Runtime confirmation; create a new explicit runtime_endpoints proposal when supported")
+    if not isinstance(authorization_digest, str) or VERSION_RE.fullmatch(authorization_digest) is None:
+        raise IntegrationPlanError("Platform plan lacks a valid public authorization_digest")
+    if (
+        plan.get("authorization_digest") != authorization_digest
+        or plan.get("authorization_authority") not in ({"runtime_app_owners"} if require_snapshot_membership else {"runtime_app_owners", "enterprise_administrator"})
+        or plan.get("requires_administrator_session") is not False
+    ):
+        raise IntegrationPlanError("Authorization scope changed or Runtime authority is missing; read and review the current plan")
+    runtime_id = require_uuid(plan.get("current_runtime_id"), "current Runtime id")
+    owned = plan.get("current_runtime_application_ids")
+    if not isinstance(owned, list) or not owned:
+        raise IntegrationPlanError("Current Runtime owns no exact participant application scope")
+    for app_id in owned:
+        require_uuid(app_id, "current Runtime application id")
+    endpoints = {
+        require_uuid(edge.get(key), "edge application id")
+        for edge in plan.get("edges") or [] if isinstance(edge, dict)
+        for key in ("source_application_id", "target_application_id")
+    }
+    if len(set(owned)) != len(owned) or not set(owned) <= endpoints:
+        raise IntegrationPlanError("Current Runtime application scope differs from plan endpoints")
+    confirmations = plan.get("runtime_confirmations")
+    if not isinstance(confirmations, list) or not 1 <= len(confirmations) <= 2:
+        raise IntegrationPlanError("Platform plan lacks Runtime confirmations")
+    runtime_ids, covered = set(), set()
+    for row in confirmations:
+        if not isinstance(row, dict):
+            raise IntegrationPlanError("Invalid Runtime confirmation")
+        row_id = require_uuid(row.get("runtime_id"), "participant Runtime id")
+        apps = row.get("application_ids")
+        if row_id in runtime_ids or not isinstance(apps, list) or not apps:
+            raise IntegrationPlanError("Invalid participant Runtime application scope")
+        runtime_ids.add(row_id)
+        for app_id in apps:
+            require_uuid(app_id, "participant application id")
+        if len(set(apps)) != len(apps) or covered.intersection(apps):
+            raise IntegrationPlanError("Overlapping participant application scope")
+        covered.update(apps)
+        if any(type(row.get(key)) is not bool for key in ("confirmed", "valid")):
+            raise IntegrationPlanError("Invalid Runtime confirmation state")
+    if covered != endpoints:
+        raise IntegrationPlanError("Runtime confirmations do not cover the exact plan endpoints")
+    matches = [row for row in confirmations if isinstance(row, dict) and row.get("runtime_id") == runtime_id]
+    # A current new owner may withdraw a stale relation after ownership drift.
+    # It cannot sign the old snapshot, but requiring that signature to revoke
+    # would contradict the backend's current-owner withdrawal authority.
+    if not require_snapshot_membership:
+        return matches[0] if len(matches) == 1 else {}
+    if len(matches) != 1 or not isinstance(matches[0].get("application_ids"), list):
+        raise IntegrationPlanError("Current Runtime confirmation does not match its owned applications")
+    for app_id in matches[0]["application_ids"]:
+        require_uuid(app_id, "confirmed application id")
+    if set(matches[0]["application_ids"]) != set(owned) or any(type(matches[0].get(key)) is not bool for key in ("confirmed", "valid")):
+        raise IntegrationPlanError("Current Runtime confirmation does not match its owned applications")
+    return matches[0]
+
+
+def runtime_decision(client: PlatformClient, plan_id: str, authorization_digest: str,
+                     *, operation: str, business_intent_confirmed: bool, reason: str | None = None) -> dict:
+    # This flag only prevents accidental local invocation. It is not evidence of
+    # a human identity and is deliberately absent from the authenticated body.
+    if business_intent_confirmed is not True:
+        raise IntegrationPlanError("Explicit local business-intent confirmation is required")
+    if operation not in {"confirm", "reject", "revoke"}:
+        raise IntegrationPlanError("Unsupported Runtime decision")
+    if not isinstance(authorization_digest, str) or VERSION_RE.fullmatch(authorization_digest) is None:
+        raise IntegrationPlanError("Use the exact public authorization_digest from the reviewed plan")
+    if reason is not None:
+        require_text(reason, "decision reason", 1000)
+        if operation == "confirm":
+            raise IntegrationPlanError("confirm does not accept a reason")
+    client.require_runtime_authorization()
+    plan = get_plan(client, plan_id)
+    if operation == "confirm" and plan["authorization_status"] == "approved" and plan.get("authorization_authority") == "enterprise_administrator":
+        runtime_participant(plan, authorization_digest, require_snapshot_membership=False)
+        return {"status": "already_authorized_by_administrator", **safe_plan_summary(plan)}
+    own = runtime_participant(plan, authorization_digest, require_snapshot_membership=operation == "confirm")
+    desired = {"reject": "rejected", "revoke": "revoked"}.get(operation)
+    if operation == "confirm":
+        if plan["authorization_status"] not in {"pending", "approved"}:
+            raise IntegrationPlanError("This plan cannot be confirmed; review its terminal decision")
+        if own.get("confirmed") is True and own.get("valid") is True:
+            return {"status": "already_confirmed", **safe_plan_summary(plan)}
+        if plan.get("current_runtime_can_confirm") is not True or plan.get("configuration_lease_expired") is not False:
+            return {"status": "not_ready", **safe_plan_summary(plan)}
+    elif plan["authorization_status"] == desired:
+        return {"status": "already_" + desired, **safe_plan_summary(plan)}
+    before_runtime = plan["current_runtime_id"]
+    payload = {"authorization_digest": authorization_digest}
+    if reason is not None:
+        payload["reason"] = reason
+    unknown = False
+    try:
+        result = post_plan(client, API_ROOT + "/" + quote(plan_id, safe="") + "/" + operation, payload)
+        try:
+            require_unchanged(plan, result)
+            runtime_participant(result, authorization_digest, require_snapshot_membership=operation == "confirm")
+            if result["current_runtime_id"] != before_runtime:
+                raise IntegrationPlanError("Platform returned another Runtime's confirmation")
+        except IntegrationPlanError as exc:
+            raise RequestOutcomeUnknown("Decision response incomplete; reconcile with GET") from exc
+    except RequestOutcomeUnknown:
+        unknown = True
+        try:
+            result = require_unchanged(plan, get_plan(client, plan_id))
+        except IntegrationPlanError:
+            result = None
+    if result is not None:
+        own_result = runtime_participant(result, authorization_digest, require_snapshot_membership=operation == "confirm")
+        if result["current_runtime_id"] != before_runtime:
+            raise IntegrationPlanError("Platform returned another Runtime's confirmation")
+        complete = (
+            result["authorization_status"] in {"pending", "approved"}
+            and own_result.get("confirmed") is True and own_result.get("valid") is True
+        ) if operation == "confirm" else result["authorization_status"] == desired
+        if complete:
+            return {"status": "reconciled" if unknown else ("confirmed" if operation == "confirm" else desired),
+                    "operation": operation,
+                    **safe_plan_summary(result)}
+    return {"status": "unknown" if unknown else "not_ready", "operation": operation, "id": plan_id,
+            "next_action": "GET the same plan and inspect this Runtime's exact confirmation; do not automatically POST again"}
+
+
 def apply(client: PlatformClient, plan_id: str, expected_version: str | None = None) -> dict:
     plan = get_plan(client, plan_id)
+    if plan.get("authorization_mode") == RUNTIME_MODE:
+        client.require_runtime_authorization()
+        administrator_approved = plan["authorization_status"] == "approved" and plan.get("authorization_authority") == "enterprise_administrator"
+        runtime_participant(plan, plan.get("authorization_digest"), require_snapshot_membership=not administrator_approved)
+        require_uuid(plan.get("requester_runtime_id"), "requester Runtime id")
+        if plan.get("current_runtime_id") != plan.get("requester_runtime_id"):
+            return {"status": "requester_required", **safe_plan_summary(plan), "next_action": "Run apply on the original requester Runtime using its local credential"}
+        if plan["authorization_status"] == "approved" and not administrator_approved and not all(row["confirmed"] is True and row["valid"] is True for row in plan["runtime_confirmations"]):
+            return {"status": "not_ready", **safe_plan_summary(plan)}
     if expected_version is not None and expected_version != plan["version"]:
         raise IntegrationPlanError("Plan version changed; read and review the current plan")
     if plan["authorization_status"] != "approved":
-        return {"status": "not_approved", **safe_plan_summary(plan), "next_action": "Use the normal approval URL; continue authorized subsystem implementation and hand off exact gaps"}
+        return {"status": "not_approved", **safe_plan_summary(plan), "next_action": "Review the exact business scope in Codex and confirm on each participant Runtime" if plan.get("authorization_mode") == RUNTIME_MODE else "Legacy administrator-session plan; Runtime confirmation is unavailable for this plan"}
     if plan.get("configuration_status") == "configured":
         return {"status": "already_configured", **safe_plan_summary(plan)}
     readiness = plan.get("readiness")
@@ -457,6 +662,12 @@ def verify(client: PlatformClient, plan_id: str, delivery_ids: list[str], expect
     for value in delivery_ids:
         require_text(value, "delivery id", 160)
     plan = get_plan(client, plan_id)
+    if plan.get("authorization_mode") == RUNTIME_MODE:
+        client.require_runtime_authorization()
+        runtime_participant(plan, plan.get("authorization_digest"), require_snapshot_membership=plan.get("authorization_authority") != "enterprise_administrator")
+        require_uuid(plan.get("requester_runtime_id"), "requester Runtime id")
+        if plan.get("current_runtime_id") != plan.get("requester_runtime_id"):
+            return {"status": "requester_required", **safe_plan_summary(plan), "next_action": "Run verification on the original requester Runtime using its local credential"}
     if expected_version is not None and expected_version != plan["version"]:
         raise IntegrationPlanError("Plan version changed; read and review the current plan")
     if plan["authorization_status"] != "approved":
@@ -515,6 +726,14 @@ def main(argv: list[str] | None = None) -> int:
         command_parser.add_argument("--version", help="Optional expected opaque server version")
         if command == "verify":
             command_parser.add_argument("--delivery-id", action="append", required=True)
+    for command in ("confirm", "reject", "revoke"):
+        command_parser = commands.add_parser(command, help="Decide exact owned-endpoint configuration after local business-intent confirmation")
+        command_parser.add_argument("--plan-id", required=True)
+        command_parser.add_argument("--authorization-digest", required=True)
+        command_parser.add_argument("--confirm-business-intent", action="store_true", required=True,
+                                    help="Local UX guard after the owner confirms the displayed scope; not an identity or permission proof")
+        if command != "confirm":
+            command_parser.add_argument("--reason")
     args = parser.parse_args(argv)
     client = PlatformClient.from_runtime(args.runtime_profile)
     client.require_integration_plans()
@@ -527,10 +746,13 @@ def main(argv: list[str] | None = None) -> int:
         result = {"status": "found", **safe_plan_summary(plan)} if plan else {"status": "not_found", "request_id": args.request_id}
     elif args.command == "apply":
         result = apply(client, args.plan_id, args.version)
+    elif args.command in {"confirm", "reject", "revoke"}:
+        result = runtime_decision(client, args.plan_id, args.authorization_digest, operation=args.command,
+                                  business_intent_confirmed=args.confirm_business_intent, reason=getattr(args, "reason", None))
     else:
         result = verify(client, args.plan_id, args.delivery_id, args.version)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))
-    return 2 if isinstance(result, dict) and result.get("status") in {"unknown", "not_ready", "not_approved", "not_acknowledged", "partially_acknowledged", "not_found"} else 0
+    return 2 if isinstance(result, dict) and result.get("status") in {"unknown", "not_ready", "not_approved", "not_acknowledged", "partially_acknowledged", "not_found", "requester_required"} else 0
 
 
 if __name__ == "__main__":
@@ -541,6 +763,6 @@ if __name__ == "__main__":
         if isinstance(exc, RequestRejected):
             result.update({"http_status": exc.status, "code": exc.code, "next_action": "read_status"})
         elif isinstance(exc, UnsupportedPlatform):
-            result.update({"status": "unsupported", "gap": {"owner": "SaaS", "code": "integration_plans_not_supported"}, "next_action": "continue authorized subsystem preparation; hand off the target environment capability gap"})
+            result.update({"status": "unsupported", "gap": {"owner": "SaaS", "code": "runtime_endpoint_confirmation_not_supported" if isinstance(exc, UnsupportedRuntimeAuthorization) else "integration_plans_not_supported"}, "next_action": "continue authorized subsystem preparation; hand off the target environment capability gap"})
         print(json.dumps(result, ensure_ascii=False))
         raise SystemExit(2)
