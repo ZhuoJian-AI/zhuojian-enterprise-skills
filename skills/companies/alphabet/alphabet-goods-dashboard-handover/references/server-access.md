@@ -10,15 +10,17 @@
 
 HTTP 数据仍来自道讯 `10.0.0.94:8849`，与 SQL 口径分开。Windows181 的原 SYSTEM canonical 任务 `Alphabet-Daoxun-Dashboard-Tunnel` 已切至目标 SSH22，反向监听仅 `127.0.0.1:18849`，经独立 `zhuojian-goods-http-readonly` 网络和 relay 提供 `172.29.94.1:18849`。`2026-10-25 05:29:52 CST` 三轮宿主机/实际商品容器共6次 `/api/gd_shops` GET 均200、885行、92,971 bytes，内容 SHA 均为 `f2f1efd23ead0f5d44856873f41b36d195a0729fbf73d18f3a2bf786923805f1`；公网18849无监听，旧Source18849 SSH不再运行。目标 `172.18.0.1` 属商品360存储网络，不能借用。helper 与该看板逐应用 root 审批网络记录已经安装，后续 deploy/rollback 仍须保持已批准补充网络与原主网，不能只临时 network connect。
 
-### final_acceptance（独立待收口）
+### final_acceptance（2026-10-25实际收口）
 
 - `http_canonical`: passed，以上真实三轮证据；日常任务仍实时检查监听、同步时间和错误。
-- `native_backup_and_restore`: pending，完整九应用 backup-all、归档/服务恢复及恢复演练分别记真实结果。
-- `offsite_sftp_windows_ack`: pending，SFTP 配置已落地、安装收据修复中；首次导出、Windows八文件校验与受限ACK尚不能称通过。
-- `target_letsencrypt_renewal`: pending，当前旧origin TLS已验证；目标正规LE lineage和续期须独立验收，复制PEM不等于续期完成。
+- `native_backup_and_restore`: passed，原生九应用本轮归档、commit、metadata及一致快照标志逐项核对，原服务均恢复；两个迁入归档完整SHA及全部成员流校验通过，数据库家族实际恢复至私有tmpfs，SQLite integrity与外键检查通过后清除。未把这一检查称为重新部署全部业务后的用户整轮验收。
+- `offsite_sftp_windows_ack`: passed，Windows原任务于06:10:17 CST为Ready/LastResult0；八文件完整SHA与目标一致，受限ACK为同一manifest `15caeb14385ab4995c41000c15da5bbcb9b3c608defd441343d2652c2512069f`。原SYSTEM原生日程、E盘路径和历史保留；CIM导出误报由原生COM完整任务定义对照澄清，未放宽身份核对。
+- `target_letsencrypt_renewal`: passed，两旧域目标正规LE lineage已签发，证书到期2027-01-22，线上leaf与canonical DER一致；两次原生renew dry-run及限定deploy hook通过。首次生产secondary连接超时证据保留，两个staging门通过后才续程签发。本次ACME子进程用临时代理，已清理；原certbot timer继续既有direct配置，无临时端口依赖，未来自然到期续签仍按实际周期观察。
 - `employee_and_mobile_e2e`: 本轮未做新的员工页面/手机真机验收，不沿用服务器 health 冒充。
 
-机外备份继续保留原 Windows 任务 `Alphabet-ZhuoJian-Backup-Pull`、每日04:00 CST、`C:\ProgramData\Alphabet\ZhuoJianBackup\pull-backups.ps1`、`E:\ZhuoJianBackups\aifabei-hk48` 历史与保留策略。目标方案为 `zjbackup@47.97.90.161` 只读 `/current/`；最终下载/ACK未验收前不写“机外备份完成”。Source48/101及更早香港地址只用于历史、观察和受控回退定位，不能重新初始化或发布新业务。
+机外备份保留原 Windows 任务 `Alphabet-ZhuoJian-Backup-Pull`、每日04:00 CST、`C:\ProgramData\Alphabet\ZhuoJianBackup\pull-backups.ps1`、`E:\ZhuoJianBackups\aifabei-hk48` 历史与保留策略，改从 `zjbackup@47.97.90.161` 只读 `/current/` 下载。原Action现在进入逐八文件校验并发送受限ACK的wrapper；原pull代码只改主机，私钥未复制。目标两应用按ACK保留最近两点及两代导出；本轮实际各生成一个新恢复点，未发生旧点裁剪。整批原生backup.service在空间不足或最新点未获ACK时暂停本轮备份，包含原七应用，业务服务继续运行；不能把这个门禁说成仅影响迁入应用。
+
+恢复和异机ACK通过后，仅清理目标本轮initial-staging内124个与源逐文件SHA/inode匹配的历史重复副本，释放11,782,852,455字节，目标空闲24,260,608,000字节。源全部原件和Windows历史、正常九应用备份/导出保持；此前242个初始重复数据文件也仅清目标自有副本。临时复制授权已精确撤除，HTTP/ACK及其他原公钥保留。Source48/101及更早香港地址只用于历史、观察和受控回退定位，不能重新初始化或发布新业务。
 
 ## 2026-09-29 杭州接管与内网直连
 

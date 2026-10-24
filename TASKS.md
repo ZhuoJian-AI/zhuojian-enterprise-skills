@@ -2,7 +2,7 @@
 
 - [ ] **ROOT-APPROVED-NETWORK-ATTACHMENTS-20261025**（@acceptance_finish代码、@skill_release_finish独审/CI，Root串行发布）：final `6614266fecd602629b4ecb75bdcbc82f5c20311f` 仅修95测试imports，功能AST/helper/SDK不变；95隔离只读Git/network-none实跑65项及官方quick_validate通过，final py310 Ruff通过。目标LF helper df94与唯一goods root审批记录已实际安装，profile及九release保持；其他八应用无新增记录。普通deploy/rollback停旧版前检查、create/connect后start，无记录应用保留原行为。稳定分发/两账号同步待Root，见本次[实际交接](docs/handoff/2026-10-25_alphabet-consolidation-actual.md)。
 
-- [ ] **ALPHABET-RUNTIME-ORIGIN-ADOPTION-20261025**（@skill_release_finish接实际文档/版本/公司交接，Root串行收口）：两原app最终DB/文件/原镜像Git、正常SaaS归属接管和DNS已完成；九应用角色/四凭据/Action/Manifest/commit精确比较通过。48 inactive/源两业务exit0 restartno且历史保留，01为当前业务主机；旧hk48 origin与源缓存转发保留。canonical HTTP三轮宿主机+实际容器6/6通过，公网18849无监听。core1.1.44、goods1.0.3/SQL1.1.3/NAS1.0.4保持，拟bundle46；完整备份/恢复、SFTP/Windows ACK、正规LE续期与用户/真机验收分别待收口，不能宣称整个任务已完成。见[实际交接](docs/handoff/2026-10-25_alphabet-consolidation-actual.md)。Root独占后续生产、GH、稳定分发和个人同步。
+- [ ] **ALPHABET-RUNTIME-ORIGIN-ADOPTION-20261025**（Root串行收口）：原数据/镜像、同app归属、DNS、单活HTTP、九应用native备份、两库隔离恢复/全归档校验、Windows八SHA+同代受限ACK、正规LE/两renew dry-run及独立九health已完成。源48停用、历史与Windows旧备份保留；仅清目标自有已证明重复的124历史副本。core1.1.44、goods1.0.3/SQL1.1.3/NAS1.0.4准备bundle46，PR86已正常合并；剩正式最终文档main/稳定分发及个人限定同步，员工/真机另列未测。见[实际交接](docs/handoff/2026-10-25_alphabet-consolidation-actual.md)。
 
 - [ ] **SAME-COMPANY-MODULE-REUSE-20261024**（@skill_process_audit，core1.1.43文档补充）：默认同一家公司、单服务器、多业务负责人复用现有应用/模块与权威服务；Codex业务确认一次，AI使用既有Runtime调用获权API。独立审查、34项受影响检查、quick_validate及CLI原始摘要/版本保持核对通过；待正式PR CI/root合并后重新冻结bundle-v1.4.45候选。仅文字更正，不实现多企业共用主机、个人凭据或实际迁移；未发布、个人同步或修改生产。见docs/handoff/2026-10-24_same-company-module-reuse.md。
 

@@ -1,6 +1,6 @@
 # Alphabet 主机归并与 Skill44 实际交接
 
-两业务的最终数据、运行镜像、SaaS归属与DNS主接管已完成，当前业务主机为47.97/01。备份恢复、机外ACK、证书续期和用户端验收按下表独立记录，不能把主接管完成扩写为全部验收或公开Skill已发布。本文接替[准备交接](2026-10-25_alphabet-server-consolidation-skill.md)中的初副本状态；本次没有新增前端或业务功能，手机真机未测。
+两业务已在47.97/01完成最终数据、原镜像、SaaS归属、DNS、正式证书与备份机接管，九应用均以原镜像恢复health200。下表分别记录实际备份恢复、机外ACK、续期与未测用户流程；公开Skill发布和个人同步仍由Root另行留证。本文接替[准备交接](2026-10-25_alphabet-server-consolidation-skill.md)中的初副本状态；本次没有新增前端或业务功能，手机真机未测。
 
 ## 已完成事实
 
@@ -27,11 +27,15 @@ Runtime网络源95独立隔离CI通过65项（11新网络、23主机切换/恢�
 | --- | --- | --- |
 | `main_data_runtime_dns` | passed | 上述最终流、九应用比较与RAM UI保存 |
 | `http_canonical` | passed | 三轮6/6宿主机与真实容器同内容；单活、无公网18849 |
-| `native_backup_all` | pending | 九应用完整归档、摘要、原服务恢复，不能只看退出码 |
-| `restore` | pending | 从实际归档恢复至获授权隔离目标并验证数据/文件；不覆盖线上 |
-| `offsite_sftp_windows_ack` | pending | SFTP配置落地/安装收据修复；首次八文件导出、Windows实际下载SHA及服务端受限ACK仍需验收 |
-| `target_letsencrypt_renewal` | pending | 目标正规LE lineage、旧origin TLS切换与续期证明；临时PEM不是续期 |
+| `native_backup_all` | passed | 本轮九项native JSON、commit、归档/metadata与一致快照逐项核实，原七归档完整SHA、两迁入大归档复用恢复证明；九原镜像服务恢复 |
+| `restore` | passed，限明确范围 | 两实际归档完整SHA、全部成员流校验，数据库家族实际恢复至私有tmpfs，integrity/FK0后清RAM；不等于重新部署全部业务后的用户整轮 |
+| `offsite_sftp_windows_ack` | passed | Windows八文件完整SHA、Target原生受限ACK与restore同一manifest15caeb14；06:10:17CST TaskReady/LastResult0，无重复kick或残留。原SYSTEM日程/E历史保持 |
+| `target_letsencrypt_renewal` | passed | 两canonical lineage/线上leaf一致、到期2027-01-22，两renew dry-run/hook通过；临时代理已清，常态timer原direct，未来自然续期另观察 |
 | `employee_browser_mobile` | 本轮未验收 | 获权/拒绝员工真实流程与手机真机；本轮无前端改造 |
 | `public_bundle_and_personal_sync` | 待Root发布验收 | clean merged main、bundle46十资产、匿名更新器与无缓存resolve、两账号限定范围同步 |
 
-主接管、单活HTTP取数与未完成的独立项分别报告。源数据和历史在观察/恢复验证完成前不删；NAS旧设备连接最终回收也不能由Runtime48 inactive推定。Root独占后续生产、GH、稳定发布及个人Skill写入。
+九项备份证明为`http-bridge/sftp/nine-native-backups-verified.actual.json`，恢复为`target-new-native-backups-restore-checked.actual.json`，实际机外结果为`http-bridge/windows/verified-backup-progress-02.actual.json`和`http-bridge/sftp/native-backup-after-win-ack.actual.json`，同代manifest为`15caeb14385ab4995c41000c15da5bbcb9b3c608defd441343d2652c2512069f`。实际每个迁入应用只有一个新native恢复点，`pruned=[]`；后续策略保留最新两点/两代导出，并在空间不足或未ACK时暂停整批九应用backup.service，业务继续运行。
+
+正式证书证明为`target-canonical-certificates-staged-continuation.actual.json`及独立`final-target-source-tls-nine-health.actual.json`。保留首生产secondary连接超时、云/宿主80已全网允许及三LE验证200的现场证据；两个staging门通过后才执行一次新生产续程。两renew dry-run的子进程使用临时17977代理，已按原PID/creationtime/command清理；常态原timer无该配置。Windows首次完成收据因CIM导出改变Principal序列化而失败，原生COM完整任务定义证明只有Action路径变化，SYSTEM/ServiceAccount5/Highest1不变，随后只读续程补收据，未重跑替换或重设principal。
+
+在恢复和机外ACK之后，只清目标本轮initial-staging中124个源已保留且逐inode/SHA相等的历史副本，释放11,782,852,455字节，空闲24,260,608,000字节。此前242个初始数据副本也只清目标重复项。源全部历史、Windows历史、正常九应用数据/备份/新导出和其他原件保持；临时复制grant精确撤除，HTTP/ACK/原keys保留。源实例仍留观察，NAS旧设备最终回收不能由Runtime48 inactive推定。Root独占后续GH、稳定发布及个人Skill写入。
