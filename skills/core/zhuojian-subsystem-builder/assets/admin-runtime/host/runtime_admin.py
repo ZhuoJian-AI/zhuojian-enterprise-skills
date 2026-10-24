@@ -1301,6 +1301,7 @@ def require_origin_adoption_capability(profile: dict[str, Any], paths: Paths) ->
 
 
 def validate_origin_adoption_module(adoption: dict[str, Any], module: dict[str, Any]) -> str:
+    module = {**module, "base_url": adopted_https_origin(module.get("base_url"))}
     expected = {"application_id": adoption["application_id"], "organization_id": adoption["organization_id"],
                 "application_slug": adoption["application_slug"], "base_url": adoption["base_url"],
                 "requester_runtime_id": adoption["target_runtime_id"]}
@@ -1413,6 +1414,7 @@ def cmd_adopt_origin(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str
         require_origin_adoption_capability(profile, paths)
         _, module = platform_release_request(profile, paths, "GET", f"/api/v1/ecs-publisher/modules/{slug}", no_redirect=True)
         module = module or {}
+        module = {**module, "base_url": adopted_https_origin(module.get("base_url"))}
         expected = {"application_id": application_id, "organization_id": profile["organizationId"],
                     "application_slug": slug, "runtime_id": source_runtime_id, "base_url": base_url,
                     "status": "healthy", "last_success_commit": args.commit}

@@ -429,6 +429,20 @@ def assert_registered_origin_path(path: Path) -> None:
         raise SystemExit("旧入口采用记录必须是 root0600 JSON")
 
 
+def registered_https_origin(value: object) -> str:
+    if not isinstance(value, str):
+        raise SystemExit("既有应用入口必须是精确 HTTPS 根入口")
+    try:
+        parsed = urlsplit(value)
+        if (parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password
+                or parsed.port is not None or parsed.netloc != parsed.hostname
+                or parsed.path not in ("", "/") or parsed.query or parsed.fragment):
+            raise ValueError
+    except ValueError:
+        raise SystemExit("既有应用入口必须是精确 HTTPS 根入口") from None
+    return "https://" + parsed.hostname
+
+
 def load_registered_origin(profile_path: Path, profile: dict, slug: str, base_url: str) -> dict:
     if not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", slug):
         raise SystemExit("旧入口采用必须明确有效的 application-slug")
@@ -484,6 +498,9 @@ def require_registered_origin(profile: dict, token: str, record: dict, commit: s
             or any(type(feature.get(k)) is not type(v) or feature[k] != v for k, v in ORIGIN_REGISTRATION_CAPABILITY.items())):
         raise SystemExit("SaaS 尚未证明支持既有应用旧入口采用；拒绝登记")
     module = call_json(platform + "/api/v1/ecs-publisher/modules/" + record["application_slug"], token, no_redirect=True)
+    if not isinstance(module, dict):
+        raise SystemExit("SaaS 现有应用响应无效；拒绝登记")
+    module = {**module, "base_url": registered_https_origin(module.get("base_url"))}
     expected = {"application_id": record["application_id"], "organization_id": record["organization_id"],
                 "application_slug": record["application_slug"], "base_url": record["base_url"],
                 "requester_runtime_id": record["target_runtime_id"]}

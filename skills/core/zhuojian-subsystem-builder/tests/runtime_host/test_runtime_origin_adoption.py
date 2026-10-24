@@ -28,7 +28,7 @@ class RegisteredOriginAdoptionTests(unittest.TestCase):
         self.paths.runtime.write_text(json.dumps(self.profile),encoding='utf-8')
         self.args=argparse.Namespace(application_slug='orders',application_id='10000000-0000-4000-8000-000000000001',source_runtime_id='20000000-0000-4000-8000-000000000002',base_url='https://orders.old-runtime.example.com',commit='a'*40)
         self.target='30000000-0000-4000-8000-000000000003'
-        self.module=dict(application_slug='orders',application_id=self.args.application_id,organization_id=self.profile['organizationId'],runtime_id=self.args.source_runtime_id,requester_runtime_id=self.target,owned_by_requester=False,base_url=self.args.base_url,status='healthy',last_success_commit=self.args.commit)
+        self.module=dict(application_slug='orders',application_id=self.args.application_id,organization_id=self.profile['organizationId'],runtime_id=self.args.source_runtime_id,requester_runtime_id=self.target,owned_by_requester=False,base_url=self.args.base_url+'/',status='healthy',last_success_commit=self.args.commit)
         self.cap=dict(protocol='zhuojian-platform-capabilities',features={'registeredApplicationOriginRegistration':dict(runtime.ORIGIN_REGISTRATION_CAPABILITY)})
         self.addCleanup(mock.patch.stopall)
         mock.patch.dict(os.environ,{'ZHUOJIAN_ADMIN_TESTING':'1'}).start()
@@ -82,6 +82,16 @@ class RegisteredOriginAdoptionTests(unittest.TestCase):
         runtime.origin_adoption_path('orders',self.paths).write_text(json.dumps(record))
         with self.assertRaises(runtime.AdminError):self.record()
         with self.assertRaises(SystemExit):publisher.load_registered_origin(self.paths.runtime,self.profile,'orders',record['base_url'])
+    def test_api_normalizes_only_root_slash_and_refuses_other_url_changes(self):
+        invalid=[self.args.base_url+'/path',self.args.base_url+'/?secret=hidden',self.args.base_url+'/#fragment','https://user@orders.old-runtime.example.com/','https://orders.old-runtime.example.com:8443/']
+        for value in invalid:
+            with self.subTest(api_url=value),self.assertRaises(runtime.AdminError):self.adopt(module=dict(self.module,base_url=value))
+        self.adopt();record=self.record()
+        self.assertEqual(record['base_url'],self.args.base_url)
+        self.assertEqual(record['attestation']['base_url'],self.args.base_url)
+        for value in invalid:
+            with self.subTest(sdk_api_url=value),mock.patch.object(publisher,'call_json',side_effect=[self.cap,dict(self.module,base_url=value)]),self.assertRaises(SystemExit):
+                publisher.require_registered_origin(self.profile,'not-a-real-token',record,'a'*40)
     def test_seven_ordinary_apps_and_adopted_app_share_backup_without_profile_replacement(self):
         self.adopt();slugs=['ordinary-'+str(i) for i in range(7)]+['orders']
         for slug in slugs:
