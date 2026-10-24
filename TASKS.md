@@ -1,6 +1,6 @@
 # 当前任务
 
-- [ ] **ALPHABET-RUNTIME-ORIGIN-ADOPTION-20261025**（@acceptance_finish，Runtime/SDK 本地实施）：基于 SaaS 实际 capability 与 Runtime-authenticated module attestation，窄支持同企业/环境停用来源 Runtime 的既有应用采用原 HTTPS origin；每应用 root-owned 记录约束原 app UUID、来源 Runtime、首个 healthy commit，保留 hk01 档案及七项业务。同步 Runtime expected_names/load_release/backup-all 与 publish_subsystem，受影响测试和 handoff 随代码提交；Root 独占生产、平台写、PR/稳定分发和个人同步。本条认领不代表已迁移或上线。
+- [ ] **ALPHABET-RUNTIME-ORIGIN-ADOPTION-20261025**（@acceptance_finish，Runtime/SDK 源码候选）：已实现 SaaS capability/module attestation 驱动的 `adopt-origin`、逐应用 root0600 旧入口记录、首个原 healthy commit 与原 app UUID 约束，target 归属后沿用正常发布；expected_names/load_release/backup-all 与 publish SDK 对齐，原 hk01 档案和无记录应用不变。新增7项 Runtime/SDK 联合测试通过，含七普通应用与一采用应用共同备份；既有 std RuntimeHost22通过/1跳过。较大 Pytest suites/quick_validate 因本机缺 pytest/PyYAML 尚待有依赖环境执行。Root 独占独立审查、生产、平台写、PR/版本文档、稳定分发和个人同步；源码候选不代表已迁移或上线。
 
 - [ ] **SAME-COMPANY-MODULE-REUSE-20261024**（@skill_process_audit，core1.1.43文档补充）：默认同一家公司、单服务器、多业务负责人复用现有应用/模块与权威服务；Codex业务确认一次，AI使用既有Runtime调用获权API。独立审查、34项受影响检查、quick_validate及CLI原始摘要/版本保持核对通过；待正式PR CI/root合并后重新冻结bundle-v1.4.45候选。仅文字更正，不实现多企业共用主机、个人凭据或实际迁移；未发布、个人同步或修改生产。见docs/handoff/2026-10-24_same-company-module-reuse.md。
 

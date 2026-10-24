@@ -72,6 +72,14 @@ DEFAULT_PLATFORM_ORIGIN = "https://ai-platform.staging.zhuojianai.com"
 LEGACY_ENTERPRISE_ALIASES = {"aifabei": "alphabet"}
 NGINX_CLIENT_MAX_BODY_SIZE = "512m"
 NGINX_APPLICATION_RESPONSE_TIMEOUT = "900s"
+ORIGIN_ADOPTION_CONTRACT = "registered-application-origin-adoption-v1"
+ORIGIN_REGISTRATION_CAPABILITY = {
+    "supported": True, "version": 1,
+    "scope": "exact-existing-managed-application-origin",
+    "lookupEndpoint": "/api/v1/ecs-publisher/modules/{application_slug}",
+    "crossRuntime": "inactive-same-organization-environment-healthy-replay",
+    "preservesApplicationIdentity": True,
+}
 
 
 class AdminError(RuntimeError):
@@ -469,6 +477,13 @@ def sanitized_platform_capabilities(value: Any) -> dict[str, Any]:
                 if type(directory.get(key)) is not type(required) or directory[key] != required:
                     raise AdminError(invalid)
     expected_features["employeeDirectory"] = directory_declaration
+    origin_registration = features.get("registeredApplicationOriginRegistration")
+    if origin_registration is not None:
+        if (not isinstance(origin_registration, dict)
+                or any(type(origin_registration.get(k)) is not type(v) or origin_registration[k] != v
+                       for k, v in ORIGIN_REGISTRATION_CAPABILITY.items())):
+            raise AdminError(invalid)
+        expected_features["registeredApplicationOriginRegistration"] = dict(ORIGIN_REGISTRATION_CAPABILITY)
     return {**expected, "supportedContractRevisions": sorted(revisions), "features": expected_features}
 
 
@@ -526,6 +541,7 @@ def platform_release_request(
     body: dict[str, Any] | None = None,
     *,
     allow_not_found: bool = False,
+    no_redirect: bool = False,
 ) -> tuple[int, dict[str, Any] | None]:
     """Call the Runtime-scoped release API without using ambient proxies."""
 
@@ -538,7 +554,10 @@ def platform_release_request(
     if payload is not None:
         headers["Content-Type"] = "application/json"
     url = platform_origin(profile) + endpoint
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    handlers = [urllib.request.ProxyHandler({})]
+    if no_redirect:
+        handlers.append(CapabilityNoRedirect())
+    opener = urllib.request.build_opener(*handlers)
     try:
         with opener.open(
             urllib.request.Request(url, data=payload, headers=headers, method=method),
@@ -568,23 +587,36 @@ def begin_platform_release_change(
     """Close an existing SaaS release before changing the live container."""
 
     encoded_slug = urllib.parse.quote(validate_slug(slug), safe="")
+    adoption = load_origin_adoption(slug, profile, paths)
+    if adoption:
+        require_origin_adoption_capability(profile, paths)
     status, release = platform_release_request(
         profile,
         paths,
         "GET",
         f"/api/v1/ecs-publisher/modules/{encoded_slug}",
         allow_not_found=True,
+        **({"no_redirect": True} if adoption else {}),
     )
     if status != 404 and (
         not isinstance(release, dict) or release.get("application_slug") != slug
     ):
         raise AdminError("platform release identity does not match this application")
+    if adoption:
+        owner = validate_origin_adoption_module(adoption, release or {})
+        if owner == "source":
+            if target_commit != adoption["first_healthy_commit"]:
+                raise AdminError("first adopted release must replay the original healthy commit")
+            # The source is already inactive. A begin-change on another Runtime
+            # cannot authorize a transfer; only exact healthy registration can.
+            return False
     platform_release_request(
         profile,
         paths,
         "POST",
         f"/api/v1/ecs-publisher/modules/{encoded_slug}/begin-change",
         {"target_commit": target_commit},
+        **({"no_redirect": True} if adoption else {}),
     )
     if status != 404:
         return True
@@ -1250,9 +1282,182 @@ def release_path(slug: str, paths: Paths = PATHS) -> Path:
     return paths.deployments / validate_slug(slug) / "release.json"
 
 
+def origin_adoption_path(slug: str, paths: Paths = PATHS) -> Path:
+    return paths.runtime.parent / "origin-adoptions" / f"{validate_slug(slug)}.json"
+
+
+def origin_adoption_digest(value: dict[str, Any]) -> str:
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def require_origin_adoption_capability(profile: dict[str, Any], paths: Paths) -> None:
+    _, capability = platform_release_request(profile, paths, "GET", "/api/v1/ecs-publisher/platform-capabilities", no_redirect=True)
+    features = (capability or {}).get("features")
+    feature = features.get("registeredApplicationOriginRegistration") if isinstance(features, dict) else None
+    if ((capability or {}).get("protocol") != "zhuojian-platform-capabilities"
+            or not isinstance(feature, dict)
+            or any(type(feature.get(k)) is not type(v) or feature[k] != v for k, v in ORIGIN_REGISTRATION_CAPABILITY.items())):
+        raise AdminError("SaaS does not attest registered application origin adoption")
+
+
+def validate_origin_adoption_module(adoption: dict[str, Any], module: dict[str, Any]) -> str:
+    expected = {"application_id": adoption["application_id"], "organization_id": adoption["organization_id"],
+                "application_slug": adoption["application_slug"], "base_url": adoption["base_url"],
+                "requester_runtime_id": adoption["target_runtime_id"]}
+    if any(str(module.get(k)) != v for k, v in expected.items()):
+        raise AdminError("registered origin no longer belongs to the frozen application")
+    if module.get("runtime_id") == adoption["target_runtime_id"] and module.get("owned_by_requester") is True:
+        return "target"
+    if (module.get("runtime_id") == adoption["source_runtime_id"] and module.get("owned_by_requester") is False
+            and module.get("status") == "healthy" and module.get("last_success_commit") == adoption["first_healthy_commit"]):
+        return "source"
+    raise AdminError("registered origin Runtime ownership differs")
+
+
+def adopted_https_origin(value: Any) -> str:
+    if not isinstance(value, str):
+        raise AdminError("registered origin must be HTTPS")
+    try:
+        parsed = urllib.parse.urlsplit(value)
+        port = parsed.port
+    except ValueError:
+        raise AdminError("registered origin must be one exact HTTPS origin") from None
+    if (parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password
+            or port is not None or parsed.path not in ("", "/") or parsed.query or parsed.fragment
+            or not DOMAIN_RE.fullmatch(parsed.hostname) or parsed.netloc != parsed.hostname):
+        raise AdminError("registered origin must be one exact HTTPS origin")
+    return f"https://{parsed.hostname}"
+
+
+def assert_origin_adoption_path(path: Path, *, private_file: bool = False) -> None:
+    for candidate in (path, *path.parents):
+        info = candidate.lstat()
+        if stat.S_ISLNK(info.st_mode) or (os.name != "nt" and (info.st_uid != 0 or info.st_mode & 0o022)):
+            raise AdminError("origin adoption requires root-owned non-writable paths without symlinks")
+    if private_file:
+        assert_plain_file(path)
+        if path.stat().st_size > 65536 or (os.name != "nt" and stat.S_IMODE(path.stat().st_mode) != 0o600):
+            raise AdminError("origin adoption record must be bounded root0600 JSON")
+
+
+def load_origin_adoption(slug: str, profile: dict[str, Any], paths: Paths = PATHS) -> dict[str, Any] | None:
+    path = origin_adoption_path(slug, paths)
+    if not path.exists() and not path.is_symlink():
+        return None
+    assert_origin_adoption_path(path, private_file=True)
+    def unique(items):
+        value = {}
+        for key, item in items:
+            if key in value:
+                raise AdminError("duplicate origin adoption JSON field")
+            value[key] = item
+        return value
+    try:
+        value = json.loads(path.read_bytes(), object_pairs_hook=unique)
+    except (ValueError, OSError):
+        raise AdminError("invalid origin adoption record") from None
+    fields = {"schema", "contract", "application_slug", "application_id", "organization_id", "environment",
+              "enterprise_key", "target_runtime_alias", "target_runtime_id", "source_runtime_id", "base_url",
+              "first_healthy_commit", "attestation", "created_at", "record_sha256"}
+    if (not isinstance(value, dict) or set(value) != fields or type(value["schema"]) is not int
+            or value["schema"] != 1 or value["contract"] != ORIGIN_ADOPTION_CONTRACT
+            or value["record_sha256"] != origin_adoption_digest({k: v for k, v in value.items() if k != "record_sha256"})
+            or value["application_slug"] != validate_slug(slug)
+            or value["organization_id"] != profile.get("organizationId")
+            or value["environment"] != profile.get("environment") or not value["environment"]
+            or value["enterprise_key"] != profile.get("enterpriseKey")
+            or value["target_runtime_alias"] != profile.get("runtimeId") or not value["target_runtime_alias"]
+            or adopted_https_origin(value["base_url"]) != value["base_url"]
+            or not re.fullmatch(r"[a-f0-9]{40}", str(value["first_healthy_commit"]))):
+        raise AdminError("origin adoption identity or digest differs")
+    try:
+        for key in ("application_id", "organization_id", "target_runtime_id", "source_runtime_id"):
+            if str(uuid.UUID(value[key])) != value[key]:
+                raise ValueError
+        attestation = value["attestation"]
+        expected = {"application_id": value["application_id"], "organization_id": value["organization_id"],
+                    "application_slug": slug, "runtime_id": value["source_runtime_id"],
+                    "requester_runtime_id": value["target_runtime_id"], "base_url": value["base_url"],
+                    "status": "healthy", "last_success_commit": value["first_healthy_commit"]}
+        if set(attestation) != set(expected) or attestation != expected:
+            raise ValueError
+    except (ValueError, TypeError, KeyError, AttributeError):
+        raise AdminError("origin adoption attestation differs from the frozen application") from None
+    return value
+
+
+def cmd_adopt_origin(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, Any]:
+    """Record only a SaaS-attested legacy origin; never copy profiles or start apps."""
+    if os.name != "nt" and os.geteuid() != 0:
+        raise AdminError("origin adoption requires root")
+    slug = validate_slug(args.application_slug)
+    base_url = adopted_https_origin(args.base_url)
+    if not re.fullmatch(r"[a-f0-9]{40}", args.commit):
+        raise AdminError("origin adoption requires the exact original healthy commit")
+    try:
+        application_id = str(uuid.UUID(args.application_id))
+        source_runtime_id = str(uuid.UUID(args.source_runtime_id))
+    except (ValueError, TypeError, AttributeError):
+        raise AdminError("origin adoption requires application/source Runtime UUIDs") from None
+    with locked(paths):
+        profile = load_runtime(paths)
+        if not profile.get("runtimeId") or not profile.get("environment"):
+            raise AdminError("Runtime identity and environment must be explicit")
+        existing = load_origin_adoption(slug, profile, paths)
+        if existing:
+            if any(existing[key] != wanted for key, wanted in (("application_id", application_id),
+                    ("source_runtime_id", source_runtime_id), ("base_url", base_url), ("first_healthy_commit", args.commit))):
+                raise AdminError("an existing adoption cannot be replaced")
+            return {"ok": True, "action": "adopt-origin", "alreadyRecorded": True, "applicationId": application_id,
+                    "hostname": urllib.parse.urlsplit(base_url).hostname, "servicesChanged": False}
+        require_origin_adoption_capability(profile, paths)
+        _, module = platform_release_request(profile, paths, "GET", f"/api/v1/ecs-publisher/modules/{slug}", no_redirect=True)
+        module = module or {}
+        expected = {"application_id": application_id, "organization_id": profile["organizationId"],
+                    "application_slug": slug, "runtime_id": source_runtime_id, "base_url": base_url,
+                    "status": "healthy", "last_success_commit": args.commit}
+        if any(str(module.get(k)) != v for k, v in expected.items()):
+            raise AdminError("SaaS module does not attest the exact original healthy application")
+        try:
+            target_runtime_id = str(uuid.UUID(module["requester_runtime_id"]))
+        except (ValueError, TypeError, KeyError, AttributeError):
+            raise AdminError("SaaS did not attest the authenticated requester Runtime") from None
+        if (module.get("owned_by_requester") is not False or target_runtime_id == source_runtime_id
+                or base_url == f"https://{slug}.{profile['domains']['suffix']}"):
+            raise AdminError("origin adoption is restricted to the attested inactive source Runtime")
+        attestation = {**expected, "requester_runtime_id": target_runtime_id}
+        value = {"schema": 1, "contract": ORIGIN_ADOPTION_CONTRACT, "application_slug": slug,
+                 "application_id": application_id, "organization_id": profile["organizationId"],
+                 "environment": profile["environment"], "enterprise_key": profile["enterpriseKey"],
+                 "target_runtime_alias": profile["runtimeId"], "target_runtime_id": target_runtime_id,
+                 "source_runtime_id": source_runtime_id, "base_url": base_url,
+                 "first_healthy_commit": args.commit, "attestation": attestation, "created_at": utc_now()}
+        value["record_sha256"] = origin_adoption_digest(value)
+        path = origin_adoption_path(slug, paths)
+        assert_origin_adoption_path(path.parent.parent)
+        path.parent.mkdir(mode=0o700, exist_ok=True)
+        assert_origin_adoption_path(path.parent)
+        raw = (json.dumps(value, sort_keys=True, indent=2) + "\n").encode()
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+        with os.fdopen(descriptor, "wb") as out:
+            out.write(raw); out.flush(); os.fsync(out.fileno())
+        if os.name != "nt":
+            descriptor = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+        load_origin_adoption(slug, profile, paths)
+        return {"ok": True, "action": "adopt-origin", "applicationId": application_id,
+                "sourceRuntimeId": source_runtime_id, "targetRuntimeId": target_runtime_id,
+                "hostname": urllib.parse.urlsplit(base_url).hostname, "recordSha256": value["record_sha256"],
+                "servicesChanged": False, "runtimeProfileChanged": False}
+
+
 def expected_names(slug: str, profile: dict[str, Any], paths: Paths = PATHS) -> dict[str, Any]:
     enterprise = profile["enterpriseKey"]
-    host = f"{slug}.{profile['domains']['suffix']}"
+    adoption = load_origin_adoption(slug, profile, paths)
+    host = (urllib.parse.urlsplit(adoption["base_url"]).hostname if adoption else f"{slug}.{profile['domains']['suffix']}")
     if not DOMAIN_RE.fullmatch(host):
         raise AdminError("application hostname exceeds DNS limits")
     return {
@@ -3111,6 +3316,13 @@ def parser() -> argparse.ArgumentParser:
     status = sub.add_parser("status", help="show non-secret state for one managed application")
     status.add_argument("application_slug")
     status.set_defaults(func=cmd_status)
+    adopt = sub.add_parser("adopt-origin", help="record a SaaS-attested original origin from an inactive same-company Runtime")
+    adopt.add_argument("application_slug")
+    adopt.add_argument("--application-id", required=True)
+    adopt.add_argument("--source-runtime-id", required=True)
+    adopt.add_argument("--base-url", required=True)
+    adopt.add_argument("--commit", required=True)
+    adopt.set_defaults(func=cmd_adopt_origin)
     verify_release = sub.add_parser(
         "verify-release",
         help="verify canonical Running/commit/image identity before SaaS publication",
