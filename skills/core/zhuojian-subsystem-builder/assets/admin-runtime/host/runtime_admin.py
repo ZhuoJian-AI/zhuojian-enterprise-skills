@@ -73,6 +73,7 @@ LEGACY_ENTERPRISE_ALIASES = {"aifabei": "alphabet"}
 NGINX_CLIENT_MAX_BODY_SIZE = "512m"
 NGINX_APPLICATION_RESPONSE_TIMEOUT = "900s"
 ORIGIN_ADOPTION_CONTRACT = "registered-application-origin-adoption-v1"
+NETWORK_ATTACHMENTS_CONTRACT = "root-approved-network-attachments-v1"
 ORIGIN_REGISTRATION_CAPABILITY = {
     "supported": True, "version": 1,
     "scope": "exact-existing-managed-application-origin",
@@ -2040,6 +2041,88 @@ def provision_release(slug: str, profile: dict[str, Any], paths: Paths = PATHS) 
     return release
 
 
+def assert_network_attachment_path(path: Path) -> None:
+    if os.name != "nt" and os.geteuid() != 0:
+        raise AdminError("network attachments require root")
+    for candidate in (path, *path.parents):
+        info = candidate.lstat()
+        if (stat.S_ISLNK(info.st_mode)
+                or (os.name != "nt" and (info.st_uid != 0 or info.st_mode & 0o022))):
+            raise AdminError("network attachments require root-owned paths without symlinks or shared writes")
+    if (not path.is_file() or path.stat().st_size > 16384
+            or (os.name != "nt" and (stat.S_IMODE(path.stat().st_mode) != 0o600
+                or stat.S_IMODE(path.parent.stat().st_mode) != 0o700))):
+        raise AdminError("network attachment records require a root700 directory and root600 bounded JSON")
+
+
+def validated_network_attachments(slug: str, profile: dict[str, Any], paths: Paths = PATHS) -> list[dict[str, str]]:
+    """Read only a root-authored local approval, never business release metadata."""
+    path = paths.runtime.parent / "network-attachments" / f"{validate_slug(slug)}.json"
+    if not path.exists() and not path.is_symlink():
+        return []
+    assert_network_attachment_path(path)
+    def unique(pairs):
+        obj = {}
+        for key, value in pairs:
+            if key in obj:
+                raise ValueError
+            obj[key] = value
+        return obj
+    try:
+        record = json.loads(path.read_bytes(), object_pairs_hook=unique)
+        expected = {"schema": 1, "contract": NETWORK_ATTACHMENTS_CONTRACT,
+                    "application_slug": slug, "runtime_alias": profile["runtimeId"],
+                    "organization_id": profile["organizationId"], "environment": profile["environment"],
+                    "enterprise_key": profile["enterpriseKey"]}
+        if (set(record) != {*expected, "networks"} or type(record["schema"]) is not int
+                or any(record.get(key) != value for key, value in expected.items())
+                or not all(isinstance(expected[key], str) and expected[key] for key in expected if key not in {"schema"})
+                or not isinstance(record["networks"], list) or not 1 <= len(record["networks"]) <= 2):
+            raise ValueError
+        attachments = record["networks"]
+        names, identifiers = set(), set()
+        for item in attachments:
+            if (not isinstance(item, dict) or set(item) != {"name", "id"}
+                    or not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_.-]{0,62}", str(item["name"]))
+                    or not isinstance(item["name"], str)
+                    or not re.fullmatch(r"[0-9a-f]{64}", str(item["id"]))
+                    or not isinstance(item["id"], str)
+                    or item["name"] in {"bridge", "host", "none", "ingress", storage_network_name(slug)}
+                    or item["name"] in names or item["id"] in identifiers):
+                raise ValueError
+            names.add(item["name"])
+            identifiers.add(item["id"])
+    except (ValueError, TypeError, KeyError, AttributeError, OSError):
+        raise AdminError("network attachment approval identity or schema differs") from None
+    for item in attachments:
+        result = run(["docker", "network", "inspect", item["id"]], check=False)
+        if result.returncode:
+            raise AdminError("approved network is missing; do not stop the current application")
+        try:
+            rows = json.loads(result.stdout)
+            network = rows[0]
+            if (len(rows) != 1 or network["Id"] != item["id"] or network["Name"] != item["name"]
+                    or network["Driver"] != "bridge" or network["Scope"] != "local"
+                    or network["Internal"] is not True or network.get("Ingress", False) is not False
+                    or network.get("ConfigOnly", False) is not False
+                    or network.get("ConfigFrom", {}).get("Network", "") != ""
+                    or network["IPAM"]["Driver"] != "default"):
+                raise ValueError
+            configs = network["IPAM"]["Config"]
+            if not isinstance(configs, list) or len(configs) != 1:
+                raise ValueError
+            config = configs[0]
+            if set(config) - {"Subnet", "Gateway", "IPRange"} or config.get("IPRange", "") != "":
+                raise ValueError
+            subnet = ipaddress.ip_network(config["Subnet"], strict=True)
+            gateway = ipaddress.ip_address(config["Gateway"])
+            if subnet.version != 4 or not subnet.is_private or gateway not in subnet:
+                raise ValueError
+        except (ValueError, TypeError, KeyError, IndexError, AttributeError):
+            raise AdminError("approved network no longer matches its exact native internal bridge identity") from None
+    return attachments
+
+
 def start_container(
     name: str,
     image: str,
@@ -2050,6 +2133,7 @@ def start_container(
     *,
     storage_rotation_operation_id: str | None = None,
 ) -> None:
+    attachments = validated_network_attachments(slug, profile, paths)
     if container_exists(name):
         raise AdminError(f"container name is already occupied: {name}")
     commit = image.rsplit(":", 1)[-1].lower()
@@ -2088,7 +2172,45 @@ def start_container(
             raise AdminError("release storage network does not match the managed application network")
         command += ["--env-file", str(storage_env), "--network", storage_network]
     command.append(image)
-    run(command)
+    if not attachments:
+        run(command)
+        return
+    # Keep the primary native network for SaaS outbound. Connect approved
+    # supplemental internal routes while stopped; never start first and repair.
+    run(["docker", "create", *command[3:]])
+    for attachment in attachments:
+        run(["docker", "network", "connect", attachment["id"], name])
+    result = run(["docker", "inspect", name])
+    try:
+        rows = json.loads(result.stdout)
+        row = rows[0]
+        actual = row["NetworkSettings"]["Networks"]
+        primary = storage_network if storage_mode == OSS_STORAGE_MODE else "bridge"
+        if (len(rows) != 1 or row["State"]["Running"] is not False
+                or row["Config"]["Image"] != image
+                or set(actual) != {primary, *(item["name"] for item in attachments)}):
+            raise ValueError
+        # Docker may leave NetworkID empty before first start. The preceding
+        # connect was by the already verified immutable network ID, not a name.
+        for attachment in attachments:
+            if actual[attachment["name"]].get("NetworkID") not in (None, "", attachment["id"]):
+                raise ValueError
+    except (ValueError, TypeError, KeyError, IndexError):
+        raise AdminError("created container network attachments differ; left stopped for reconciliation") from None
+    # Recheck exact IDs before starting; failures retain the stopped container.
+    if validated_network_attachments(slug, profile, paths) != attachments:
+        raise AdminError("network attachment approval changed; created container left stopped")
+    run(["docker", "start", name])
+    result = run(["docker", "inspect", name])
+    try:
+        rows = json.loads(result.stdout)
+        actual = rows[0]["NetworkSettings"]["Networks"]
+        if (len(rows) != 1 or set(actual) != {primary, *(item["name"] for item in attachments)}
+                or any(actual[item["name"]].get("NetworkID") != item["id"] for item in attachments)):
+            raise ValueError
+    except (ValueError, TypeError, KeyError, IndexError):
+        run(["docker", "stop", "--time", "30", name], check=False)
+        raise AdminError("started container network identity differs; stop requested, reconciliation required") from None
 
 
 def rollback_container(
@@ -2406,6 +2528,7 @@ def cmd_deploy(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, Any]
     slug = validate_slug(args.application_slug)
     with locked(paths):
         profile = load_runtime(paths)
+        validated_network_attachments(slug, profile, paths)
         if release_path(slug, paths).exists():
             pending_release = load_release(slug, profile, paths)
             recover_pending_release_switch(pending_release, profile, paths)
@@ -2462,6 +2585,7 @@ def cmd_deploy(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, Any]
             "--label", f"com.zhuojian.application={slug}",
             "--label", f"com.zhuojian.commit={commit}", "--tag", image, str(project),
         ])
+        validated_network_attachments(slug, profile, paths)
         old_nginx = read_optional_plain(nginx_path)
         marker = create_release_switch_marker(
             release,
@@ -2824,6 +2948,7 @@ def cmd_rollback(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, An
     slug = validate_slug(args.application_slug)
     with locked(paths):
         profile = load_runtime(paths)
+        validated_network_attachments(slug, profile, paths)
         release = load_release(slug, profile, paths)
         release = recover_pending_release_switch(release, profile, paths)
         require_no_pending_storage_rotation(release)
@@ -2853,6 +2978,7 @@ def cmd_rollback(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, An
         if not canonical_state["running"]:
             raise AdminError("current managed container is stopped; refusing rollback")
         wait_for_health(release["port"], release["hostname"], timeout=10)
+        validated_network_attachments(slug, profile, paths)
         nginx_path = Path(release["nginxConfig"])
         marker = create_release_switch_marker(
             release,

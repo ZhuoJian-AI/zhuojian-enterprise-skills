@@ -1,6 +1,6 @@
 # 当前任务
 
-- [ ] **ROOT-APPROVED-NETWORK-ATTACHMENTS-20261025**（@acceptance_finish，Runtime helper/聚焦测试/接入说明独占）：从干净 `1c29665014ef7461c118f0380fff93ea6d63aa51` 追加逐应用 root-only 补充内网绑定；部署/回滚停旧版前验证，create/connect/核对后才 start，无记录应用行为保持。SDK、版本44、既有导入脚本保持原字节；Root 独占实际安装、生产、GH、稳定分发及个人同步。
+- [ ] **ROOT-APPROVED-NETWORK-ATTACHMENTS-20261025**（@acceptance_finish，Runtime helper/聚焦测试/接入说明）：从干净 `1c29665014ef7461c118f0380fff93ea6d63aa51` 追加逐应用 root-only 补充内网绑定；部署/回滚停旧版前验证，create/connect/核对后才 start，无记录应用行为保持。本机新11项及原OSS主网1项通过，待独立静审/隔离pytest与quick_validate。SDK、版本44、既有导入脚本保持原字节；Root 独占实际安装、生产、GH、稳定分发及个人同步。见核心Skill `docs/handoff/2026-10-25_root-approved-network-attachments.md`。
 
 - [ ] **ALPHABET-RUNTIME-ORIGIN-ADOPTION-20261025**（@skill_release_finish接文档/版本/公司交接，@acceptance_finish已交Runtime/SDK，Root串行发布）：0a源独立94项通过，产品代码原字节保持；core1.1.44、goods1.0.3/SQL1.1.3/NAS1.0.4及goods目标窄选择器草稿已备，版本4项/四Skill quick_validate/六包元数据及选择器自检通过，未重复94。准备bundle1.4.46；目标同企业归并不重init/覆盖profile，local-managed不自动切OSS。当前只有初副本/镜像准备，实际SaaS能力/源停用/finalsync/DNS/backup-all与用户验收待Root收口，见[候选交接](docs/handoff/2026-10-25_alphabet-server-consolidation-skill.md)。Root独占生产、GH、稳定分发和个人同步，草稿不代表迁移完成。
 

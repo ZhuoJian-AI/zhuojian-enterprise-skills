@@ -14,6 +14,27 @@
 - 需要持久文件时默认建立 `/srv/zhuojian/data/<applicationSlug>/files`，把 `FILE_STORAGE_DRIVER=local` 和 `FILE_STORAGE_ROOT=/data/files` 写入模块 Secret。模块必须通过统一存储适配层访问稳定 `storageKey`。环境明确为 OSS 模式时，部署入口才向文件网关创建或复用项目身份并注入 `FILE_STORAGE_GATEWAY_URL` 和 `FILE_STORAGE_TOKEN`；模块永远不能获得 OSS AccessKey。
 - 迁入已经初始化的同企业服务器时，先执行[已有Runtime归并](region-migration.md#同企业归并到已有runtime)，不重跑首次发布/ensure-app，不覆盖目标profile或重生成原应用Secret。已获SaaS实际证明的旧入口经`adopt-origin`受管记录后，发布SDK用`--application-slug <原slug>`；仍核真实运行镜像/commit与平台原app UUID，不把目录复制当登记。无该记录的普通应用继续严格使用默认后缀。
 
+### 迁移后保留补充内网
+
+应用原主网用于 SaaS/SSO 出站，另有只读数据桥时，不把一次 `docker network connect` 当作持续部署配置。由服务器维护方在 `/etc/zhuojian/network-attachments/`（root700）创建对应 `<applicationSlug>.json`（root600），业务仓库、Manifest、`release_metadata` 和发布 SDK 均无该审批入口。记录严格形状如下，示例值必须取自目标真实 profile 和已存在网络的只读检查，不能直接照抄：
+
+```json
+{
+  "schema": 1,
+  "contract": "root-approved-network-attachments-v1",
+  "application_slug": "orders",
+  "runtime_alias": "target-runtime-alias",
+  "organization_id": "actual-organization-uuid",
+  "environment": "staging",
+  "enterprise_key": "actual-enterprise-key",
+  "networks": [{"name": "existing-readonly-network", "id": "actual-64-character-lowercase-docker-network-id"}]
+}
+```
+
+记录最多批准两个不同的补充网络。Runtime 拒绝符号链接、非 root 所有、可被其他用户改写的路径、错误身份、重复/未知字段、同名重建后的不同 ID，以及非本机原生 `internal` bridge。原生 IPAM 的 `IPRange` 仅允许缺失或空值。网络需提前创建并验收；此记录不会创建网络、改平台权限、打开防火墙或注入业务凭据。
+
+普通 `deploy` 和 `rollback` 在恢复/停止旧容器前及切换前检查记录和真实网络，`start_container` 再次验证。存在记录时保留原主网，使用 `docker create`，按批准 ID 连接补充网络，确认仍为 stopped 和准确网络集合后才 `start`，启动后再次核 ID；连接失败保留 stopped 容器用于诊断。上层发布失败仍执行既有版本恢复协议，不删除业务数据。没有记录的应用继续使用原 `docker run --detach` 路径。修改或撤回记录必须由维护方持 Runtime 锁并评估业务链路，不能由业务代码临时移除检查。安装 helper、创建真实审批记录、实际部署/回滚和业务读回分别验收，Skill 更新本身不等于已连接内网。
+
 ## 已有项目的开发基线
 
 修改或增加功能前，先只读记录服务器项目的 Git HEAD、工作树状态和最近提交，再与当前可用的业务负责人本地副本或远程 Git 比较。比较完成前不得执行拉取、重置、覆盖目录或部署。
