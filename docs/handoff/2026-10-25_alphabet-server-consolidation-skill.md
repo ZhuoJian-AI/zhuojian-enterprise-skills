@@ -22,6 +22,12 @@ legacy core1.2.0与共享Runtime交接1.0.0及其他范围不改版本；公司I
 
 实际独立报告位于本机`audit-2026-10-25/alphabet-server-consolidation/runtime-origin-sdk-ci-evidence/independent-runtime-sdk-review-and-tests.json`，旧/新来源和原失败保留；公司最终备份字节、SSO/角色/文件、数据同步及真机仍需现场验收。模拟七普通/一采用应用的backup分派不等于实际目标全应用归档通过。
 
+## 本轮文档与版本自检
+
+草稿源`3ee8600e9bb4f5ee988b8c83aa894e636470e406`以完整Git archive、已登记公司CI、network-none/源码只读运行`test_contract_versions.py` **4项通过**，core/goods/SQL/NAS四个官方quick_validate均通过，没有重复94套。另用canonical package_skill生成仅本机draft六包并校版本/Changelog/catalog，目标Runtime及host均选择goods/SQL/NAS，源仅goods/NAS，企业名称单独及无关服务器均不匹配；63个本地链接通过。两份已测Runtime/SDK Git原字节仍与0a一致。
+
+证据在本机`audit-2026-10-25/alphabet-server-consolidation/skill44-draft-checks/`的`metadata-selectors-result.json`与`docs-version-ci-result.json`。这些是本地/直接CI自检，不是GitHub正式check或公开46包无缓存resolve；没有生产、GitHub或个人Skill写入。正式发布后仍须重新核真实下载和安装结果。
+
 ## 当前迁移边界与后续Root收口
 
 已授权目标是一家公司一台服务器，源101.37的两个项目归并至已有47.97/01；只完成初始约13GB隔离副本和镜像准备，源仍为业务权威。保留目标默认profile、登记key及全部现役应用/网络；原app/release/模块/Action/角色、Git、应用凭据和local-managed键不重建。源两旧hk48域名继续保留，具体端口、单活任务及源观察状态以最终真实登记为准。
