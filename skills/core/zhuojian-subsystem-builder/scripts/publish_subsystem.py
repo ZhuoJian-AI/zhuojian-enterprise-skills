@@ -9,6 +9,7 @@ import functools
 import hashlib
 import json
 import os
+import re
 import stat
 import subprocess
 import sys
@@ -18,6 +19,8 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import ProxyHandler, Request, build_opener
+from urllib.request import HTTPRedirectHandler
+from uuid import UUID
 
 try:
     from contract_versions import require_supported_contract_revision
@@ -36,6 +39,17 @@ except ImportError:  # pragma: no cover - Windows development host
 
 RUNTIME_LOCK_FILE = Path("/run/lock/zhuojian-runtime-admin.lock")
 CANONICAL_ENTERPRISE_KEY = "alphabet"
+ORIGIN_ADOPTION_CONTRACT = "registered-application-origin-adoption-v1"
+ORIGIN_REGISTRATION_CAPABILITY = {
+    "supported": True, "version": 1, "scope": "exact-existing-managed-application-origin",
+    "lookupEndpoint": "/api/v1/ecs-publisher/modules/{application_slug}",
+    "crossRuntime": "inactive-same-organization-environment-healthy-replay", "preservesApplicationIdentity": True,
+}
+
+
+class OriginNoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
 
 
 def canonical_enterprise_key(value: object) -> str:
@@ -98,6 +112,7 @@ def call_json(
     token: str,
     method: str = "GET",
     body: dict | None = None,
+    *, no_redirect: bool = False,
 ) -> dict:
     data = json.dumps(body, ensure_ascii=False).encode("utf-8") if body else None
     headers = {
@@ -108,7 +123,7 @@ def call_json(
     if data is not None:
         headers["Content-Type"] = "application/json"
     try:
-        opener = build_opener(ProxyHandler({}))
+        opener = build_opener(ProxyHandler({}), *([OriginNoRedirect()] if no_redirect else []))
         with opener.open(
             Request(url, data=data, method=method, headers=headers), timeout=30
         ) as response:
@@ -403,6 +418,102 @@ def initial_access_payload(platform_url: str, token: str, policy: str) -> dict:
     return {"initial_access_policy": "disabled"}
 
 
+def assert_registered_origin_path(path: Path) -> None:
+    for candidate in (path, *path.parents):
+        info = candidate.lstat()
+        if stat.S_ISLNK(info.st_mode) or (os.name != "nt" and (info.st_uid != 0 or info.st_mode & 0o022)):
+            raise SystemExit("旧入口采用记录必须位于 root 持有的无符号链接路径")
+    info = path.lstat()
+    if (not stat.S_ISREG(info.st_mode) or info.st_size > 65536
+            or (os.name != "nt" and stat.S_IMODE(info.st_mode) != 0o600)):
+        raise SystemExit("旧入口采用记录必须是 root0600 JSON")
+
+
+def registered_https_origin(value: object) -> str:
+    if not isinstance(value, str):
+        raise SystemExit("既有应用入口必须是精确 HTTPS 根入口")
+    try:
+        parsed = urlsplit(value)
+        if (parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password
+                or parsed.port is not None or parsed.netloc != parsed.hostname
+                or parsed.path not in ("", "/") or parsed.query or parsed.fragment):
+            raise ValueError
+    except ValueError:
+        raise SystemExit("既有应用入口必须是精确 HTTPS 根入口") from None
+    return "https://" + parsed.hostname
+
+
+def load_registered_origin(profile_path: Path, profile: dict, slug: str, base_url: str) -> dict:
+    if not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", slug):
+        raise SystemExit("旧入口采用必须明确有效的 application-slug")
+    path = profile_path.parent / "origin-adoptions" / f"{slug}.json"
+    try:
+        assert_registered_origin_path(path)
+        def unique(items):
+            result = {}
+            for key, value in items:
+                if key in result:
+                    raise ValueError("duplicate adoption field")
+                result[key] = value
+            return result
+        record = json.loads(path.read_bytes(), object_pairs_hook=unique)
+        fields = {"schema", "contract", "application_slug", "application_id", "organization_id", "environment",
+                  "enterprise_key", "target_runtime_alias", "target_runtime_id", "source_runtime_id", "base_url",
+                  "first_healthy_commit", "attestation", "created_at", "record_sha256"}
+        body = {k: v for k, v in record.items() if k != "record_sha256"}
+        digest = hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        parsed = urlsplit(record["base_url"])
+        if (set(record) != fields or type(record["schema"]) is not int or record["schema"] != 1
+                or record["contract"] != ORIGIN_ADOPTION_CONTRACT or record["record_sha256"] != digest
+                or record["application_slug"] != slug or record["base_url"] != base_url
+                or record["organization_id"] != profile.get("organizationId")
+                or record["environment"] != profile.get("environment") or not record["environment"]
+                or record["enterprise_key"] != profile.get("enterpriseKey")
+                or record["target_runtime_alias"] != profile.get("runtimeId") or not record["target_runtime_alias"]
+                or parsed.scheme != "https" or not parsed.hostname or parsed.netloc != parsed.hostname
+                or parsed.path or parsed.query or parsed.fragment or parsed.username or parsed.password
+                or not re.fullmatch(r"[a-f0-9]{40}", record["first_healthy_commit"])):
+            raise ValueError("adoption identity differs")
+        for key in ("application_id", "organization_id", "source_runtime_id", "target_runtime_id"):
+            if str(UUID(record[key])) != record[key]:
+                raise ValueError("adoption UUID differs")
+        expected = {"application_id": record["application_id"], "organization_id": record["organization_id"],
+                    "application_slug": slug, "runtime_id": record["source_runtime_id"],
+                    "requester_runtime_id": record["target_runtime_id"], "base_url": base_url,
+                    "status": "healthy", "last_success_commit": record["first_healthy_commit"]}
+        if record["attestation"] != expected:
+            raise ValueError("adoption attestation differs")
+        return record
+    except (OSError, ValueError, TypeError, KeyError, AttributeError):
+        raise SystemExit("旧入口没有与当前 Runtime/企业/应用一致的受控采用记录；拒绝登记") from None
+
+
+def require_registered_origin(profile: dict, token: str, record: dict, commit: str) -> str:
+    platform = str(profile["platform"]["baseUrl"]).rstrip("/")
+    capabilities = call_json(platform + "/api/v1/ecs-publisher/platform-capabilities", token, no_redirect=True)
+    features = capabilities.get("features") if isinstance(capabilities, dict) else None
+    feature = features.get("registeredApplicationOriginRegistration") if isinstance(features, dict) else None
+    if (not isinstance(capabilities, dict) or capabilities.get("protocol") != "zhuojian-platform-capabilities"
+            or not isinstance(feature, dict)
+            or any(type(feature.get(k)) is not type(v) or feature[k] != v for k, v in ORIGIN_REGISTRATION_CAPABILITY.items())):
+        raise SystemExit("SaaS 尚未证明支持既有应用旧入口采用；拒绝登记")
+    module = call_json(platform + "/api/v1/ecs-publisher/modules/" + record["application_slug"], token, no_redirect=True)
+    if not isinstance(module, dict):
+        raise SystemExit("SaaS 现有应用响应无效；拒绝登记")
+    module = {**module, "base_url": registered_https_origin(module.get("base_url"))}
+    expected = {"application_id": record["application_id"], "organization_id": record["organization_id"],
+                "application_slug": record["application_slug"], "base_url": record["base_url"],
+                "requester_runtime_id": record["target_runtime_id"]}
+    if not isinstance(module, dict) or any(str(module.get(k)) != v for k, v in expected.items()):
+        raise SystemExit("SaaS 现有应用身份或旧入口与采用记录不符；拒绝登记")
+    if module.get("runtime_id") == record["target_runtime_id"] and module.get("owned_by_requester") is True:
+        return "target"
+    if (module.get("runtime_id") == record["source_runtime_id"] and module.get("owned_by_requester") is False
+            and module.get("status") == "healthy" and module.get("last_success_commit") == commit == record["first_healthy_commit"]):
+        return "source"
+    raise SystemExit("首次采用必须登记原健康版本，且来源必须是同企业/环境的已停用 Runtime")
+
+
 @with_runtime_lock
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -417,6 +528,7 @@ def main() -> int:
     )
     parser.add_argument("--runtime-credential-file", type=Path)
     parser.add_argument("--app-env-file", type=Path)
+    parser.add_argument("--application-slug", help="受控旧入口采用时明确原 applicationSlug")
     parser.add_argument("--release-metadata", type=Path)
     parser.add_argument("--permission-baseline", type=Path, help="已部署且已核对业务勾选界面的旧 Manifest；不修改角色或放宽边界")
     parser.add_argument(
@@ -461,11 +573,14 @@ def main() -> int:
     domain_suffix = str((profile.get("domains") or {}).get("suffix") or "").lower()
     if parsed.scheme != "https" or not parsed.hostname:
         raise SystemExit("模块入口必须是公网 HTTPS URL")
-    if not domain_suffix or not parsed.hostname.endswith("." + domain_suffix):
-        raise SystemExit("模块域名不在 Runtime 允许的域名后缀内")
-    inferred_slug = parsed.hostname[: -(len(domain_suffix) + 1)]
-    if not inferred_slug or "." in inferred_slug:
-        raise SystemExit("无法从模块域名确定 applicationSlug")
+    registered_origin = None
+    if domain_suffix and parsed.hostname.endswith("." + domain_suffix):
+        inferred_slug = parsed.hostname[: -(len(domain_suffix) + 1)]
+        if not inferred_slug or "." in inferred_slug or (args.application_slug and args.application_slug != inferred_slug):
+            raise SystemExit("无法从模块域名确定 applicationSlug")
+    else:
+        inferred_slug = args.application_slug or ""
+        registered_origin = load_registered_origin(args.runtime_profile, profile, inferred_slug, base_url)
     app_env_file = args.app_env_file or Path("/etc/zhuojian/apps") / f"{inferred_slug}.env"
     app_environment = load_app_environment(app_env_file)
     manifest_token, credential_revision = select_manifest_credential(app_environment)
@@ -482,8 +597,11 @@ def main() -> int:
         if running.get("commit") != commit:
             raise SystemExit("Git HEAD 与 Runtime 当前运行版本不一致；回滚后请使用 --use-running-release")
     image_ref = str(running["image"])
+    if registered_origin:
+        require_registered_origin(profile, runtime_credential, registered_origin, commit)
 
-    manifest = call_json(base_url + "/api/integration/manifest", manifest_token)
+    manifest = call_json(base_url + "/api/integration/manifest", manifest_token,
+                         **({"no_redirect": True} if registered_origin else {}))
     require_publishable_navigation_theme(manifest)
     permission_baseline = load_object(args.permission_baseline, "已核对权限基线") if args.permission_baseline else None
     require_publishable_checkbox_permissions(manifest, permission_baseline)
@@ -492,7 +610,8 @@ def main() -> int:
     enterprise_key = str((manifest.get("enterprise") or {}).get("key") or "")
     if not application_slug or not application_name:
         raise SystemExit("Manifest 缺少 applicationSlug/applicationName")
-    if parsed.hostname != f"{application_slug}.{domain_suffix}":
+    if (application_slug != inferred_slug
+            or (not registered_origin and parsed.hostname != f"{application_slug}.{domain_suffix}")):
         raise SystemExit("Manifest applicationSlug 与模块域名不一致")
     if canonical_enterprise_key(enterprise_key) != canonical_enterprise_key(
         profile.get("enterpriseKey")
@@ -527,7 +646,13 @@ def main() -> int:
             "release_metadata": metadata,
             **access_payload,
         },
+        **({"no_redirect": True} if registered_origin else {}),
     )
+    if registered_origin and (str(result.get("application_id")) != registered_origin["application_id"]
+            or str(result.get("runtime_id")) != registered_origin["target_runtime_id"]
+            or str(result.get("requester_runtime_id")) != registered_origin["target_runtime_id"]
+            or result.get("owned_by_requester") is not True):
+        raise SystemExit("登记返回的应用或 Runtime 归属不符；先只读核对原应用，不自动重试")
     summary = {
         "status": result.get("status"),
         "applicationSlug": result.get("application_slug"),

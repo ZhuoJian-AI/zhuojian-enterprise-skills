@@ -1,5 +1,25 @@
 # 服务器访问
 
+## 2026-10-25 已接管至01，源48退役观察
+
+商品动销看板与设计灵感库已从 `101.37.173.94` 归并至既有 `47.97.90.161` / `aifabei-hk-01`。组织仍为 `65130a23-b05e-4026-9615-761ab2d4193c`，environment 为 `staging`；没有重建企业、覆盖目标默认 profile 或重新初始化服务器。原48 Runtime 已正常停用，源两业务容器均 exit 0、restart=no，源备份定时任务停用；源数据、Git、历史备份和失败/续程证据保留观察，不作为当前写入或发布目标。
+
+最终数据传输为 1,846,927,360 bytes，流 SHA `b812cd28e143e055ff5cdcf4170d2324c9936234def574109a2e4926c008fb42`；目标按两个应用的完整文件清单、SQLite integrity 和原镜像/Git 校验后启动。商品动销仍是原 app `ef320cac-b9cc-4ab9-8ad1-5d88adb594f2`；设计灵感库仍是 `f61677f7-a6d2-4933-b4bb-6bbe33b1b8ac`。正常 SaaS 登记后两者 owner 已为目标 Runtime UUID `647b9a49-0e41-4c9a-aafa-052530b73640`。九应用的原 app ID、origin、commit、Manifest、Action、角色和四类项目凭据精确比较通过；迁入应用保持 `local-managed`，没有转换 OSS。
+
+两个 `*.hk48.aifabei.staging.zhuojianai.com` 旧 HTTPS origin 保留，不改成 hk01 域名。`*.hk48.aifabei.staging` 的 A 记录已于 `2026-10-25 05:18:23 CST` 在授权 RAM 控制台保存为 `47.97.90.161`，TTL 600。DNS 缓存仍到源101时，由源 Nginx 向目标唯一业务节点转发；该实际链路启用正确 SNI、证书验证、验证深度3并关闭 upstream TLS session reuse。不能为排障关闭证书验证，也不能恢复源业务造成双写。
+
+HTTP 数据仍来自道讯 `10.0.0.94:8849`，与 SQL 口径分开。Windows181 的原 SYSTEM canonical 任务 `Alphabet-Daoxun-Dashboard-Tunnel` 已切至目标 SSH22，反向监听仅 `127.0.0.1:18849`，经独立 `zhuojian-goods-http-readonly` 网络和 relay 提供 `172.29.94.1:18849`。`2026-10-25 05:29:52 CST` 三轮宿主机/实际商品容器共6次 `/api/gd_shops` GET 均200、885行、92,971 bytes，内容 SHA 均为 `f2f1efd23ead0f5d44856873f41b36d195a0729fbf73d18f3a2bf786923805f1`；公网18849无监听，旧Source18849 SSH不再运行。目标 `172.18.0.1` 属商品360存储网络，不能借用。helper 与该看板逐应用 root 审批网络记录已经安装，后续 deploy/rollback 仍须保持已批准补充网络与原主网，不能只临时 network connect。
+
+### final_acceptance（独立待收口）
+
+- `http_canonical`: passed，以上真实三轮证据；日常任务仍实时检查监听、同步时间和错误。
+- `native_backup_and_restore`: pending，完整九应用 backup-all、归档/服务恢复及恢复演练分别记真实结果。
+- `offsite_sftp_windows_ack`: pending，SFTP 配置已落地、安装收据修复中；首次导出、Windows八文件校验与受限ACK尚不能称通过。
+- `target_letsencrypt_renewal`: pending，当前旧origin TLS已验证；目标正规LE lineage和续期须独立验收，复制PEM不等于续期完成。
+- `employee_and_mobile_e2e`: 本轮未做新的员工页面/手机真机验收，不沿用服务器 health 冒充。
+
+机外备份继续保留原 Windows 任务 `Alphabet-ZhuoJian-Backup-Pull`、每日04:00 CST、`C:\ProgramData\Alphabet\ZhuoJianBackup\pull-backups.ps1`、`E:\ZhuoJianBackups\aifabei-hk48` 历史与保留策略。目标方案为 `zjbackup@47.97.90.161` 只读 `/current/`；最终下载/ACK未验收前不写“机外备份完成”。Source48/101及更早香港地址只用于历史、观察和受控回退定位，不能重新初始化或发布新业务。
+
 ## 2026-09-29 杭州接管与内网直连
 
 杭州 `101.37.173.94` 已恢复并启动商品动销业务，健康检查与同步 ready 通过；香港源 `47.243.48.78` 业务容器已停，旧入口反代杭州，避免 DNS 缓存产生双写。保留 `enterpriseKey=aifabei`、`runtimeId=aifabei-hk-48`、`organizationId=65130a23-b05e-4026-9615-761ab2d4193c` 和域名后缀 `hk48.aifabei.staging.zhuojianai.com`。`*.hk48` 记录已于 23:08:43 CST 切杭州，TTL 600；随后由总任务通过真实员工 SSO 打开模块验收，手机真机范围不由服务器 health 代替。
@@ -13,7 +33,7 @@
 ## 企业 ECS
 
 - 用途：承载商品动销看板与灼见 Runtime
-- 地址：`101.37.173.94`（杭州；旧 `47.243.48.78` 保留观察和回退资料，不再作为内网数据中继）
+- 当前地址：`47.97.90.161`，Runtime `aifabei-hk-01`；`101.37.173.94` / 原48已停用观察，更早 `47.243.48.78` 只作历史定位。
 - 登录用户：`root`
 - 管理员初始化：已于 `2026-09-10` 完成，日常维护不得重复执行
 

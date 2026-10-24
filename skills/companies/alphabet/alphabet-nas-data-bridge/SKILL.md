@@ -1,11 +1,11 @@
 ---
 name: alphabet-nas-data-bridge
-description: "在 Alphabet 的 aifabei-hk-01 / aifabei-hk-48 Runtime 主机上，经群晖 NAS 反向隧道只读浏览企业共享资料；迁移期间依据环境表核对源/目标地址。用户提到 10.0.0.33、NAS、共享盘、000、AI、outshare、TEST 或子系统查询公司文件时使用。"
+description: "在 Alphabet 当前 aifabei-hk-01 Runtime 主机上，经既有群晖 NAS 反向隧道只读浏览企业共享资料；原48仅用于历史和退役观察定位。用户提到 10.0.0.33、NAS、共享盘、000、AI、outshare、TEST 或子系统查询公司文件时使用。"
 ---
 
 # Alphabet NAS 数据桥接
 
-本 Skill 是两台 Alphabet ECS 共用的 NAS 交接层。构建、部署、统一登录、权限、Manifest、Action、iframe Bridge 和 OSS 必须同时使用 `$zhuojian-subsystem-builder`；本 Skill 只说明 NAS 的真实入口、已验证共享、只读边界和验收方法。
+本 Skill 记录 Alphabet 当前01主机的 NAS 通道及原48的历史/退役观察资料。主机归并已完成，业务使用01；源48停用不等于旧NAS设备连接已自动撤除，不能据此重建01监听或删除旧密钥。构建、部署、统一登录、权限、Manifest、Action、iframe Bridge 和 OSS 必须同时使用 `$zhuojian-subsystem-builder`；本 Skill 只说明 NAS 的真实入口、已验证共享、只读边界和验收方法。
 
 本 Skill 由 `ZhuoJian-AI/zhuojian-enterprise-skills` 的稳定 Release 托管。每次任务先让总 Skill 更新自身和本机交接 Skills；本 Skill 被安装或更新后，立即重新读取本文件和 [当前环境](references/environment.md)。
 
@@ -13,7 +13,7 @@ description: "在 Alphabet 的 aifabei-hk-01 / aifabei-hk-48 Runtime 主机上�
 
 - NAS 是企业已有资料源，不是子系统上传盘。用户新上传的图片、视频、音频、文档和附件继续走 Runtime 的 OSS 签名上传。
 - NAS 仅用于浏览、检索、下载或聚合已有共享资料。不要把 NAS 路径写进前端，也不要让浏览器、SaaS 或公网直接连接 SMB。
-- NAS 主动建立到杭州两台 Runtime 主机的受限反向 SSH 隧道，2026-09-29 已完成直连读取验收。先按环境表核验落点与监听状态；稳定 Runtime ID 和原密钥文件名中的 `hk` / 旧 IP 不代表仍经香港。ECS 不需要拥有 Alphabet 整个内网的路由。
+- 当前业务复用01既有受限隧道；2026-09-29的双主机直连是历史证据，不能把源48重新当业务发布目标。先按环境表核验落点与监听状态；稳定 Runtime ID 和原密钥文件名中的 `hk` / 旧 IP 不代表仍经香港。ECS 不需要拥有 Alphabet 整个内网的路由。
 - 现用 NAS 身份在部分共享具有写权限，因此“只读”目前是应用和操作边界，不是 NAS 账号的强制权限。没有新的明确授权，不得创建、覆盖、移动、重命名或删除 NAS 文件。
 
 ## 工作流程

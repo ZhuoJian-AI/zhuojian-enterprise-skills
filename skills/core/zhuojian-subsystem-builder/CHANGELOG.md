@@ -1,5 +1,13 @@
 # 更新记录
 
+## 1.1.44 - 2026-10-25
+
+- Runtime 支持独立逐应用 root 审批的补充内网记录：精确绑定 Runtime/企业/环境、已有 internal bridge 名称和 ID；部署/回滚停旧版前校验，先 create、连接内网后才 start，保留原主网及无记录应用行为。记录不接受业务仓库或发布 metadata 注入。
+- 支持同企业系统迁入已有初始化Runtime，默认profile与无采用记录应用保持；保留原app/release、模块/Action、角色、凭据、域名及local-managed数据，不用ensure-app重建或自动切OSS。
+- `adopt-origin`以实际SaaS受限能力及module GET证明保存逐应用root0600记录；真实requester UUID区分inactive源的首healthy commit重登与目标后续正常更新，原根尾斜杠兼容，任意URL/metadata alias不放行。
+- Runtime与发布SDK对齐旧入口、运行镜像和身份检查，backup-all共同覆盖普通与采用应用；迁移、helper安装、SaaS部署、实际备份/验收和Skill稳定发布分开记录，不把隔离测试或初始副本称为已接管。
+- 保持2.4/2.5、Schema、模板及其他企业范围；具体公司地址、数据通道与切换状态仅在专属handoff。
+
 ## 1.1.43 - 2026-10-24
 
 - 默认同企业单机多个应用/模块先澄清业务对象与唯一存储、复用已有权威服务，区分页面复用、同应用共享服务、获权API/Action和异步事件；不因负责人不同或应用独立默认增加事件路由或合并整个应用。

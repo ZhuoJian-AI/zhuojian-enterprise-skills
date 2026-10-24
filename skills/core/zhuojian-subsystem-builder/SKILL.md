@@ -112,7 +112,7 @@ python <skill>/scripts/e2e_acceptance.py --help
 
 OSS 不是前置条件。未配置时使用磁盘；以后由管理员按 [文件存储与 OSS 迁移](references/object-storage.md) 迁移，不在普通发布过程中暗中切换。挂载数据盘只是本地容量放置，不等于已迁移 OSS，也不得据此改变文件存储契约。
 
-迁移已接入的主机、地域、IP 或 OSS 时，先读 [跨主机与跨地域迁移](references/region-migration.md)。保留企业、Runtime、应用与模块身份；源服务、目标候选和实际接管状态分别记录。普通 OSS 配置命令不能替代现有数据迁移，更新 Skill 也不能证明主机已经切换。
+迁移已接入的主机、地域、IP、OSS，或把同企业多个服务器的系统合并到已有服务器时，先读 [跨主机与跨地域迁移](references/region-migration.md)。空白目标沿用源Runtime；已有初始化目标按受控归并流程保留其档案，原应用/模块/Action/角色和数据身份不重建，不覆盖目标profile或重复初始化。源服务、隔离候选、实际接管和退役观察分别记录；目录复制、镜像导入或Skill更新不能证明已切换。已有local-managed不因目标默认OSS而自动改变。
 
 ## 交付回复
 

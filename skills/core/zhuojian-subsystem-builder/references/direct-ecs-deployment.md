@@ -12,6 +12,30 @@
 - 部署前必须有干净的本地 Git commit。镜像使用 commit SHA 标识，成功版本写入发布记录，禁止使用裸 `latest` 作为回滚依据。
 - 模块 Secret 保存于 `/etc/zhuojian/apps/{applicationSlug}.env`，权限 `0600`，不进入项目目录、Git、日志或回复。
 - 需要持久文件时默认建立 `/srv/zhuojian/data/<applicationSlug>/files`，把 `FILE_STORAGE_DRIVER=local` 和 `FILE_STORAGE_ROOT=/data/files` 写入模块 Secret。模块必须通过统一存储适配层访问稳定 `storageKey`。环境明确为 OSS 模式时，部署入口才向文件网关创建或复用项目身份并注入 `FILE_STORAGE_GATEWAY_URL` 和 `FILE_STORAGE_TOKEN`；模块永远不能获得 OSS AccessKey。
+- 迁入已经初始化的同企业服务器时，先执行[已有Runtime归并](region-migration.md#同企业归并到已有runtime)，不重跑首次发布/ensure-app，不覆盖目标profile或重生成原应用Secret。已获SaaS实际证明的旧入口经`adopt-origin`受管记录后，发布SDK用`--application-slug <原slug>`；仍核真实运行镜像/commit与平台原app UUID，不把目录复制当登记。无该记录的普通应用继续严格使用默认后缀。
+
+### 迁移后保留补充内网
+
+应用原主网用于 SaaS/SSO 出站，另有只读数据桥时，不把一次 `docker network connect` 当作持续部署配置。由服务器维护方在 `/etc/zhuojian/network-attachments/`（root700）创建对应 `<applicationSlug>.json`（root600），业务仓库、Manifest、`release_metadata` 和发布 SDK 均无该审批入口。记录严格形状如下，示例值必须取自目标真实 profile 和已存在网络的只读检查，不能直接照抄：
+
+```json
+{
+  "schema": 1,
+  "contract": "root-approved-network-attachments-v1",
+  "application_slug": "orders",
+  "runtime_alias": "target-runtime-alias",
+  "organization_id": "actual-organization-uuid",
+  "environment": "staging",
+  "enterprise_key": "actual-enterprise-key",
+  "networks": [{"name": "existing-readonly-network", "id": "actual-64-character-lowercase-docker-network-id"}]
+}
+```
+
+记录最多批准两个不同的补充网络。Runtime 拒绝符号链接、非 root 所有、可被其他用户改写的路径、错误身份、重复/未知字段、同名重建后的不同 ID，以及非本机原生 `internal` bridge。原生 IPAM 的 `IPRange` 仅允许缺失或空值。网络需提前创建并验收；此记录不会创建网络、改平台权限、打开防火墙或注入业务凭据。
+
+普通 `deploy` 和 `rollback` 在恢复/停止旧容器前及切换前检查记录和真实网络，`start_container` 再次验证。存在记录时保留原主网，使用 `docker create`，按批准 ID 连接补充网络，确认仍为 stopped 和准确网络集合后才 `start`，启动后再次核 ID；连接失败保留 stopped 容器用于诊断。上层发布失败仍执行既有版本恢复协议，不删除业务数据。没有记录的应用继续使用原 `docker run --detach` 路径。修改或撤回记录必须由维护方持 Runtime 锁并评估业务链路，不能由业务代码临时移除检查。安装 helper、创建真实审批记录、实际部署/回滚和业务读回分别验收，Skill 更新本身不等于已连接内网。
+
+应用启动会立即执行同步或其他后台任务时，补充网络必须在第一次start前就位；用“启动后立刻connect”无法保证这一点。验收在真实最终容器中读回数据，不以宿主机或新建探针容器成功代替；无审批记录的既有应用及OSS原主网保持原行为。
 
 ## 已有项目的开发基线
 
@@ -78,6 +102,8 @@ python <skill>/scripts/publish_subsystem.py \
 
 第一条成功后状态是 `awaiting_platform_registration`，第二条把实际运行的旧 commit、Manifest 和凭证重新交给 SaaS 核对。只有返回 `healthy` 才算平台登记完成；不得把本地健康误报成平台已经可用。
 
+迁入既有应用时沿用其原持久授权策略和原健康Manifest。先以相同运行版本完成纯语义预检，再显式登记同一app；不要用`--initial-access-policy disabled`试图冻结既有授权。原策略、受管开发者grant、业务角色和Action在重登前后分别精确比对，新的部署Runtime归属不能带来新的员工权限。原声明与基线匹配时，重登不要求修改业务代码或重新构建镜像。
+
 ## 发布登记接口
 
 业务 AI 的首次发布和后续更新使用同一个接口：
@@ -90,7 +116,7 @@ Authorization: Bearer <ECS Runtime 登记凭证>
 请求字段：
 
 - `application_slug`、`application_name`：从已验证的 Manifest 取得；
-- `base_url`：必须严格等于 `https://{applicationSlug}.{runtime.domainSuffix}`；
+- `base_url`：普通应用严格等于 `https://{applicationSlug}.{runtime.domainSuffix}`；同企业迁入已有Runtime，仅在实际新能力、原平台受管release/app双origin、源inactive及逐应用采用记录都核验后保留原入口，不使用任意客户端alias；
 - `2.5` 请求使用 `credentials`：包含 Runtime 管理的 `manifest_access_token`、`sso_exchange_token`、`action_signing_secret`、`event_signing_secret`，四值有固定类型前缀且互不相同；
 - `2.4` 兼容请求使用 `integration_secret`：值来自已有 `ZHUOJIAN_INTEGRATION_SECRET`。两种字段必须且只能出现一种；
 - `source_commit`：干净本地 Git 的完整 commit SHA；

@@ -910,7 +910,7 @@ def add_release_switch_marker(
     return marker
 
 
-def test_begin_change_adopts_an_existing_saas_application_without_a_release():
+def test_begin_change_adopts_an_existing_saas_application_without_a_release(tmp_path):
     calls = []
 
     def fake_request(_profile, _paths, method, endpoint, body=None, **kwargs):
@@ -926,19 +926,19 @@ def test_begin_change_adopts_an_existing_saas_application_without_a_release():
     )
     with mock.patch.object(runtime_admin, "platform_release_request", side_effect=fake_request):
         assert runtime_admin.begin_platform_release_change(
-            {}, mock.Mock(), "new-app", "b" * 40
+            {}, paths_for(tmp_path), "new-app", "b" * 40
         ) is True
     assert [item[0] for item in calls] == ["GET", "POST", "GET"]
     assert calls[1][2] == {"target_commit": "b" * 40}
 
 
-def test_begin_change_still_posts_for_a_brand_new_saas_slug():
+def test_begin_change_still_posts_for_a_brand_new_saas_slug(tmp_path):
     responses = iter([(404, None), (204, None), (404, None)])
     request = mock.Mock(side_effect=lambda *_args, **_kwargs: next(responses))
     with mock.patch.object(runtime_admin, "platform_release_request", request):
         assert (
             runtime_admin.begin_platform_release_change(
-                {}, mock.Mock(), "new-app", "b" * 40
+                {}, paths_for(tmp_path), "new-app", "b" * 40
             )
             is False
         )
