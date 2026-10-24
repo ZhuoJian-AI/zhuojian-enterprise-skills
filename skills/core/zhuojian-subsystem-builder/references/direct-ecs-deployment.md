@@ -12,6 +12,7 @@
 - 部署前必须有干净的本地 Git commit。镜像使用 commit SHA 标识，成功版本写入发布记录，禁止使用裸 `latest` 作为回滚依据。
 - 模块 Secret 保存于 `/etc/zhuojian/apps/{applicationSlug}.env`，权限 `0600`，不进入项目目录、Git、日志或回复。
 - 需要持久文件时默认建立 `/srv/zhuojian/data/<applicationSlug>/files`，把 `FILE_STORAGE_DRIVER=local` 和 `FILE_STORAGE_ROOT=/data/files` 写入模块 Secret。模块必须通过统一存储适配层访问稳定 `storageKey`。环境明确为 OSS 模式时，部署入口才向文件网关创建或复用项目身份并注入 `FILE_STORAGE_GATEWAY_URL` 和 `FILE_STORAGE_TOKEN`；模块永远不能获得 OSS AccessKey。
+- 迁入已经初始化的同企业服务器时，先执行[已有Runtime归并](region-migration.md#同企业归并到已有runtime)，不重跑首次发布/ensure-app，不覆盖目标profile或重生成原应用Secret。已获SaaS实际证明的旧入口经`adopt-origin`受管记录后，发布SDK用`--application-slug <原slug>`；仍核真实运行镜像/commit与平台原app UUID，不把目录复制当登记。无该记录的普通应用继续严格使用默认后缀。
 
 ## 已有项目的开发基线
 
@@ -90,7 +91,7 @@ Authorization: Bearer <ECS Runtime 登记凭证>
 请求字段：
 
 - `application_slug`、`application_name`：从已验证的 Manifest 取得；
-- `base_url`：必须严格等于 `https://{applicationSlug}.{runtime.domainSuffix}`；
+- `base_url`：普通应用严格等于 `https://{applicationSlug}.{runtime.domainSuffix}`；同企业迁入已有Runtime，仅在实际新能力、原平台受管release/app双origin、源inactive及逐应用采用记录都核验后保留原入口，不使用任意客户端alias；
 - `2.5` 请求使用 `credentials`：包含 Runtime 管理的 `manifest_access_token`、`sso_exchange_token`、`action_signing_secret`、`event_signing_secret`，四值有固定类型前缀且互不相同；
 - `2.4` 兼容请求使用 `integration_secret`：值来自已有 `ZHUOJIAN_INTEGRATION_SECRET`。两种字段必须且只能出现一种；
 - `source_commit`：干净本地 Git 的完整 commit SHA；

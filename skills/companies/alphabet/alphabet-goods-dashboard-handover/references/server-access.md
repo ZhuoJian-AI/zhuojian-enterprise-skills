@@ -1,5 +1,15 @@
 # 服务器访问
 
+## 2026-10-25 同企业归并候选：尚未切换
+
+管理员已授权把`101.37.173.94`的商品动销看板和设计灵感库迁到已有`47.97.90.161`，目标默认Runtime为`aifabei-hk-01`，组织仍是`65130a23-b05e-4026-9615-761ab2d4193c`、environment为staging。本草稿仅记录初始约13GB私有副本与镜像准备；SaaS新能力正式上线、源48正常停用、最终DB/文件同步、域名和真实用户验收尚待Root完成。**当前源机仍是原业务权威；不得因catalog新增01/目标地址而在候选写业务或报迁移成功。**
+
+保留目标原profile/登记key、现有全部应用、SQL/NAS通道；不把源`/etc/zhuojian/runtime.json`覆盖过去，不重init或ensure-app重建原app。商品动销原app ID`ef320cac-b9cc-4ab9-8ad1-5d88adb594f2`、两旧`*.hk48.aifabei.staging.zhuojianai.com`入口、原模块/Action/角色和local-managed文件保持。真正归属接管由SaaS实际cap、inactive源的原healthy commit重登与受管adopt-origin记录完成，不能只改IP或手写Runtime UUID。
+
+待切换的HTTP通道保持同一道讯`10.0.0.94:8849`数据口径：Windows SYSTEM任务`Alphabet-Daoxun-Dashboard-Tunnel`仍用原任务身份/密钥/单活重连；目标方案为SSH22上的`127.0.0.1:18849`反向监听，经独立私网relay供`172.29.94.1:18849`访问。源`172.18.0.1`在目标属于商品360专属存储网，不能复用或让看板加入该网络。具体生效状态与限制公钥/known_hosts仅以Root最终回执为准；本草稿不声称客户端已改。
+
+机外备份保留Windows任务`Alphabet-ZhuoJian-Backup-Pull`、每日04:00CST、脚本`C:\ProgramData\Alphabet\ZhuoJianBackup\pull-backups.ps1`、`E:\ZhuoJianBackups\aifabei-hk48`的原内容/保留策略。源只读SFTP是`zjbackup@101.37.173.94`、`/current/`，chroot`/srv/zhuojian/offsite-export`；切至目标前核其原只读边界、可信host key及实际下载/摘要。不能只搬两个SQLite而遗失Git、约8GB历史备份和latest export。源48/101选择器在成功后仅用于退役观察/回退定位，不能重新当新业务发布目标。
+
 ## 2026-09-29 杭州接管与内网直连
 
 杭州 `101.37.173.94` 已恢复并启动商品动销业务，健康检查与同步 ready 通过；香港源 `47.243.48.78` 业务容器已停，旧入口反代杭州，避免 DNS 缓存产生双写。保留 `enterpriseKey=aifabei`、`runtimeId=aifabei-hk-48`、`organizationId=65130a23-b05e-4026-9615-761ab2d4193c` 和域名后缀 `hk48.aifabei.staging.zhuojianai.com`。`*.hk48` 记录已于 23:08:43 CST 切杭州，TTL 600；随后由总任务通过真实员工 SSO 打开模块验收，手机真机范围不由服务器 health 代替。

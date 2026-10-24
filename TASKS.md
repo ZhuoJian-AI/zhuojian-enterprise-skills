@@ -1,6 +1,6 @@
 # 当前任务
 
-- [ ] **ALPHABET-RUNTIME-ORIGIN-ADOPTION-20261025**（@skill_release_finish接文档/版本/公司交接，@acceptance_finish已交Runtime/SDK，Root串行发布）：保留已测`adopt-origin`/逐应用root0600记录/首healthy commit/app UUID/backup-all代码原字节，补core1.1.44与公司handoff及窄catalog选择器，准备bundle1.4.46。已初始化目标同企业归并不重init/覆盖profile，local-managed不自动切OSS；当前只有初副本/镜像准备，SaaS能力/源停用/finalsync/DNS/真实验收待Root完成。待补最终94项实际回执及本轮必要文档/版本校验，不重复已过大套；Root独占生产、GH、稳定分发和个人同步，草稿不代表迁移完成。
+- [ ] **ALPHABET-RUNTIME-ORIGIN-ADOPTION-20261025**（@skill_release_finish接文档/版本/公司交接，@acceptance_finish已交Runtime/SDK，Root串行发布）：0a源独立network-none 94项与quick_validate通过，已测Runtime/SDK原字节保持；补core1.1.44、公司goods1.0.3/SQL1.1.3/NAS1.0.4及goods目标窄选择器，准备bundle1.4.46。目标同企业归并不重init/覆盖profile，local-managed不自动切OSS；当前只有初副本/镜像准备，SaaS能力/源停用/finalsync/DNS/实际backup-all与用户验收待Root收口，见[候选交接](docs/handoff/2026-10-25_alphabet-server-consolidation-skill.md)。本轮只补必要文档/版本校验，不重复94；Root独占生产、GH、稳定分发和个人同步，草稿不代表迁移完成。
 
 - [ ] **SAME-COMPANY-MODULE-REUSE-20261024**（@skill_process_audit，core1.1.43文档补充）：默认同一家公司、单服务器、多业务负责人复用现有应用/模块与权威服务；Codex业务确认一次，AI使用既有Runtime调用获权API。独立审查、34项受影响检查、quick_validate及CLI原始摘要/版本保持核对通过；待正式PR CI/root合并后重新冻结bundle-v1.4.45候选。仅文字更正，不实现多企业共用主机、个人凭据或实际迁移；未发布、个人同步或修改生产。见docs/handoff/2026-10-24_same-company-module-reuse.md。
 

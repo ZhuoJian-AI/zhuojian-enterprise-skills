@@ -5,8 +5,28 @@
 ## 身份与责任
 
 - SaaS 负责平台数据库、统一登录/权限、Runtime 登记、网关、签名、回调和公共入口；子系统负责自身数据库、文件引用、同步任务与企业内网通道；Skill 负责接入契约、选址记录和验收交接。
-- 从源 `/etc/zhuojian/runtime.json` 读取已验证的 `enterpriseKey`、`organizationId`、`runtimeId`、域名后缀和应用登记。保留这些值及应用 slug、模块/Action ID、权限、数据库主键和对象键，不能根据公司展示名称重建企业，也不能因 ID 含旧地域缩写就重命名。
-- 源端、隔离目标和已接管目标分别记录。目标恢复相同 Runtime 身份后，在接管前阻止其自动登记、发布回调、业务写入、同步/备份/清理任务；复制了配置不等于可以同时启动全部服务。
+- 从源和目标 `/etc/zhuojian/runtime.json` 读取已验证的企业、组织、Runtime与域名后缀及应用登记。空白目标换机沿用源Runtime；目标已有初始化Runtime时按下节做同企业归并，保留目标档案和原应用身份，不用源profile覆盖它。不得根据公司展示名重建企业，或因旧地域缩写改名。
+- 源端、隔离目标和已接管目标分别记录。在接管前阻止目标副本自动登记、发布回调、业务写入、同步/备份/清理任务；复制了配置不等于可以同时启动全部服务。两个路径均保留原应用/release UUID、slug、模块/Action、角色、数据库主键、应用凭据及文件键。
+
+## 同企业归并到已有Runtime
+
+这是保留既有系统的主机归并，不是新建应用或重做业务。先比对源/目标组织与environment、原app/release UUID、健康commit、Manifest/模块/Action/角色摘要、数据/文件和目标非目标应用基线。目标默认Runtime档案、登记key、现有应用目录、端口、网络、代理与证书保持；不能整目录覆盖`/etc/zhuojian`、运行ensure-app重建旧应用或切换默认profile假装多Runtime。
+
+先完成隔离候选、真实域名/TLS和依赖验证、一致备份/初副本，再在最终停写窗口完成增量与校验，按实际授权正常停用源Runtime。源停用会影响该Runtime全部应用及未消费SSO code，应在其全部迁移项目就绪后串行接管，不让目标候选抢先登记或双写。
+
+保留原域名与登记时，先用目标Runtime实际查询SaaS能力`features.registeredApplicationOriginRegistration` v1，并GET其`lookupEndpoint`返回的原模块。只接受同组织、同environment的已停用源Runtime、原健康release及相同受管app；SaaS同时核`release.base_url`与未删除app的`entry_url`，拒绝任意alias、客户端metadata或不同app。请求和两个既有origin均为HTTPS root URL，scheme/host/port一致，无用户信息、非root路径、query或fragment；尾根斜杠按真实接口规范化。能力缺失时继续复制/核验等独立工作，不能自行放宽域名或改平台登记。
+
+新版受管helper安装与其原字节、doctor验证后，在目标调用：
+
+```text
+zhuojian-runtime adopt-origin <原slug> --application-id <原appUUID> --source-runtime-id <真实源RuntimeUUID> --base-url <原HTTPS入口> --commit <原健康commit>
+```
+
+`adopt-origin`只保存逐应用root0600的`/etc/zhuojian/origin-adoptions/<slug>.json`，绑定平台实际app/org/来源与requester UUID、environment、原origin和首健康commit；它不启动容器、改SaaS、复制profile或生成新凭据。`runtime.json.runtimeId`是档案key，不能当UUID；实际requester来自新GET只读字段`requester_runtime_id`，`runtime_id`仍是release当前owner，`owned_by_requester`用来区分首次接管和目标日常更新。
+
+首次跨owner只以原健康commit、原应用凭据与旧入口执行真实登记，不先对别人release执行begin-change；发布SDK显式传`--application-slug <原slug>`，继续校本机Git/运行容器/image/Secret及平台记录。成功或结果未知后GET同一slug，核原app/release ID和`runtime_id==requester_runtime_id`；未知不自动重复写入。已属目标后按普通begin-change/回滚/重试流程维护旧origin，记录不授权任意URL或员工权限。发现/同步失败可能保存目标owner和failed状态，不能假定整事务回滚或新建同名应用。
+
+local-managed的数据、文件、原Secret、库路径和稳定键随一致性点迁移；目标有OSS也不改变原模式。接管后执行并核实`zhuojian-runtime backup-all`涵盖既有与迁入的全部受管应用、实际归档摘要和恢复路径，不只检查采用应用或命令退出码；按现有备份行为验证服务恢复，不声称零中断。候选复制、helper安装、平台归属、DNS、单活任务、完整备份与用户验收分别记录，最后才把源改为退役观察。
 
 ## 盘点、复制与验证
 
