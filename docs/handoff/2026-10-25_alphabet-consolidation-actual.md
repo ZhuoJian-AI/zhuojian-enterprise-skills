@@ -32,10 +32,24 @@ Runtime网络源95独立隔离CI通过65项（11新网络、23主机切换/恢�
 | `offsite_sftp_windows_ack` | passed | Windows八文件完整SHA、Target原生受限ACK与restore同一manifest15caeb14；06:10:17CST TaskReady/LastResult0，无重复kick或残留。原SYSTEM日程/E历史保持 |
 | `target_letsencrypt_renewal` | passed | 两canonical lineage/线上leaf一致、到期2027-01-22，两renew dry-run/hook通过；临时代理已清，常态timer原direct，未来自然续期另观察 |
 | `employee_browser_mobile` | 本轮未验收 | 获权/拒绝员工真实流程与手机真机；本轮无前端改造 |
-| `public_bundle_and_personal_sync` | 待Root发布验收 | clean merged main、bundle46十资产、匿名更新器与无缓存resolve、两账号限定范围同步 |
+| `public_bundle_and_personal_sync` | passed | main bc455、Release423016046；公开十资产/latest4、三原更新路径/CURRENT、六resolver及两账号8目录限定同步通过，详见下节 |
 
 九项备份证明为`http-bridge/sftp/nine-native-backups-verified.actual.json`，恢复为`target-new-native-backups-restore-checked.actual.json`，实际机外结果为`http-bridge/windows/verified-backup-progress-02.actual.json`和`http-bridge/sftp/native-backup-after-win-ack.actual.json`，同代manifest为`15caeb14385ab4995c41000c15da5bbcb9b3c608defd441343d2652c2512069f`。实际每个迁入应用只有一个新native恢复点，`pruned=[]`；后续策略保留最新两点/两代导出，并在空间不足或未ACK时暂停整批九应用backup.service，业务继续运行。
 
 正式证书证明为`target-canonical-certificates-staged-continuation.actual.json`及独立`final-target-source-tls-nine-health.actual.json`。保留首生产secondary连接超时、云/宿主80已全网允许及三LE验证200的现场证据；两个staging门通过后才执行一次新生产续程。两renew dry-run的子进程使用临时17977代理，已按原PID/creationtime/command清理；常态原timer无该配置。Windows首次完成收据因CIM导出改变Principal序列化而失败，原生COM完整任务定义证明只有Action路径变化，SYSTEM/ServiceAccount5/Highest1不变，随后只读续程补收据，未重跑替换或重设principal。
 
 在恢复和机外ACK之后，只清目标本轮initial-staging中124个源已保留且逐inode/SHA相等的历史副本，释放11,782,852,455字节，空闲24,260,608,000字节。此前242个初始数据副本也只清目标重复项。源全部历史、Windows历史、正常九应用数据/备份/新导出和其他原件保持；临时复制grant精确撤除，HTTP/ACK/原keys保留。源实例仍留观察，NAS旧设备最终回收不能由Runtime48 inactive推定。Root独占后续GH、稳定发布及个人Skill写入。
+
+## 公开发布与个人同步实际终态
+
+PR86及最终事实PR87经正常CI合并，正式包来源为 `bc4551ed67f6e5f6aa59928eb016172c44aeb922`，其main Core CI40138316592/Company40138316597均成功。[bundle-v1.4.46](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/releases/tag/bundle-v1.4.46) 于2026-10-24 22:30:10 UTC发布，实际Release ID `423016046`；core1.1.44/goods1.0.3/SQL1.1.3/NAS1.0.4，legacy1.2.0/shared1.0.0保持原版本和ZIP字节。最终冻结十资产只构建一次，未重传或覆盖已发布附件。
+
+匿名实测十附件SHA/size、四latest入口、原版core新装、1.1.43升级、legacy新装及三次CURRENT均通过，安装树逐字节匹配对应公开ZIP。原版managed updater真实匿名取catalog，六个resolver验证01/目标IP选择goods+SQL+NAS、48/历史IP选择goods+NAS，仅企业名与无关主机不误匹配。正式证明为SaaS工作区 `audit-2026-10-25/r46v3/verification.json`。
+
+GitHub真实`immutable=false`与既有45一致，没有启用或修改仓库设置。保留初次审草稿把临时untagged地址当最终URL的失败，以及初版验证器错误要求immutable=true和缺少邻模块导入路径的证据；新窄审严格绑定实际draft ID/source/十hash及同一临时namespace，发布后仍严验最终tag/URL。v2只据原45实际bool修正无依据门槛，v3只在原managed updater加载期间添加已验邻目录并恢复；原公开Skill、原冻结工具和已发布资产均未因此改变。
+
+`r46sa2/result.json`记录四个Skill在两个账号的8目录全部限定同步成功：每账号core12/goods5/SQL4/NAS4共25路径，所有原文件先备份、逐次CAS/原ACL原子替换，全部scope外SHA保持。部署Skill另按PR114/main55的授权delta同步三文档，保留各自COA22/SMS/Lab等本地字节；仅新handoff全文等main，不声称三文件全文或整Skill等main。证据为 `alphabet-server-consolidation/deployment-inventory-delta-sync-apply/result.json`。
+
+私人 `alphabet-daoxun-analysis` 原固定源IP、密码与旧容器/网关入口确受迁移影响，本轮只将四个非秘密文件改用各自已有目标profile/key/严格hostkey及新数据桥，双账号限定备份/CAS同步。旧privateJSON、profiles、known_hosts和私钥未复制或修改；其余非秘密SHA及范围外文件metadata保持。已安装codex02正常入口于22:30:15 UTC实际只读得到885行门店摘要，第二Windows身份仅做配置/文件核对，不冒称登录或销量/库存实测。证据 `analysis-sync-apply/result.json`、`installed-analysis-shops-readonly.actual.json`；此私人Skill不在公开包或catalog。
+
+本次收尾只改仓库文档/TASKS，不重打包、重发SaaS或再部署业务。实际员工业务整轮、手机真机和未来自然到期续期保持各自观察边界。

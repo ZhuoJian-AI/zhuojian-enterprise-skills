@@ -1,8 +1,8 @@
 # 当前任务
 
-- [ ] **ROOT-APPROVED-NETWORK-ATTACHMENTS-20261025**（@acceptance_finish代码、@skill_release_finish独审/CI，Root串行发布）：final `6614266fecd602629b4ecb75bdcbc82f5c20311f` 仅修95测试imports，功能AST/helper/SDK不变；95隔离只读Git/network-none实跑65项及官方quick_validate通过，final py310 Ruff通过。目标LF helper df94与唯一goods root审批记录已实际安装，profile及九release保持；其他八应用无新增记录。普通deploy/rollback停旧版前检查、create/connect后start，无记录应用保留原行为。稳定分发/两账号同步待Root，见本次[实际交接](docs/handoff/2026-10-25_alphabet-consolidation-actual.md)。
+- [x] **ROOT-APPROVED-NETWORK-ATTACHMENTS-20261025 已发布并同步**：helper df94/唯一goods审批记录已在目标安装，九原镜像health200；core1.1.44/bundle46已从main bc455公开，原生CI、独立65项与公开升级/匹配检查通过。双账号各12个core路径限定同步、范围外保持；见[实际交接](docs/handoff/2026-10-25_alphabet-consolidation-actual.md#公开发布与个人同步实际终态)。
 
-- [ ] **ALPHABET-RUNTIME-ORIGIN-ADOPTION-20261025**（Root串行收口）：原数据/镜像、同app归属、DNS、单活HTTP、九应用native备份、两库隔离恢复/全归档校验、Windows八SHA+同代受限ACK、正规LE/两renew dry-run及独立九health已完成。源48停用、历史与Windows旧备份保留；仅清目标自有已证明重复的124历史副本。core1.1.44、goods1.0.3/SQL1.1.3/NAS1.0.4准备bundle46，PR86已正常合并；剩正式最终文档main/稳定分发及个人限定同步，员工/真机另列未测。见[实际交接](docs/handoff/2026-10-25_alphabet-consolidation-actual.md)。
+- [x] **ALPHABET-RUNTIME-ORIGIN-ADOPTION-20261025 主机与分发交付完成**：源两项目归入47/01，原数据/身份/权限/网址保留；九备份、两库隔离恢复/全归档校验、Windows八SHA/受限ACK、正规LE/两renew dry-run、九health及源单活均通过。bundle46公开10资产、latest4、三更新路径/CURRENT和六resolver通过；四Skill×两账号各25路径同步完成。部署台账PR114/main55与两账号授权delta同步、私人分析入口四文件同步及codex02 shops885实查完成；源原件未删除，用户业务/真机未测。见[实际交接](docs/handoff/2026-10-25_alphabet-consolidation-actual.md#公开发布与个人同步实际终态)。
 
 - [ ] **SAME-COMPANY-MODULE-REUSE-20261024**（@skill_process_audit，core1.1.43文档补充）：默认同一家公司、单服务器、多业务负责人复用现有应用/模块与权威服务；Codex业务确认一次，AI使用既有Runtime调用获权API。独立审查、34项受影响检查、quick_validate及CLI原始摘要/版本保持核对通过；待正式PR CI/root合并后重新冻结bundle-v1.4.45候选。仅文字更正，不实现多企业共用主机、个人凭据或实际迁移；未发布、个人同步或修改生产。见docs/handoff/2026-10-24_same-company-module-reuse.md。
 
