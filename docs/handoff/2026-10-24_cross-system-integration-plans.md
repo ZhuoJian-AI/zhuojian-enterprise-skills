@@ -47,6 +47,8 @@ Result: **677 passed, 58 skipped, 1 dependency deprecation warning in 16.46s**. 
 
 Windows Python 3.13.16 additionally passed three standard-library-only smoke checks (same-application distinct modules accepted, wildcard event rejected, and `processed:false` receipt rejected), plus compilation and CLI help. These tests do not prove administrator approval, route configuration, source result readback or end-to-end enterprise behavior in production. The root agent coordinates final candidate package checks and publication.
 
+Independent backend/client review caught an edge-order interoperability defect before publication: SaaS returns edges ordered by key, whereas the initial client compared array order. The client now compares the same key-normalized graph without mutating the local proposal. Five regressions cover first submission with both returned orders, existing-request lookup, unknown-POST GET reconciliation, and rejecting a genuinely changed event. The affected client/version suite passed **81 tests in 0.15s** in the same isolated image. No backend or production mutation was used to fix or test this issue; the full suite was not needlessly repeated after this narrow correction.
+
 ## Remaining release boundaries
 
 This is a source candidate. Push, reviewed merge, full package verification, immutable Release, anonymous installation/updater checks and both account synchronization have not been performed by this subtask. The platform capability must be independently implemented, tested and published; Skill publication alone cannot activate the plan API or claim a specific enterprise integration is complete. No downstream 2.4/2.5 migration or unrelated application rollout is required.

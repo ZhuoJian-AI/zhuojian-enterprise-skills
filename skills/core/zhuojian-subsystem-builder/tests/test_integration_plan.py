@@ -162,6 +162,24 @@ def plan(**changes):
     }
 
 
+def two_edge_proposal():
+    value = proposal()
+    forward = value["edges"][0]
+    forward["key"] = "submit"
+    value["edges"].append({
+        "key": "result", "kind": "result", "source_application_id": TARGET_ID,
+        "source_module_key": "processing", "event_type": "example.processed.v1",
+        "target_application_id": SOURCE_ID, "target_module_key": "submission",
+    })
+    return value
+
+
+def two_edge_response(*, reverse=False):
+    value = plan(**two_edge_proposal())
+    value["edges"].sort(key=lambda edge: edge["key"], reverse=reverse)
+    return value
+
+
 def acknowledged_plan(**changes):
     return plan(
         configuration_status="configured", business_status="business_acknowledged",
@@ -238,6 +256,38 @@ def test_propose_reads_existing_request_and_never_reposts():
     assert result["status"] == "existing"
     assert client.request.call_count == 1
     assert client.request.call_args.args[0] == "GET"
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_first_proposal_accepts_server_key_order_instead_of_claiming_specification_changed(reverse):
+    value = two_edge_proposal()
+    client = client_with([], two_edge_response(reverse=reverse))
+    result = integration_plan.propose(client, value)
+    assert result["status"] == "proposed"
+    assert [call.args[0] for call in client.request.call_args_list] == ["GET", "POST"]
+    assert [edge["key"] for edge in value["edges"]] == ["submit", "result"]
+
+
+def test_existing_request_reconciles_the_same_keyed_graph_without_reposting():
+    client = client_with([two_edge_response()])
+    assert integration_plan.propose(client, two_edge_proposal())["status"] == "existing"
+    client.request.assert_called_once()
+
+
+def test_unknown_post_reconciles_reordered_server_graph_with_only_get():
+    client = client_with([], integration_plan.RequestOutcomeUnknown("unknown"), [two_edge_response()])
+    result = integration_plan.propose(client, two_edge_proposal())
+    assert result["status"] == "reconciled"
+    assert [call.args[0] for call in client.request.call_args_list] == ["GET", "POST", "GET"]
+
+
+def test_edge_normalization_does_not_hide_changed_endpoint_or_event():
+    value = two_edge_response()
+    value["edges"][0]["event_type"] = "example.other.v1"
+    client = client_with([value])
+    with pytest.raises(integration_plan.IntegrationPlanError, match="different plan"):
+        integration_plan.propose(client, two_edge_proposal())
+    client.request.assert_called_once()
 
 
 def test_request_id_cannot_be_reused_for_a_changed_plan():

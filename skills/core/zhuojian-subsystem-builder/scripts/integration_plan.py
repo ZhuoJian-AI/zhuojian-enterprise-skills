@@ -158,6 +158,9 @@ def validate_proposal(proposal: dict) -> dict:
                 remaining.remove(edge)
         if len(remaining) == previous:
             raise IntegrationPlanError("Plan edges must form a connected module graph")
+    # Edge order does not define execution order. SaaS projects plans by key,
+    # and stable request reconciliation must compare the same keyed graph.
+    proposal["edges"].sort(key=lambda edge: edge["key"])
     return proposal
 
 
