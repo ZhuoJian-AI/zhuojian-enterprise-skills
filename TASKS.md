@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **ROOT-APPROVED-NETWORK-ATTACHMENTS-20261025**（@acceptance_finish，Runtime helper/聚焦测试/接入说明独占）：从干净 `1c29665014ef7461c118f0380fff93ea6d63aa51` 追加逐应用 root-only 补充内网绑定；部署/回滚停旧版前验证，create/connect/核对后才 start，无记录应用行为保持。SDK、版本44、既有导入脚本保持原字节；Root 独占实际安装、生产、GH、稳定分发及个人同步。
+
 - [ ] **ALPHABET-RUNTIME-ORIGIN-ADOPTION-20261025**（@skill_release_finish接文档/版本/公司交接，@acceptance_finish已交Runtime/SDK，Root串行发布）：0a源独立94项通过，产品代码原字节保持；core1.1.44、goods1.0.3/SQL1.1.3/NAS1.0.4及goods目标窄选择器草稿已备，版本4项/四Skill quick_validate/六包元数据及选择器自检通过，未重复94。准备bundle1.4.46；目标同企业归并不重init/覆盖profile，local-managed不自动切OSS。当前只有初副本/镜像准备，实际SaaS能力/源停用/finalsync/DNS/backup-all与用户验收待Root收口，见[候选交接](docs/handoff/2026-10-25_alphabet-server-consolidation-skill.md)。Root独占生产、GH、稳定分发和个人同步，草稿不代表迁移完成。
 
 - [ ] **SAME-COMPANY-MODULE-REUSE-20261024**（@skill_process_audit，core1.1.43文档补充）：默认同一家公司、单服务器、多业务负责人复用现有应用/模块与权威服务；Codex业务确认一次，AI使用既有Runtime调用获权API。独立审查、34项受影响检查、quick_validate及CLI原始摘要/版本保持核对通过；待正式PR CI/root合并后重新冻结bundle-v1.4.45候选。仅文字更正，不实现多企业共用主机、个人凭据或实际迁移；未发布、个人同步或修改生产。见docs/handoff/2026-10-24_same-company-module-reuse.md。
