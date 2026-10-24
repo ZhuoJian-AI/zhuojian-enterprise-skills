@@ -377,7 +377,7 @@ def safe_plan_summary(plan: dict) -> dict:
     }
     summary["edges"] = [
         {key: edge.get(key) for key in EDGE_FIELDS}
-        for edge in plan.get("edges", []) if isinstance(edge, dict)
+        for edge in plan.get("edges") or [] if isinstance(edge, dict)
     ]
     if plan.get("authorization_mode") == RUNTIME_MODE:
         summary.update({key: plan.get(key) for key in (
@@ -387,7 +387,7 @@ def safe_plan_summary(plan: dict) -> dict:
         )})
         summary["runtime_confirmations"] = [
             {key: item.get(key) for key in ("runtime_id", "application_ids", "confirmed", "valid", "confirmed_at")}
-            for item in plan.get("runtime_confirmations", []) if isinstance(item, dict)
+            for item in plan.get("runtime_confirmations") or [] if isinstance(item, dict)
         ]
     readiness = plan.get("readiness")
     summary["readiness"] = {"ready": False, "gaps": []}
@@ -486,7 +486,7 @@ def runtime_participant(plan: dict, authorization_digest: str, *, require_snapsh
         require_uuid(app_id, "current Runtime application id")
     endpoints = {
         require_uuid(edge.get(key), "edge application id")
-        for edge in plan.get("edges", []) if isinstance(edge, dict)
+        for edge in plan.get("edges") or [] if isinstance(edge, dict)
         for key in ("source_application_id", "target_application_id")
     }
     if len(set(owned)) != len(owned) or not set(owned) <= endpoints:

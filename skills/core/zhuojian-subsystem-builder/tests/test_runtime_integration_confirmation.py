@@ -1,6 +1,7 @@
 """Runtime-owned configuration decisions, without network or real credentials."""
 import copy
-from io import BytesIO
+from contextlib import redirect_stdout
+from io import BytesIO, StringIO
 import json
 import unittest
 from unittest import mock
@@ -257,6 +258,16 @@ class RuntimeConfirmationTests(unittest.TestCase):
                 with self.assertRaises(SystemExit):
                     cli.main(["confirm", "--plan-id", PLAN, "--authorization-digest", DIGEST])
             load.assert_not_called()
+
+    def test_real_cli_parser_routes_exact_confirm_without_sending_local_guard(self):
+        platform = client(plan(), confirmed())
+        output = StringIO()
+        with mock.patch.object(cli.PlatformClient, "from_runtime", return_value=platform), redirect_stdout(output):
+            code = cli.main(["confirm", "--plan-id", PLAN, "--authorization-digest", DIGEST,
+                             "--confirm-business-intent"])
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(output.getvalue())["status"], "confirmed")
+        self.assertEqual(platform.request.call_args.args[2], {"authorization_digest": DIGEST})
 
     def test_summary_exposes_business_scope_and_confirmation_not_credentials(self):
         value = confirmed() | {"credential": "synthetic-secret", "admin_session": "synthetic-secret"}

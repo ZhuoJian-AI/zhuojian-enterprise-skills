@@ -22,6 +22,6 @@
 
 修改核心SKILL、跨系统/聚合/初始化/平台契约参考、CLI、受影响版本测试和新机器确认测试，候选版本1.1.43；保持2.4/2.5、模板、Manifest Schema、其他Skill及发布工作流不变。
 
-本机Windows任务Python3.13已实际运行26项标准库unittest、CLI帮助和编译检查：通过。覆盖双独立传输身份/逐端确认/原申请者apply、同机双端、精确TTL与摘要、缺本地确认零请求、权限/409不重试、未知及不完整响应GET核实、错误全局approved、当前新owner撤销、可选真实Admin授权、脱敏输出。均为无网络的合约fixture，不接生产。
+本机Windows任务Python3.13已实际运行27项标准库unittest、CLI帮助和编译检查：通过。覆盖真实CLI解析、双独立传输身份/逐端确认/原申请者apply、同机双端、精确TTL与摘要、缺本地确认零请求、权限/409不重试、未知及不完整响应GET核实、错误全局approved、当前新owner撤销、可选真实Admin授权、脱敏输出。均为无网络的合约fixture，不接生产。
 
 完整core pytest、quick_validate及正式PR CI待补实际结果；尚未发布Release、更新个人安装或部署SaaS/Runtime/业务应用。业务页面、业务数据、真实跨系统投递与负责人业务授权不由Skill源码提交自动完成。
