@@ -38,6 +38,8 @@ description: "让 AI 把业务需求转成页面与统一助手可完成的业�
 
 涉及文件识别、批量导入或资料关联业务对象时，必须读取 [资料识别与对象归属核对](references/business-identity-review.md)。先验证对象匹配与写入保护，再增加助手自动化；多个候选、来源冲突不能按排列顺序或“对象已存在”默认归档。平台负责人负责公共能力和规范，具体取证由获授权的子系统开发 AI 承接，不要求平台负责人代员工寻找原件或判断业务归属。
 
+涉及两个应用或模块传数据、把上传入口移到另一系统、共享业务结果时，必须读取 [跨系统对接与受控配置](references/cross-system-integration.md)。开发 AI 负责查清并实现双方业务处理、精确投递计划、管理员正常会话确认后的 Runtime 配置和真实结果验收；同机、跨机及同应用不同模块均适用。登记成功、HTTP 200 或模板收件不等于业务完成，平台配置待确认时继续完成已授权的双方实现与具体交接，不要求业务负责人提供 SaaS 主服务器 root 或平台 Token。
+
 1. 按 [服务器长期访问记忆](references/server-access-memory.md) 查找已有访问档案，再按 [ECS 首次接入](references/ecs-first-access.md) 登录。新服务器先试 SSH `22`，再试管理员配置的 `443`；连接超时不代表密码错误。
 2. 运行 `zhuojian-runtime doctor`。若提示服务器尚未初始化，停止部署，只告诉用户“请企业管理员先初始化这台服务器”。读取服务器非敏感 Runtime 档案中的 `enterpriseKey` 与 `runtimeId`，连同当前主机地址交给 [企业交接 Skill 自动同步](references/managed-handoff-skills.md) 的 `resolve` 流程；用户口述的公司名称只作核对，服务器档案为准。安装或更新后，必须立即读取所有匹配的交接 `SKILL.md` 再继续。
 3. 检查服务器上的现有项目。若服务器源码比本地/Git 副本更新、分叉或含未同步改动，先从服务器建立开发基线，禁止用落后副本覆盖；例外见 [ECS 直接发布](references/direct-ecs-deployment.md)。读取 `subsystem.json` 识别并保留已有 `2.4` 或 `2.5` 接入版本；未知版本停止，不能猜测或只改版本号。能扩展就扩展；新项目使用内置模板创建。细则见 [原生聚合与扩展](references/native-aggregation.md)。
