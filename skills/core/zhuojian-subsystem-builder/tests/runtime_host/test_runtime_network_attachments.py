@@ -4,13 +4,12 @@ import contextlib
 import copy
 import importlib.util
 import json
-import os
-from pathlib import Path
 import stat
 import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
