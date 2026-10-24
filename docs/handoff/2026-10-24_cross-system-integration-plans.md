@@ -32,7 +32,20 @@ All passed. WSL Python 3.12.3 lacked pytest; this is an environment limitation, 
 python -m pytest -q -p no:cacheprovider tests/test_integration_plan.py
 ```
 
-Result: **58 passed in 0.12s**. After adding `section/tab` approval URL compatibility, the first full core run reported **3 failed, 661 passed, 58 skipped**: one existing test pinned the previous Skill release version (now updated to 1.1.42); two gateway fixtures inherited a permissive default process umask and failed the existing protected-file check. No gateway code or credential checks were weakened. A full rerun with process-local `umask 077` and the updated version assertion is pending; root agent coordinates complete candidate validation and publication.
+Result: **58 passed in 0.12s**. After adding `section/tab` approval URL compatibility, the first full core run reported **3 failed, 661 passed, 58 skipped**: one existing test pinned the previous Skill release version (now updated to 1.1.42); two gateway fixtures inherited a permissive default process umask and failed the existing protected-file check. No gateway code or credential checks were weakened.
+
+The expanded implementation at `687b440c848404a8f594e9c27455298bad1c066f` then passed **676 tests, 58 skipped** with process-local `umask 077`; quick validation printed **Skill is valid!**. Final HTTP interrupted-response sanitization and one regression were added in `0da5c11`. Its full core run was:
+
+```text
+docker run --rm --network none -v <candidate>:/skills:ro \
+  -w /skills/skills/core/zhuojian-subsystem-builder \
+  --entrypoint sh zj-cross-app-tests:20261024 \
+  -c 'umask 077; python -m pytest -q -ra -p no:cacheprovider'
+```
+
+Result: **677 passed, 58 skipped, 1 dependency deprecation warning in 16.46s**. The skips are 53 template route tests that require a scaffolded project, one responsive test missing Playwright, and four adapter tests requiring Node.js; this suite does not claim those browser/JavaScript paths passed. No production service or business data was contacted.
+
+Windows Python 3.13.16 additionally passed three standard-library-only smoke checks (same-application distinct modules accepted, wildcard event rejected, and `processed:false` receipt rejected), plus compilation and CLI help. These tests do not prove administrator approval, route configuration, source result readback or end-to-end enterprise behavior in production. The root agent coordinates final candidate package checks and publication.
 
 ## Remaining release boundaries
 
