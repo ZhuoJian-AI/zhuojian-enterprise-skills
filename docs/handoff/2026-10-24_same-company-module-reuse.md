@@ -8,4 +8,6 @@
 
 范围为核心 SKILL、跨系统/原生聚合/管理员初始化参考及 1.1.43 现有 changelog 的文字补充。CLI、host assets、Schema、模板、版本元数据、2.4/2.5、其他 Skills 均不变；`integration_plan.py` Git blob 仍为 `b59f117bb0944a55b0650ebb698c97f4bf28a822`，原始 SHA-256 仍为 `14b246db3fcf4d1eadd639e34df7024c393eb79776e21a30db18f31fbeed53ac`。
 
-检查记录待本分支实际文档检查与正式 PR CI 补全。未执行生产变更、GH Release、个人 Skill 同步或任何企业应用迁移；旧 `373f7be` 的 bundle-v1.4.45 准备证据保留，须待本修正合并后在全新目录重冻候选，不能按旧 source 发布。
+核心文字冻结提交 `2099e4d` 的 `test_contract_versions.py`、`test_runtime_auto_release_contract.py` 和 `test_runtime_integration_confirmation.py` 在公司 CI 独占、无网络、源码只读的任务容器中实际 **34 passed**；原 quick_validate 返回 `Skill is valid!`。本机另核所改参考的相对链接、`git diff --check`、上述 CLI 原始摘要及版本保持，均通过。独立 UI 代理只读审查无 blocker；此后仅补本交接与 TASKS，不改受测核心字节。正式 PR/main CI 以实际工作流结果另计，没有重复冒称完整 710 项。
+
+未执行生产变更、GH Release、个人 Skill 同步或任何企业应用迁移；旧 `373f7be` 的 bundle-v1.4.45 准备证据保留，须待本修正合并后在全新目录重冻候选，不能按旧 source 发布。
