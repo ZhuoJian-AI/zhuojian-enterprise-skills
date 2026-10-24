@@ -1,14 +1,24 @@
 # 服务器访问
 
-## 2026-10-25 同企业归并候选：尚未切换
+## 2026-10-25 已接管至01，源48退役观察
 
-管理员已授权把`101.37.173.94`的商品动销看板和设计灵感库迁到已有`47.97.90.161`，目标默认Runtime为`aifabei-hk-01`，组织仍是`65130a23-b05e-4026-9615-761ab2d4193c`、environment为staging。本草稿仅记录初始约13GB私有副本与镜像准备；SaaS新能力正式上线、源48正常停用、最终DB/文件同步、域名和真实用户验收尚待Root完成。**当前源机仍是原业务权威；不得因catalog新增01/目标地址而在候选写业务或报迁移成功。**
+商品动销看板与设计灵感库已从 `101.37.173.94` 归并至既有 `47.97.90.161` / `aifabei-hk-01`。组织仍为 `65130a23-b05e-4026-9615-761ab2d4193c`，environment 为 `staging`；没有重建企业、覆盖目标默认 profile 或重新初始化服务器。原48 Runtime 已正常停用，源两业务容器均 exit 0、restart=no，源备份定时任务停用；源数据、Git、历史备份和失败/续程证据保留观察，不作为当前写入或发布目标。
 
-保留目标原profile/登记key、现有全部应用、SQL/NAS通道；不把源`/etc/zhuojian/runtime.json`覆盖过去，不重init或ensure-app重建原app。商品动销原app ID`ef320cac-b9cc-4ab9-8ad1-5d88adb594f2`、两旧`*.hk48.aifabei.staging.zhuojianai.com`入口、原模块/Action/角色和local-managed文件保持。真正归属接管由SaaS实际cap、inactive源的原healthy commit重登与受管adopt-origin记录完成，不能只改IP或手写Runtime UUID。
+最终数据传输为 1,846,927,360 bytes，流 SHA `b812cd28e143e055ff5cdcf4170d2324c9936234def574109a2e4926c008fb42`；目标按两个应用的完整文件清单、SQLite integrity 和原镜像/Git 校验后启动。商品动销仍是原 app `ef320cac-b9cc-4ab9-8ad1-5d88adb594f2`；设计灵感库仍是 `f61677f7-a6d2-4933-b4bb-6bbe33b1b8ac`。正常 SaaS 登记后两者 owner 已为目标 Runtime UUID `647b9a49-0e41-4c9a-aafa-052530b73640`。九应用的原 app ID、origin、commit、Manifest、Action、角色和四类项目凭据精确比较通过；迁入应用保持 `local-managed`，没有转换 OSS。
 
-待切换的HTTP通道保持同一道讯`10.0.0.94:8849`数据口径：Windows SYSTEM任务`Alphabet-Daoxun-Dashboard-Tunnel`仍用原任务身份/密钥/单活重连；目标方案为SSH22上的`127.0.0.1:18849`反向监听，经独立私网relay供`172.29.94.1:18849`访问。源`172.18.0.1`在目标属于商品360专属存储网，不能复用或让看板加入该网络。具体生效状态与限制公钥/known_hosts仅以Root最终回执为准；本草稿不声称客户端已改。
+两个 `*.hk48.aifabei.staging.zhuojianai.com` 旧 HTTPS origin 保留，不改成 hk01 域名。`*.hk48.aifabei.staging` 的 A 记录已于 `2026-10-25 05:18:23 CST` 在授权 RAM 控制台保存为 `47.97.90.161`，TTL 600。DNS 缓存仍到源101时，由源 Nginx 向目标唯一业务节点转发；该实际链路启用正确 SNI、证书验证、验证深度3并关闭 upstream TLS session reuse。不能为排障关闭证书验证，也不能恢复源业务造成双写。
 
-机外备份保留Windows任务`Alphabet-ZhuoJian-Backup-Pull`、每日04:00CST、脚本`C:\ProgramData\Alphabet\ZhuoJianBackup\pull-backups.ps1`、`E:\ZhuoJianBackups\aifabei-hk48`的原内容/保留策略。源只读SFTP是`zjbackup@101.37.173.94`、`/current/`，chroot`/srv/zhuojian/offsite-export`；切至目标前核其原只读边界、可信host key及实际下载/摘要。不能只搬两个SQLite而遗失Git、约8GB历史备份和latest export。源48/101选择器在成功后仅用于退役观察/回退定位，不能重新当新业务发布目标。
+HTTP 数据仍来自道讯 `10.0.0.94:8849`，与 SQL 口径分开。Windows181 的原 SYSTEM canonical 任务 `Alphabet-Daoxun-Dashboard-Tunnel` 已切至目标 SSH22，反向监听仅 `127.0.0.1:18849`，经独立 `zhuojian-goods-http-readonly` 网络和 relay 提供 `172.29.94.1:18849`。`2026-10-25 05:29:52 CST` 三轮宿主机/实际商品容器共6次 `/api/gd_shops` GET 均200、885行、92,971 bytes，内容 SHA 均为 `f2f1efd23ead0f5d44856873f41b36d195a0729fbf73d18f3a2bf786923805f1`；公网18849无监听，旧Source18849 SSH不再运行。目标 `172.18.0.1` 属商品360存储网络，不能借用。helper 与该看板逐应用 root 审批网络记录已经安装，后续 deploy/rollback 仍须保持已批准补充网络与原主网，不能只临时 network connect。
+
+### final_acceptance（独立待收口）
+
+- `http_canonical`: passed，以上真实三轮证据；日常任务仍实时检查监听、同步时间和错误。
+- `native_backup_and_restore`: pending，完整九应用 backup-all、归档/服务恢复及恢复演练分别记真实结果。
+- `offsite_sftp_windows_ack`: pending，SFTP 配置已落地、安装收据修复中；首次导出、Windows八文件校验与受限ACK尚不能称通过。
+- `target_letsencrypt_renewal`: pending，当前旧origin TLS已验证；目标正规LE lineage和续期须独立验收，复制PEM不等于续期完成。
+- `employee_and_mobile_e2e`: 本轮未做新的员工页面/手机真机验收，不沿用服务器 health 冒充。
+
+机外备份继续保留原 Windows 任务 `Alphabet-ZhuoJian-Backup-Pull`、每日04:00 CST、`C:\ProgramData\Alphabet\ZhuoJianBackup\pull-backups.ps1`、`E:\ZhuoJianBackups\aifabei-hk48` 历史与保留策略。目标方案为 `zjbackup@47.97.90.161` 只读 `/current/`；最终下载/ACK未验收前不写“机外备份完成”。Source48/101及更早香港地址只用于历史、观察和受控回退定位，不能重新初始化或发布新业务。
 
 ## 2026-09-29 杭州接管与内网直连
 
@@ -23,7 +33,7 @@
 ## 企业 ECS
 
 - 用途：承载商品动销看板与灼见 Runtime
-- 地址：`101.37.173.94`（杭州；旧 `47.243.48.78` 保留观察和回退资料，不再作为内网数据中继）
+- 当前地址：`47.97.90.161`，Runtime `aifabei-hk-01`；`101.37.173.94` / 原48已停用观察，更早 `47.243.48.78` 只作历史定位。
 - 登录用户：`root`
 - 管理员初始化：已于 `2026-09-10` 完成，日常维护不得重复执行
 

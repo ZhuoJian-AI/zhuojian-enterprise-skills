@@ -1,6 +1,6 @@
 ---
 name: alphabet-daoxun-data-bridge
-description: "在 Alphabet 的 aifabei-hk-01 Runtime 主机上，通过既有反向隧道只读访问内网道讯 SQL Server 并开发、部署灼见子系统；迁移期间依据环境表核对源/目标地址。用户提到道讯数据、H_TRADE、Alphabet 内网数据库或该反向隧道时使用。"
+description: "在 Alphabet 当前 aifabei-hk-01 Runtime 主机上，通过既有反向隧道只读访问内网道讯 SQL Server 并开发、部署灼见子系统；按环境表区分SQL与已迁入看板的HTTP链路。用户提到道讯数据、H_TRADE、Alphabet 内网数据库或该反向隧道时使用。"
 ---
 
 # Alphabet 道讯数据子系统
