@@ -51,3 +51,9 @@ D:/Agent_Project/SaaS-platform/audit-2026-10-18/enterprise-notifications/skill-t
 1. 本分支 helper 与存储代理 Gateway 的 `probe --expected-root-prefix` 必须一起交付；旧 Gateway 没有此接口时配置过程明确失败，不静默接受旧范围。
 2. 根任务在 publisher SDK 补齐 `--use-running-release` 对 canonical dirty worktree 的兼容。在此之前可传本任务干净 worktree；不得清理其他负责人的未完成修改。
 3. 保持根任务负责版本、主 Skill、双账号同步和最终发布。部署 helper 本身不代表业务系统已按新流程完成一次更新/回滚。
+
+### 追加：定时备份 sandbox 路径
+
+备份 unit 原有 `ProtectSystem=strict` 仅放行 backups、锁和 Docker socket；新恢复 marker 和 Nginx 维护路由会因此被拒写。追加精确可写 deployments、Nginx conf/log 和可选现有 nginx.pid，保留源仓库只读。备份的 Git status 显式关闭 optional locks，不刷新源码 index。全局 Runtime/Gateway 凭证仅读取，平台恢复走 HTTP，归档/clone/manifest/OSS 回执应仍写 backups；存储 drop-in 不得覆盖这个 ReadWritePaths。
+
+本机 WSL 的 Ubuntu 24.04 PID1 为 WSL init，未运行 systemd，且没有 nginx/pytest；Docker Desktop daemon 未启动。不能把该环境或 unit 文本检查当真实 systemd backup 验收。根任务在 Linux CI/隔离主机验证实际 unit 的备份、503、恢复和 OSS drop-in，再安装到企业主机；不要求业务负责人另行操作。

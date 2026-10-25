@@ -408,3 +408,13 @@ def test_maintenance_gate_is_structured_and_cannot_silently_fail_open():
 def test_cli_accepts_machine_managed_source_and_baseline_without_new_human_approval():
     args = h.parser().parse_args(["deploy", "orders", "--source-commit", "a" * 40, "--expected-current-commit", "b" * 40])
     assert args.source_commit == "a" * 40 and args.expected_current_commit == "b" * 40
+
+
+def test_backup_service_permits_the_real_recovery_write_paths_without_writable_source():
+    unit = (ROOT / "assets/admin-runtime/host/zhuojian-backup.service").read_text()
+    values = dict(line.split("=", 1) for line in unit.splitlines() if "=" in line and not line.startswith("#"))
+    assert values["ProtectSystem"] == "strict"
+    writable = set(values["ReadWritePaths"].split())
+    assert writable == {h.PATHS.backups.as_posix(), h.PATHS.deployments.as_posix(), h.PATHS.nginx.as_posix(),
+                        "/var/log/nginx", "-/run/nginx.pid", "/run/lock", "/run/docker.sock"}
+    assert h.PATHS.repositories.as_posix() not in writable

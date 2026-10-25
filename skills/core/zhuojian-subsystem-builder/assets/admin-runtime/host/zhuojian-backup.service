@@ -12,5 +12,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectHome=true
 ProtectSystem=strict
-ReadWritePaths=/srv/zhuojian/backups /run/lock /run/docker.sock
+# Backup/recovery persists release state and temporarily installs the per-app
+# maintenance route. nginx -t also opens its existing log/pid paths.
+ReadWritePaths=/srv/zhuojian/backups /srv/zhuojian/deployments /etc/nginx/conf.d /var/log/nginx -/run/nginx.pid /run/lock /run/docker.sock
 TimeoutStartSec=4h

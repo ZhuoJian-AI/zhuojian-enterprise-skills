@@ -3202,7 +3202,7 @@ def backup_git_repository(project: Path, required_commit: str, destination: Path
     head = run(["git", "-C", str(project), "rev-parse", "HEAD"]).stdout.strip()
     if not re.fullmatch(r"[0-9a-f]{40}", head) or not re.fullmatch(r"[0-9a-f]{40}", required_commit):
         raise AdminError("source backup requires exact committed source and running release")
-    dirty = run(["git", "-C", str(project), "status", "--porcelain=v1", "--untracked-files=all"]).stdout
+    dirty = run(["git", "--no-optional-locks", "-C", str(project), "status", "--porcelain=v1", "--untracked-files=all"]).stdout
     run(["git", "-C", str(project), "cat-file", "-e", f"{required_commit}^{{commit}}"])
     run(["git", "-C", str(project), "bundle", "create", str(destination), "--all", "HEAD", required_commit])
     os.chmod(destination, 0o600)
