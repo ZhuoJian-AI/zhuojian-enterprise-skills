@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **ALPHABET-SOURCE-RETIREMENT-20261025** (@retirement_docs)：仅三份Alphabet交接Skill的源主机状态、现用连接与后续验收事实；通用Builder及契约不变。验收要求：Root云端退役/订阅与离机备份回执、受影响Skill校验、当前源地址不再当连接目标、版本/稳定包/双账号同步分开报告。当前pending，未实际退订或发布。
+
 - [x] **ROOT-APPROVED-NETWORK-ATTACHMENTS-20261025 已发布并同步**：helper df94/唯一goods审批记录已在目标安装，九原镜像health200；core1.1.44/bundle46已从main bc455公开，原生CI、独立65项与公开升级/匹配检查通过。双账号各12个core路径限定同步、范围外保持；见[实际交接](docs/handoff/2026-10-25_alphabet-consolidation-actual.md#公开发布与个人同步实际终态)。
 
 - [x] **ALPHABET-RUNTIME-ORIGIN-ADOPTION-20261025 主机与分发交付完成**：源两项目归入47/01，原数据/身份/权限/网址保留；九备份、两库隔离恢复/全归档校验、Windows八SHA/受限ACK、正规LE/两renew dry-run、九health及源单活均通过。bundle46公开10资产、latest4、三更新路径/CURRENT和六resolver通过；四Skill×两账号各25路径同步完成。部署台账PR114/main55与两账号授权delta同步、私人分析入口四文件同步及codex02 shops885实查完成；源原件未删除，用户业务/真机未测。见[实际交接](docs/handoff/2026-10-25_alphabet-consolidation-actual.md#公开发布与个人同步实际终态)。
