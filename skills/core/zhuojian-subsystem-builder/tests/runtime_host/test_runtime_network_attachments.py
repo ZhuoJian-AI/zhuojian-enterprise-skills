@@ -189,7 +189,9 @@ class NetworkAttachmentTests(unittest.TestCase):
                        'create_release_switch_marker': mock.Mock(return_value=marker), 'persist_release_switch_phase': mock.Mock(),
                        'begin_platform_release_change': mock.Mock(return_value=True), 'read_optional_plain': mock.Mock(return_value=b'old'),
                        'replace_nginx': mock.Mock(), 'nginx_text': mock.Mock(return_value='server {}'), 'atomic_json': mock.Mock(),
-                       'container_exists': mock.Mock(return_value=False), 'verify_upload_lock': mock.Mock()}
+                       'container_exists': mock.Mock(return_value=False), 'verify_upload_lock': mock.Mock(),
+                       'backup_one': mock.Mock(return_value={'archive': 'verified-local-backup'}),
+                       'maintenance_nginx_text': mock.Mock(return_value=b'maintenance')}
             for name, value in patches.items():
                 stack.enter_context(mock.patch.object(h, name, value))
             result = h.cmd_rollback(argparse.Namespace(application_slug='orders', commit=None, health_timeout=20), self.paths)

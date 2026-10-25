@@ -368,7 +368,7 @@ def test_storage_acceptance_requires_anonymous_and_scope_denials():
     with mock.patch.object(
         runtime_admin.subprocess,
         "run",
-        return_value=ok_result(json.dumps({"ok": True, "checks": checks})),
+        return_value=ok_result(json.dumps({"ok": True, "rootPrefix": "apps", "checks": checks})),
     ):
         runtime_admin.verify_storage_foundation("alphabet-company-files", "cn-hongkong")
 
@@ -376,7 +376,7 @@ def test_storage_acceptance_requires_anonymous_and_scope_denials():
     with mock.patch.object(
         runtime_admin.subprocess,
         "run",
-        return_value=ok_result(json.dumps({"ok": True, "checks": missing_anonymous})),
+        return_value=ok_result(json.dumps({"ok": True, "rootPrefix": "apps", "checks": missing_anonymous})),
     ), pytest.raises(runtime_admin.AdminError, match="did not pass every required check"):
         runtime_admin.verify_storage_foundation("alphabet-company-files", "cn-hongkong")
 
@@ -1004,6 +1004,7 @@ def test_interrupted_switch_restores_container_and_nginx_before_canceling_saas()
 
     assert events[:3] == ["docker:rm", "docker:rename", "docker:start"]
     assert events.index("nginx-restored") < events.index("saas-canceled")
+    assert events.index("old-healthy") < events.index("nginx-restored")
     assert events.index("old-healthy") < events.index("saas-canceled")
     assert persisted[-2]["releaseSwitch"]["phase"] == "restored"
     assert "releaseSwitch" not in persisted[-1]
@@ -1031,6 +1032,8 @@ def test_interrupted_switch_keeps_marker_and_saas_closed_until_nginx_recovers():
             runtime_admin,
             "restore_nginx",
             side_effect=runtime_admin.AdminError("nginx unavailable"),
+        ), mock.patch.object(
+            runtime_admin, "wait_for_health"
         ), mock.patch.object(
             runtime_admin, "reconcile_platform_release_change", reconcile
         ), pytest.raises(runtime_admin.AdminError, match="nginx unavailable"):
@@ -1263,6 +1266,12 @@ def test_deploy_persists_switch_intent_before_saas_gate_and_docker_mutation():
             return_value={"uploadsAllowed": True},
         ), mock.patch.object(runtime_admin, "write_disk_state"), mock.patch.object(
             runtime_admin, "git_release", return_value=(target_commit, target_commit[:12])
+        ), mock.patch.multiple(
+            runtime_admin,
+            frozen_git_context=mock.Mock(return_value=contextlib.nullcontext(Path(release["projectDir"]))),
+            pin_release_commit=mock.Mock(),
+            backup_one=mock.Mock(side_effect=lambda *args, **kwargs: events.append("backup-verified") or {"archive": "verified"}),
+            maintenance_nginx_text=mock.Mock(return_value=b"maintenance"),
         ), mock.patch.object(Path, "is_file", return_value=True), mock.patch.object(
             runtime_admin, "provision_release", return_value=release
         ), mock.patch.object(
@@ -1291,6 +1300,7 @@ def test_deploy_persists_switch_intent_before_saas_gate_and_docker_mutation():
         assert events.index("persist:prepared") < events.index("saas-begin")
         assert events.index("persist:gate-closed") < events.index("docker-stop")
         assert events.index("persist:switching") < events.index("docker-stop")
+        assert events.index("docker-stop") < events.index("backup-verified") < events.index("docker-start")
         assert events.index("nginx-applied") < events.index("persist:complete")
         assert result["commit"] == target_commit
         assert release["releaseSwitch"]["targetCommit"] == target_commit
@@ -1338,6 +1348,10 @@ def test_rollback_uses_the_same_durable_switch_protocol():
             runtime_admin, "load_release", return_value=release
         ), mock.patch.object(
             runtime_admin, "recover_pending_release_switch", return_value=release
+        ), mock.patch.multiple(
+            runtime_admin,
+            backup_one=mock.Mock(side_effect=lambda *args, **kwargs: events.append("backup-verified") or {"archive": "verified"}),
+            maintenance_nginx_text=mock.Mock(return_value=b"maintenance"),
         ), mock.patch.object(
             runtime_admin, "inspect_managed_release_container", return_value=current
         ), mock.patch.object(runtime_admin, "container_exists", return_value=False), mock.patch.object(
@@ -1363,5 +1377,6 @@ def test_rollback_uses_the_same_durable_switch_protocol():
 
         assert events.index("persist:prepared") < events.index("saas-begin")
         assert events.index("persist:switching") < events.index("docker-stop")
+        assert events.index("docker-stop") < events.index("backup-verified") < events.index("docker-start")
         assert events.index("nginx-applied") < events.index("persist:complete")
         assert result["commit"] == target_commit
