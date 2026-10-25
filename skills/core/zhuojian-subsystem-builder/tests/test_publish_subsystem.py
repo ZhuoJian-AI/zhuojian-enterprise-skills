@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from io import BytesIO
 from unittest import mock
 from urllib.error import HTTPError
@@ -8,6 +9,23 @@ from urllib.error import HTTPError
 import pytest
 
 from scripts import publish_subsystem
+
+
+def test_running_source_can_be_registered_from_dirty_shared_repository_without_changing_files(tmp_path):
+    def git(*args):
+        return subprocess.run(["git", "-C", str(tmp_path), *args], check=True, capture_output=True,
+                              text=True).stdout.strip()
+    git("init")
+    (tmp_path / "app.txt").write_text("deployed source", encoding="utf-8")
+    git("add", "app.txt")
+    git("-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-m", "base")
+    running_commit = git("rev-parse", "HEAD")
+    (tmp_path / "app.txt").write_text("another task still editing", encoding="utf-8")
+    publish_subsystem.require_running_source_commit(tmp_path, running_commit)
+    assert (tmp_path / "app.txt").read_text(encoding="utf-8") == "another task still editing"
+    assert git("status", "--porcelain")
+    with pytest.raises(SystemExit):
+        publish_subsystem.require_running_source_commit(tmp_path, "f" * 40)
 
 
 def test_default_registration_preserves_legacy_payload_without_capability_call(monkeypatch):

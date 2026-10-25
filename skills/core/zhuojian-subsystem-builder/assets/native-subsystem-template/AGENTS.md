@@ -8,7 +8,8 @@
 - 助手需要理解办理流程时，从真实代码与已确认业务事实提取可选 aiSemantics.workflowGuides，绑定真实页面/Action、前提、完成证据和异常；不是把 docs/ai-delivery.json 上线执行，也不凭说明断言当前阶段。当前页提醒仅在平台真实支持、员工开启、页面可见且登记合法 proactiveCheck 时调用只读 query；参数固定 context，返回显式 assistantCheck，不调用模型、不创建 Run/不写业务；保留旧版本与人工入口。完整边界按 builder 的 assistant-workflow-guidance.md。
 - 页面可打开、Action 获权与记录归属分开校验。公共读取仅返回当前企业已发布内容，本人操作绑定可信用户 ID，管理查询按同名 actionDataScopes；不按姓名认领历史记录，不以非全企业范围为由拒绝整页。permissionPolicy 必须与真实实现一致，既有未声明操作保留旧范围。
 - 显示名可空，不能阻断获权本人表单。业务名单只存参与/分组等状态；需要选人的 create/update 才声明 employeeDirectory，后端用 platform_employee_directory 搜索并在保存时精确 resolve，不接受手输任意平台 ID 或姓名认领。历史身份修复须核查全部业务引用、条件事务及积分/快照不变，按 builder 的 employee-identity.md 验收。
-- 数据只写本模块数据库；跨模块使用版本化事件，不直连其他数据库。
+- 业务对象由明确的权威服务保存；同应用模块复用同一业务服务，独立应用按真实需求选择获权API/Action或版本化事件，不直连另一业务数据库。配置与整链验收按builder的cross-system-integration.md及multi-system-integration.md，由AI使用已初始化Runtime完成，不要求负责人操作平台管理员前端。
+- 同企业可信开发AI可使用root，先登记任务并创建独立Git worktree，发布固定提交且核对当前线上基线，避免混入另一负责人的未提交改动。Git和业务数据/私有配置分开管理，变更前生成可验证恢复点，并按Runtime实际能力备份到共享OSS本企业前缀；root不改变员工业务角色。
 - 修改、审批和删除要求 `expectedVersion`；Action 的 `requestId` 必须满足模板 schema，并绑定用户、参数和版本，业务提交、Outbox、确认消费与幂等结果必须同事务完成。
 - 页面高风险按钮与平台 Action 共用服务端确认校验；必须检查一次性 `confirmationId`、确认人、五分钟时效和规范 JSON 参数哈希。文件删除也不得提供绕过该流程的裸路由。
 - 所有持久文件只通过 `storage.py` 的 `StorageAdapter` 读写并在数据库保存稳定 `storageKey`；不得直接拼接本地路径、调用 OSS SDK，或读取 Bucket、AccessKey 和服务端对象前缀。

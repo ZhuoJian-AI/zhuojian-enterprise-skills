@@ -27,6 +27,8 @@
 
 模板 `/api/integration/event-deliveries` 只提供验签、订阅校验、幂等收件和日志，默认返回 `accepted: true, processed: false`。它不会自动解析附件、创建业务记录或返回最终业务成功。开发 AI 必须接入目标真实服务，在业务写入、幂等结果和必要 outbox 之间保持一致；相同操作重放不得重复创建，ID 换内容须拒绝。
 
+新版模板按“来源应用、事件ID、目标模块”识别一次逻辑消费，同一事件可由多个目标模块各自处理。路由变更产生新的deliveryId时，同一消费返回原业务结果并回显实际新deliveryId；不能再次写业务记录，也不能把另一个模块的结果当作本模块成功。旧全局UNIQUE(event_id)表的标准结构可保留记录升级；发现自定义列、索引、触发器或外部引用时，由AI备份后编写专项迁移，不丢弃扩展结构、不要求业务负责人修数据库。更新Skill不会自动更新已有消费者。
+
 源端应区分待投递、已收件、已处理、失败及结果未知，并关联稳定提交标识、实际 deliveryId 与目标业务记录 ID/版本。目标要提供真实处理结果，源端采用既定受控回执事件或获权查询回读。平台 HTTP 200、`accepted`、事件日志存在或 AI 自称已完成都不能替代业务落库证据。长任务可以先收件，但在最终完成前不能展示导入成功；失败恢复先核对已成功结果，只重做未完成部分。
 
 ## 精确事件配置与 Codex 内确认
@@ -41,9 +43,11 @@
 
 默认两端属于同一企业 Runtime，由开发 AI 核对实际登记后在本机确认一次并应用；同一主机地址不自动合并 Runtime 身份。不让不同业务负责人分别运行技术命令或重复确认同一业务范围。Runtime 是企业应用的部署身份，不是负责人个人身份；此配置委托不会改变负责人或员工的业务角色、模块与 Action 权限。
 
-只有现有应用实际分属多个 Runtime 时，开发 AI 才分别通过已有获权连接，用各端本机 key 确认同一个公开 `authorization_digest`，不汇集 key、不把一个 Runtime 权限扩展到对端，也不让负责人处理机器 quorum。`GET /{id}` 对当前参与端开放，列表和 request_id 查找仍归原申请者；计划 ID 与公开摘要可以交给对端，摘要不是密钥。所有参与 Runtime 有效确认齐全后，仅原申请 Runtime 可以 apply。
+只有现有应用实际分属多个 Runtime 时，开发 AI 才分别通过已有获权连接，用各端本机 key 确认同一个公开 `authorization_digest`，不汇集 key、不把一个 Runtime 权限扩展到对端，也不让负责人处理机器 quorum。支持self-service能力的平台由`discover`分页查当前归属参与计划；旧列表和request_id查找仍归原申请者。计划ID与公开摘要可以交给对端，摘要不是密钥。所有参与Runtime有效确认齐全后，仅原申请Runtime可以apply。
 
 新模式的 `configuration_ttl_hours` 为1至168的整数，省略时72小时；平台在提案时固定所有参与者共同的绝对 `apply_expires_at`。后签不延时，确认不会重设期限。公开授权摘要绑定精确方案、企业/环境、双方owner、模块/事件契约与该期限；不等于不透明 `version`，他端对同一范围确认使version变化时摘要仍可保持。相关归属、凭据或契约漂移后须新计划，不能自动改签旧确认。
+
+支持`contractProjectionRevision=2`的平台只比较本关系相关的发布/订阅契约；增加第三个系统使用的不相关事件，不应中断已有关系。平台可在旧契约仍精确有效、替换Manifest之前保存兼容证明，保留旧授权摘要与原确认。已在升级前漂移且没有该证明的旧计划不能倒推出原契约或补造同意，须由AI核对业务结果并按实际差异处理；不通过改旧hash、换事件ID或新计划绕过历史范围。
 
 未齐确认、已拒绝/撤销、共同期限届满或能力漂移时不应用；不索要主平台root/管理员Token，不自行扩大Runtime登记或直写数据库。配置期限只限制何时apply，已经建立的业务关系持续至明确撤销。中断或未知结果先读同一计划；confirm必须核对本Runtime的 `confirmed=true` 且 `valid=true`，不能把别人确认或全局approved当作本端已确认。没有确定结果就保持unknown并交接，不自动重新POST。
 
@@ -63,6 +67,8 @@ Skill 只在开发电脑时，由开发 AI 通过既有获权 SSH 将 `scripts/i
 
 ```text
 python <skill>/scripts/integration_plan.py catalog
+python <skill>/scripts/integration_plan.py discover --limit 50
+python <skill>/scripts/integration_plan.py routes --source-application-id <来源应用UUID> --target-application-id <目标应用UUID>
 python <skill>/scripts/integration_plan.py propose --plan <本地脱敏计划.json>
 python <skill>/scripts/integration_plan.py status --request-id <稳定请求标识>
 python <skill>/scripts/integration_plan.py status --plan-id <平台返回的计划ID>
@@ -113,6 +119,8 @@ python <skill>/scripts/integration_plan.py revoke --plan-id <计划ID> --authori
 | Runtime 请求（须目标环境已声明支持并实测可用） | 作用 |
 | --- | --- |
 | `GET /api/v1/ecs-publisher/integration-plans/catalog` | 本企业同环境的非敏感应用、模块、事件目录及 Runtime 所属关系 |
+| `GET /api/v1/ecs-publisher/integration-plans/discovery?limit=50&cursor=...` | 当前Runtime归属的参与计划分页，非仅本人最近100项；可按application_id筛选 |
+| `GET /api/v1/ecs-publisher/integration-plans/routes?source_application_id=...&limit=50` | 本Runtime同时拥有两端的既有路由、接管条件和阻点；可按target_application_id及cursor筛选 |
 | `POST /api/v1/ecs-publisher/integration-plans` | 提交上述精确计划，不批准、不自动创建路由 |
 | `GET /api/v1/ecs-publisher/integration-plans?request_id=...` | 精确查原请求，返回数组，用于提交结果未知时核实 |
 | `GET /api/v1/ecs-publisher/integration-plans/{id}` | 新模式当前参与Runtime按ID查看精确范围、共同期限、各端确认与gaps；兼容旧模式仍原申请者 |
@@ -124,6 +132,24 @@ python <skill>/scripts/integration_plan.py revoke --plan-id <计划ID> --authori
 摘要及version均由平台生成，客户端不能自造。新模式Read提供 `authorization_mode`、`authorization_digest`、`configuration_ttl_hours`、`authorization_authority=runtime_app_owners`、`requires_administrator_session=false`、`runtime_confirmations` 和当前Runtime ID/application IDs/can_confirm；它们描述机器委托与当前归属，不是人类身份认证。状态另含authorization_status、configuration_status、configuration_lease_expired、readiness、transport_status及business_status。configured只表示配置已应用；business_acknowledged只表示保存的目标业务回执有效，仍要源/目标实际读回。
 
 提案使用稳定 `request_id`：脚本先 GET 查同一请求，存在时只核对内容；提交结果未知时只 GET 查回，同 ID 内容不同即拒绝。apply 结果未知时只 GET 查询同一计划是否已配置；verify 未知时只查已保存回执。403/409 等明确拒绝不得自动换 ID、扩权或重新 POST；未知且读回仍不确定时保留 unknown，下一步用 status 核实。
+
+## 既有关系、遗漏投递与后续AI接手
+
+先核`features.integrationPlanSelfService`的supported=true、version=1、contractProjectionRevision=2、recoveryScope=original-plan-event-window及requiresAdministratorSession=false。`discover`与`routes`返回`items/has_more/next_cursor`；AI持续按next_cursor读到has_more=false，记录范围、应用筛选和已读游标，不能把一页或旧列表当全部关系。查询只覆盖当前Runtime获权参与范围，目录不完整时明确缺项。
+
+已生效且端点、事件及业务用途匹配的计划优先复用。接管手工旧路由还须声明`exactActiveRouteAdoption=true`，先用`routes`核adoptable/blockers，再把精确`adopt_route_id`写入对应edge、纳入整体业务确认与计划摘要；AI不需进入管理前端找ID。仅本Runtime同时拥有两端、精确active且未删除、未托管、旧队列已结清的关系可原地接管，保留原routeId及已完成投递。通配、禁用、软删或尚有pending/delivering/failed的手工关系先核具体影响，不静默覆盖。原托管计划已撤销后，重新业务确认的新计划可按平台明确支持的规则建立新关系，旧授权、旧队列和审计不复活。
+
+需要恢复投递时，AI先核目标真实结果和幂等实现。`recovery-list`只列原计划configured_at之后且source_sequence高于原floor的事件，不返回业务正文，不自动重放。新计划不能越过自己的floor补跑旧历史；必须留在仍有效的原计划范围，或另行完成明确获权的业务对账/补偿实现。
+
+```text
+python <skill>/scripts/integration_plan.py recovery-list --plan-id <原计划ID> --edge-key <精确关系键> --limit 50
+python <skill>/scripts/integration_plan.py recover --plan-id <原计划ID> --request <脱敏恢复请求.json> --confirm-business-intent
+python <skill>/scripts/integration_plan.py recovery-status --plan-id <原计划ID> --request-id <同一恢复请求ID>
+```
+
+恢复JSON固定为`{version, request_id, reason, items:[{edge_key,event_id}]}`，1至100个不重复精确项。request_id使用稳定英数、点、冒号、下划线或连字符，正文写已确认恢复原因，不含原业务载荷。负责人已确认包含故障恢复的整体范围时直接复用，AI自行逐批拆分，不逐事件询问。服务端整批核权，拒绝在途/未知任务；已完成项沿用原delivery，失败项才恢复待投递。CLI先GET同一request，再校验当前version；回执核请求摘要，写请求未知只GET同ID，保留unknown，不自动重POST或换ID。`recovery-status`是请求受理回执，delivery状态可能已变化，应另读最新候选与真实目标结果。
+
+接口为`GET/POST /integration-plans/{id}/recovery`及`GET /integration-plans/{id}/recovery/requests/{request_id}`，均在固定`/api/v1/ecs-publisher`下，使用当前参与Runtime本机身份。恢复返回`business_completed:false`；排入队列或拿到回执均须继续实际业务读回和整链验收。上述能力未部署时如实列出缺口，继续其他获权工作，不要求负责人手工创建路由或索要平台Token。
 
 目标处理成功的实际响应形状为：
 
