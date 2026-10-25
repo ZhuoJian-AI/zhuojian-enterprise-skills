@@ -114,6 +114,19 @@ def test_publish_verifies_exact_version_and_replays_without_upload(tmp_path):
     assert len(b.discover(scope, remote, 'example')) == 1
 
 
+@pytest.mark.parametrize('section,key', [
+    ('backupStorage', 'credentialRef'),
+    ('deployment', 'backupsRoot'),
+    ('deployment', 'deploymentsRoot'),
+])
+@pytest.mark.parametrize('value', ['relative/file', '', None])
+def test_scope_rejects_paths_that_cannot_survive_a_service_cwd_change(tmp_path, section, key, value):
+    configured = profile(tmp_path)
+    configured[section][key] = value
+    with pytest.raises(b.BackupError, match=key + ' must be an absolute path'):
+        b.BackupScope(configured)
+
+
 def test_corrupt_remote_never_creates_receipt_or_manifest(tmp_path):
     scope, path = local_archive(tmp_path)
     remote = Backend()
@@ -281,14 +294,14 @@ def test_restore_rejects_traversal_and_links(tmp_path, name):
     assert not (tmp_path / 'outside').exists()
 
 
-def test_backup_scope_probe_rejects_broad_ram_even_without_real_data():
+def test_backup_scope_probe_rejects_broad_ram_even_without_real_data(tmp_path):
     backend = b.OssBackend.__new__(b.OssBackend)
     backend.bucket = SimpleNamespace(list_objects_v2=lambda **kwargs: [])
     with pytest.raises(b.BackupError, match='outside'):
-        backend.assert_scope(b.BackupScope(profile(Path('/tmp/backup-test'))))
+        backend.assert_scope(b.BackupScope(profile(tmp_path)))
 
 
-def test_backup_scope_probe_checks_all_negative_operations():
+def test_backup_scope_probe_checks_all_negative_operations(tmp_path):
     operations = []
     def deny(name):
         def action(*args, **kwargs):
@@ -299,7 +312,7 @@ def test_backup_scope_probe_checks_all_negative_operations():
         return action
     backend = b.OssBackend.__new__(b.OssBackend)
     backend.bucket = SimpleNamespace(**{name: deny(name) for name in ['list_objects_v2', 'head_object', 'delete_object', 'put_object']})
-    backend.assert_scope(b.BackupScope(profile(Path('/tmp/backup-test'))))
+    backend.assert_scope(b.BackupScope(profile(tmp_path)))
     assert len(operations) == 12
     assert '/apps/' in operations[-1][1][0]
 

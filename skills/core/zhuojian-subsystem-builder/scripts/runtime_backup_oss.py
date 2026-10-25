@@ -118,6 +118,16 @@ def valid_slug(value):
     return value
 
 
+def absolute_config_path(value, label):
+    # Configuration is reused by systemd under a different working directory.
+    # Keep Linux defaults testable on Windows without accepting relative paths.
+    if not isinstance(value, str) or not value or not (
+        Path(value).is_absolute() or PurePosixPath(value).is_absolute()
+    ):
+        raise BackupError(f"{label} must be an absolute path")
+    return Path(value)
+
+
 class BackupScope:
     def __init__(self, profile):
         try:
@@ -144,10 +154,13 @@ class BackupScope:
             raise BackupError("backup region is invalid")
         if self.bucket==(profile.get('objectStorage') or {}).get('bucket'):
             raise BackupError('private backups must use a separate bucket from business attachments')
-        self.credential_file = Path(storage.get("credentialRef", "/etc/zhuojian/backup-oss.env"))
+        self.credential_file = absolute_config_path(
+            storage.get("credentialRef", "/etc/zhuojian/backup-oss.env"), "credentialRef")
         deployment = profile.get("deployment") or {}
-        self.backups = Path(deployment.get("backupsRoot", "/srv/zhuojian/backups"))
-        self.deployments = Path(deployment.get("deploymentsRoot", "/srv/zhuojian/deployments"))
+        self.backups = absolute_config_path(
+            deployment.get("backupsRoot", "/srv/zhuojian/backups"), "backupsRoot")
+        self.deployments = absolute_config_path(
+            deployment.get("deploymentsRoot", "/srv/zhuojian/deployments"), "deploymentsRoot")
 
     def application_prefix(self, slug):
         return f"{self.prefix}/applications/{valid_slug(slug)}/"
@@ -516,7 +529,7 @@ def parser():
     sub=p.add_subparsers(dest='command',required=True)
     configure=sub.add_parser('configure')
     configure.add_argument('--bucket',required=True);configure.add_argument('--region',required=True)
-    configure.add_argument('--credential-file',type=Path,default=Path('/etc/zhuojian/backup-oss.env'))
+    configure.add_argument('--credential-file',default='/etc/zhuojian/backup-oss.env')
     pub=sub.add_parser('publish');pub.add_argument('application_slug');pub.add_argument('--archive',type=Path,required=True)
     sub.add_parser('publish-latest')
     ls=sub.add_parser('list');ls.add_argument('application_slug')
