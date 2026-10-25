@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **SHARED-OSS-VALIDATOR-20261025** (@codex-root)：修复初始化存储校验器仅接受旧 apps 前缀的问题，按可信企业/环境验证 enterprise-v1 并保留旧档案；验收真实 CLI 允许/拒绝与完整公开分发链路。发布 core1.1.47 新补丁，不覆盖已公开46资产，不操作线上桶。
+
 - [x] **GATEWAY-RUNTIME-PROFILE-COMPAT-20261025 已随 Skill 发布并同步，企业网关未安装** (@fix_platform_self_service)：旧 0640/0644 非敏感 Runtime metadata 兼容修复随 PR93/main `343d578`、core1.1.46/bundle49 交付；真实 OSS 凭据仍要求 0600。Linux 增量及正式 CI 通过，不修改企业档案或部署网关。见[本轮发布交接](docs/handoff/2026-10-25_multi-owner-self-service.md#实际发布与个人同步)。
 
 - [x] **MULTI-OWNER-SELF-SERVICE-20261025 Skill 已发布并双账号同步** (@codex-root)：PR93/main `343d578`，PR/main CI 均823通过/77跳过/1 warning；core1.1.46/bundle49、Release423304103于17:57:14 CST公开。十匿名资产、四latest、八selector、原updater新装/45升级/CURRENT及legacy入口通过；两账号各39路径备份/CAS同步、范围外保持及CURRENT已核。SaaS PR669/source `e903fb3` 正式CI待完成，未合并/部署；企业安装与业务验收另记。见[本轮交接](docs/handoff/2026-10-25_multi-owner-self-service.md)。

@@ -8,6 +8,7 @@ import json
 import re
 import sys
 from pathlib import Path, PurePosixPath
+from uuid import UUID
 
 
 BUCKET_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$")
@@ -117,8 +118,22 @@ def main() -> int:
             failures.append("objectStorage.provider 必须为 aliyun-oss")
         if object_storage.get("mode") != "gateway-api-v1":
             failures.append("objectStorage.mode 必须为 gateway-api-v1")
-        if object_storage.get("rootPrefix") != "apps":
-            failures.append("objectStorage.rootPrefix 必须为 apps")
+        namespace = object_storage.get("namespaceMode", "legacy-apps")
+        expected_prefix = "apps"
+        if namespace == "enterprise-v1":
+            try:
+                organization = str(UUID(str(payload.get("organizationId", ""))))
+            except (ValueError, TypeError, AttributeError):
+                organization = None
+                failures.append("enterprise-v1 需要有效的 Runtime organizationId")
+            environment = payload.get("environment")
+            if environment not in ("development", "staging", "production"):
+                failures.append("enterprise-v1 需要有效的 Runtime environment")
+            expected_prefix = f"enterprises/{organization}/{environment}/apps"
+        elif namespace != "legacy-apps":
+            failures.append("objectStorage.namespaceMode 必须为 legacy-apps 或 enterprise-v1")
+        if object_storage.get("rootPrefix") != expected_prefix:
+            failures.append("objectStorage.rootPrefix 与可信 Runtime 企业/环境命名空间不一致")
         bucket = object_storage.get("bucket")
         if isinstance(bucket, str) and not BUCKET_RE.fullmatch(bucket):
             failures.append("objectStorage.bucket 不是有效的 Bucket 名称")
