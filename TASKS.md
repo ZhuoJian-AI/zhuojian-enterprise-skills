@@ -1,6 +1,7 @@
 # 当前任务
 
 - [ ] **MULTI-OWNER-SELF-SERVICE-20261025** (@codex-root)：按已确认企业root共同维护，修模板跨模块事件幂等与数据库兼容，清除普通企业AI依赖平台管理员页面的验收流程，补服务器Git、共享OSS企业隔离与机外备份恢复契约。Runtime/SaaS实现由独立工作树协调集成；不新增人员权限隔离，不扩大员工业务权限。验收覆盖真实接收分支/重投/冲突/旧库迁移、无管理员页面的开发交接、对应完整核心测试及稳定分发；源码、发布、服务器安装、实际业务验收分别记账。
+- [ ] **MULTI-OWNER-RUNTIME-20261025** (@fix_runtime_reliability)：保留受信企业 root 自助维护，修复可变 Git 构建输入与迟到发布，补提交/数据备份和可恢复 Git refs，落实候选健康切换或明确受控维护；验证失败恢复与旧 release 兼容。仅本分支源码和隔离测试，部署由根代理协调。
 
 - [x] **MULTI-SYSTEM-INTEGRATION-20261025 已发布并双账号同步** (@codex-root)：core1.1.45整体确认、精确拆分、依赖恢复和整链验收随PR91合入217ddca；PR/main CI均729通过/57跳过。bundle-v1.4.48/Release423165869于13:25:58 CST公开，十匿名资产、四latest、八selector、core新装/44升级/CURRENT及legacy入口全部通过；两账号各六路径备份/CAS同步及范围外保持已核。沿用现有API/2.4/2.5，其他五Skill原包保持；没有SaaS/Runtime/业务部署。见[实际交接](docs/handoff/2026-10-25_multi-system-integration.md#实际发布与同步结果)。
 
