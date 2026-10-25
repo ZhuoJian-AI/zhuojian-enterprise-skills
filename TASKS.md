@@ -1,6 +1,6 @@
 # 当前任务
 
-- [ ] **MULTI-SYSTEM-INTEGRATION-20261025** (@codex-root)：补齐三、四或本企业全部明确系统的业务范围确认、精确计划拆分、依赖配置、部分成功恢复与整链验收；沿用现有API和2.4/2.5，不新增批量接口或部署业务系统。待审阅、完整core检查、PR合并、稳定发布及双账号限定同步。
+- [ ] **MULTI-SYSTEM-INTEGRATION-20261025** (@codex-root)：core1.1.45已补齐三、四或本企业全部明确系统的整体确认、精确计划拆分、依赖恢复与整链验收；独立场景审阅、完整core729通过/57跳过、quick_validate及48本地链接/diff通过。沿用现有API和2.4/2.5，不新增批量接口或部署业务系统；待PR/main CI、稳定发布及双账号六路径限定同步。见[本次交接](docs/handoff/2026-10-25_multi-system-integration.md)。
 
 - [x] **ALPHABET-SOURCE-RETIREMENT-20261025 已退役、发布并同步** (@retirement_docs)：源101已退订释放，124历史文件机外SHA覆盖、NAS旧分支撤除、目标9health/4共享通过。SQL1.1.4/goods1.0.4/NAS1.0.5与旧selector撤销随PR89/main41fb1ca合入；bundle47/Release423153399于12:48:06 CST公开，匿名十资产/四latest/八selector/三公司fresh-CURRENT全部通过。两账号各13路径备份/CAS同步与范围外保持已核，core1.1.44及另两ZIP字节不变。details12:42及billing12:45自然刷新、Console9台/旧源0通过；费用原DeepSeek partial边界保留。见[交接](docs/handoff/2026-10-25_alphabet-source-retirement.md)。
 
