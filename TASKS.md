@@ -1,10 +1,10 @@
 # 当前任务
 
-- [x] **GATEWAY-RUNTIME-PROFILE-COMPAT-20261025 源码与 Linux 验证完成，未安装** (@fix_platform_self_service)：修复网关把非敏感 Runtime 档案误用凭据 0600 校验导致旧 0640/0644 安装失败的问题；保持 root 所有权、不可组/其他用户写入、非符号链接及真实 OSS 凭据 0600 边界，使用独立 Linux 权限用例验收。仅 Skill 模板源码，不部署网关或修改企业档案；根代理统一整合、发布与双账号同步。
+- [x] **GATEWAY-RUNTIME-PROFILE-COMPAT-20261025 已随 Skill 发布并同步，企业网关未安装** (@fix_platform_self_service)：旧 0640/0644 非敏感 Runtime metadata 兼容修复随 PR93/main `343d578`、core1.1.46/bundle49 交付；真实 OSS 凭据仍要求 0600。Linux 增量及正式 CI 通过，不修改企业档案或部署网关。见[本轮发布交接](docs/handoff/2026-10-25_multi-owner-self-service.md#实际发布与个人同步)。
 
-- [ ] **MULTI-OWNER-SELF-SERVICE-20261025** (@codex-root)：按已确认企业root共同维护，修模板跨模块事件幂等与数据库兼容，清除普通企业AI依赖平台管理员页面的验收流程，补服务器Git、共享OSS企业隔离与机外备份恢复契约。Runtime/SaaS实现由独立工作树协调集成；不新增人员权限隔离，不扩大员工业务权限。验收覆盖真实接收分支/重投/冲突/旧库迁移、无管理员页面的开发交接、对应完整核心测试及稳定分发；源码、发布、服务器安装、实际业务验收分别记账。
-- [x] **MULTI-OWNER-RUNTIME-20261025 本地实现与验收完成，未部署** (@fix_runtime_reliability)：冻结 Git 构建、任务 worktree 精确提交/运行基线 CAS、发布源码 refs、切换前 v2 Git/数据/配置备份、维护恢复与共享 OSS 企业前缀契约完成；211 宿主相关测试通过、1 Windows POSIX 权限跳过。仅本分支源码和隔离测试，无 push/合并/生产修改，发布及企业安装由根代理协调。见 [交接](docs/handoff/2026-10-25_multi-owner-runtime-reliability.md)。
-- [x] **MULTI-OWNER-SHARED-STORAGE-20261025 本地实现待整合/发布** (@fix_storage_inventory)：企业共享 Bucket 的受信组织/环境前缀与旧布局兼容；独立 Runtime 机外备份发布/发现/完整读回与隔离下载工具，消费 v2 一致性归档。保持受信 root 开发权限，不修改其他企业或执行云迁移；以企业隔离、>512MiB流式归档、幂等/未知结果、SHA与版本和恢复边界测试验收。Runtime helper、核心版本与入口由根/Runtime代理维护。
+- [x] **MULTI-OWNER-SELF-SERVICE-20261025 Skill 已发布并双账号同步** (@codex-root)：PR93/main `343d578`，PR/main CI 均823通过/77跳过/1 warning；core1.1.46/bundle49、Release423304103于17:57:14 CST公开。十匿名资产、四latest、八selector、原updater新装/45升级/CURRENT及legacy入口通过；两账号各39路径备份/CAS同步、范围外保持及CURRENT已核。SaaS PR669/source `e903fb3` 正式CI待完成，未合并/部署；企业安装与业务验收另记。见[本轮交接](docs/handoff/2026-10-25_multi-owner-self-service.md)。
+- [x] **MULTI-OWNER-RUNTIME-20261025 已随 Skill 稳定分发，企业 helper 未安装** (@fix_runtime_reliability)：冻结 Git 构建、精确提交/运行基线 CAS、源码 refs、v2 Git/数据/配置备份及维护恢复已合入 PR93，随core1.1.46公开并同步个人账号。隔离验证不代替企业服务器安装、真实数据库恢复或业务验收。见[实现交接](docs/handoff/2026-10-25_multi-owner-runtime-reliability.md)及[发布结果](docs/handoff/2026-10-25_multi-owner-self-service.md#实际发布与个人同步)。
+- [x] **MULTI-OWNER-SHARED-STORAGE-20261025 已随 Skill 稳定分发，云端未迁移** (@fix_storage_inventory)：共享业务/备份桶企业前缀、旧布局兼容、机外备份发现/完整读回及隔离恢复工具已合入 PR93，随core1.1.46公开并同步；未创建/变更云 IAM、bucket，未迁移既有文件或删除恢复点。见[本轮边界](docs/handoff/2026-10-25_multi-owner-self-service.md#尚未上线的运行时范围)。
 
 - [x] **MULTI-SYSTEM-INTEGRATION-20261025 已发布并双账号同步** (@codex-root)：core1.1.45整体确认、精确拆分、依赖恢复和整链验收随PR91合入217ddca；PR/main CI均729通过/57跳过。bundle-v1.4.48/Release423165869于13:25:58 CST公开，十匿名资产、四latest、八selector、core新装/44升级/CURRENT及legacy入口全部通过；两账号各六路径备份/CAS同步及范围外保持已核。沿用现有API/2.4/2.5，其他五Skill原包保持；没有SaaS/Runtime/业务部署。见[实际交接](docs/handoff/2026-10-25_multi-system-integration.md#实际发布与同步结果)。
 
