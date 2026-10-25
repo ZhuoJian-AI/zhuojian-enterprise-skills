@@ -1,10 +1,10 @@
 # 当前任务
 
-- [ ] **SHARED-OSS-VALIDATOR-20261025** (@codex-root)：修复初始化存储校验器仅接受旧 apps 前缀的问题，按可信企业/环境验证 enterprise-v1 并保留旧档案；验收真实 CLI 允许/拒绝与完整公开分发链路。发布 core1.1.47 新补丁，不覆盖已公开46资产，不操作线上桶。
+- [x] **SHARED-OSS-VALIDATOR-20261025 已发布并双账号同步** (@codex-root)：PR95/main `e0d048b8`，PR/main CI均840通过/77跳过/1 warning，Windows/Linux定向各21通过。core1.1.47/bundle50、Release423318318于18:21:19 CST公开；十匿名资产、四latest、八selector、原updater新装/46升级/CURRENT及legacy入口通过。两账号各5路径备份/CAS同步、范围外保持及CURRENT47已核；未部署Runtime、改云权限或迁移文件。见[最终交接](docs/handoff/2026-10-25_shared-oss-validator.md#正式发布与同步结果)。
 
 - [x] **GATEWAY-RUNTIME-PROFILE-COMPAT-20261025 已随 Skill 发布并同步，企业网关未安装** (@fix_platform_self_service)：旧 0640/0644 非敏感 Runtime metadata 兼容修复随 PR93/main `343d578`、core1.1.46/bundle49 交付；真实 OSS 凭据仍要求 0600。Linux 增量及正式 CI 通过，不修改企业档案或部署网关。见[本轮发布交接](docs/handoff/2026-10-25_multi-owner-self-service.md#实际发布与个人同步)。
 
-- [x] **MULTI-OWNER-SELF-SERVICE-20261025 Skill 已发布并双账号同步** (@codex-root)：PR93/main `343d578`，PR/main CI 均823通过/77跳过/1 warning；core1.1.46/bundle49、Release423304103于17:57:14 CST公开。十匿名资产、四latest、八selector、原updater新装/45升级/CURRENT及legacy入口通过；两账号各39路径备份/CAS同步、范围外保持及CURRENT已核。SaaS PR669/source `e903fb3` 正式CI待完成，未合并/部署；企业安装与业务验收另记。见[本轮交接](docs/handoff/2026-10-25_multi-owner-self-service.md)。
+- [x] **MULTI-OWNER-SELF-SERVICE-20261025 Skill 已发布并双账号同步** (@codex-root)：PR93/main `343d578`，PR/main CI 均823通过/77跳过/1 warning；core1.1.46/bundle49、Release423304103于17:57:14 CST公开。十匿名资产、四latest、八selector、原updater新装/45升级/CURRENT及legacy入口通过；两账号各39路径备份/CAS同步、范围外保持及CURRENT已核。SaaS PR669在25检查SUCCESS、2跳过后合并为 `44752317`，未部署；企业安装与业务验收另记。见[本轮交接](docs/handoff/2026-10-25_multi-owner-self-service.md)。
 - [x] **MULTI-OWNER-RUNTIME-20261025 已随 Skill 稳定分发，企业 helper 未安装** (@fix_runtime_reliability)：冻结 Git 构建、精确提交/运行基线 CAS、源码 refs、v2 Git/数据/配置备份及维护恢复已合入 PR93，随core1.1.46公开并同步个人账号。隔离验证不代替企业服务器安装、真实数据库恢复或业务验收。见[实现交接](docs/handoff/2026-10-25_multi-owner-runtime-reliability.md)及[发布结果](docs/handoff/2026-10-25_multi-owner-self-service.md#实际发布与个人同步)。
 - [x] **MULTI-OWNER-SHARED-STORAGE-20261025 已随 Skill 稳定分发，云端未迁移** (@fix_storage_inventory)：共享业务/备份桶企业前缀、旧布局兼容、机外备份发现/完整读回及隔离恢复工具已合入 PR93，随core1.1.46公开并同步；未创建/变更云 IAM、bucket，未迁移既有文件或删除恢复点。见[本轮边界](docs/handoff/2026-10-25_multi-owner-self-service.md#尚未上线的运行时范围)。
 
