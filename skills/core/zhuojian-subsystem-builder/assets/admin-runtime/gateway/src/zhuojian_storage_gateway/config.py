@@ -83,7 +83,7 @@ def configured_namespace() -> tuple[str, str]:
     profile = {}
     if profile_path:
         path = Path(profile_path)
-        _require_private_root_file(path, "Runtime profile")
+        _require_root_metadata_file(path, "Runtime profile")
         if path.stat().st_size > 131072:
             raise ConfigurationError("Runtime profile is too large")
         try:
@@ -118,15 +118,16 @@ def configured_namespace() -> tuple[str, str]:
     return prefix, mode
 
 
-def _require_private_root_file(path: Path, label: str) -> None:
+def _require_root_metadata_file(path: Path, label: str) -> None:
+    """Runtime identity is readable metadata; only root may change it."""
     try:
         info = path.lstat()
     except OSError as exc:
         raise ConfigurationError(f"{label} is unavailable") from exc
     if stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode):
         raise ConfigurationError(f"{label} must be a regular file")
-    if os.name == "posix" and (info.st_uid != 0 or stat.S_IMODE(info.st_mode) & 0o077):
-        raise ConfigurationError(f"{label} must be root owned and private")
+    if os.name == "posix" and (info.st_uid != 0 or stat.S_IMODE(info.st_mode) & 0o022):
+        raise ConfigurationError(f"{label} must be root owned and not group/other writable")
 
 
 @dataclass(frozen=True)

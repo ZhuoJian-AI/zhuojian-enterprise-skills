@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import replace
 from pathlib import Path
 from uuid import UUID
@@ -9,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from zhuojian_storage_gateway.app import create_app
-from zhuojian_storage_gateway.config import ConfigurationError, GatewaySettings
+from zhuojian_storage_gateway.config import ConfigurationError, GatewaySettings, load_oss_credentials
 from zhuojian_storage_gateway.cli import _assert_outside_prefix_denied, GatewayProbeError
 from zhuojian_storage_gateway.config import OssCredentials
 from zhuojian_storage_gateway.registry import CredentialRegistry
@@ -34,6 +35,65 @@ def test_new_gateway_derives_shared_scope_and_old_gateway_preserves_legacy(tmp_p
     assert settings.namespace_mode == 'enterprise-v1'
     profile(tmp_path,monkeypatch,organization,{'bucket':'legacy-private','rootPrefix':'apps'})
     assert GatewaySettings.from_environment().root_prefix == 'apps'
+
+
+requires_posix_root = pytest.mark.skipif(
+    os.name != "posix" or getattr(os, "geteuid", lambda: -1)() != 0,
+    reason="actual root-owned POSIX file metadata is required",
+)
+
+
+@requires_posix_root
+@pytest.mark.parametrize("mode", [0o600, 0o640, 0o644])
+def test_existing_runtime_profile_permissions_work_for_shared_and_legacy(tmp_path, monkeypatch, mode):
+    organization = "11111111-1111-4111-8111-111111111111"
+    for storage, prefix in [(None, f"enterprises/{organization}/staging/apps"),
+                            ({"bucket": "legacy-private", "rootPrefix": "apps"}, "apps")]:
+        path = profile(tmp_path, monkeypatch, organization, storage)
+        path.chmod(mode)
+        assert path.stat().st_uid == 0
+        assert GatewaySettings.from_environment().root_prefix == prefix
+
+
+@requires_posix_root
+@pytest.mark.parametrize("mode", [0o620, 0o602, 0o622, 0o666])
+def test_runtime_profile_rejects_group_or_other_writers(tmp_path, monkeypatch, mode):
+    path = profile(tmp_path, monkeypatch, "11111111-1111-4111-8111-111111111111")
+    path.chmod(mode)
+    with pytest.raises(ConfigurationError, match="not group/other writable"):
+        GatewaySettings.from_environment()
+
+
+@requires_posix_root
+@pytest.mark.parametrize("kind", ["symlink", "directory", "non_root_owner"])
+def test_runtime_profile_rejects_untrusted_file_identity(tmp_path, monkeypatch, kind):
+    path = profile(tmp_path, monkeypatch, "11111111-1111-4111-8111-111111111111")
+    if kind == "symlink":
+        target = path.with_name("real-runtime.json")
+        path.rename(target)
+        path.symlink_to(target)
+    elif kind == "directory":
+        path.unlink()
+        path.mkdir(mode=0o700)
+    else:
+        os.chown(path, 65534, 65534)
+    with pytest.raises(ConfigurationError):
+        GatewaySettings.from_environment()
+
+
+@requires_posix_root
+@pytest.mark.parametrize("mode", [0o600, 0o640, 0o644])
+def test_runtime_metadata_compatibility_does_not_relax_oss_credentials(tmp_path, mode):
+    path = tmp_path / "oss.env"
+    path.write_text("OSS_ENDPOINT=https://oss-cn-hangzhou.aliyuncs.com\n"
+                    "OSS_BUCKET=shared-bucket\nOSS_ACCESS_KEY_ID=fixture\n"
+                    "OSS_ACCESS_KEY_SECRET=fixture\n", encoding="utf-8")
+    path.chmod(mode)
+    if mode == 0o600:
+        assert load_oss_credentials(path).bucket == "shared-bucket"
+    else:
+        with pytest.raises(ConfigurationError, match="0600 or stricter"):
+            load_oss_credentials(path)
 
 
 @pytest.mark.parametrize('change',[{'organizationId':'../../another'},{'environment':'../production'},{'objectStorage':{'namespaceMode':'enterprise-v1','rootPrefix':'enterprises/another/staging/apps'}}])
