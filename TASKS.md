@@ -1,6 +1,6 @@
 # 当前任务
 
-- [ ] **ALPHABET-SOURCE-RETIREMENT-20261025** (@retirement_docs)：源101已退订且12:40:57完整杭州清单确认释放；源历史124文件机外SHA覆盖、NAS旧分支撤除、目标9health/4共享通过。仅SQL1.1.4/goods1.0.4/NAS1.0.5和catalog精确旧selector撤销，core1.1.44不变。三quick_validate、公司4项既有测试、5组原生selector安装/不匹配与逐文件比对、NAS同源/syntax、diff检查通过。源码候选已备，PR/main、稳定包47和两账号限定同步待Root完成，不能把源码修改写成分发成功。见[交接](docs/handoff/2026-10-25_alphabet-source-retirement.md)。
+- [x] **ALPHABET-SOURCE-RETIREMENT-20261025 已退役、发布并同步** (@retirement_docs)：源101已退订释放，124历史文件机外SHA覆盖、NAS旧分支撤除、目标9health/4共享通过。SQL1.1.4/goods1.0.4/NAS1.0.5与旧selector撤销随PR89/main41fb1ca合入；bundle47/Release423153399于12:48:06 CST公开，匿名十资产/四latest/八selector/三公司fresh-CURRENT全部通过。两账号各13路径备份/CAS同步与范围外保持已核，core1.1.44及另两ZIP字节不变。details12:42及billing12:45自然刷新、Console9台/旧源0通过；费用原DeepSeek partial边界保留。见[交接](docs/handoff/2026-10-25_alphabet-source-retirement.md)。
 
 - [x] **ROOT-APPROVED-NETWORK-ATTACHMENTS-20261025 已发布并同步**：helper df94/唯一goods审批记录已在目标安装，九原镜像health200；core1.1.44/bundle46已从main bc455公开，原生CI、独立65项与公开升级/匹配检查通过。双账号各12个core路径限定同步、范围外保持；见[实际交接](docs/handoff/2026-10-25_alphabet-consolidation-actual.md#公开发布与个人同步实际终态)。
 
