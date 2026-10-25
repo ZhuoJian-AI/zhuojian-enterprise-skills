@@ -46,7 +46,7 @@ def test_shared_scope_rejects_untrusted_identity_or_override(tmp_path,monkeypatc
 def test_two_enterprises_same_slug_same_bucket_remain_isolated(tmp_path,monkeypatch):
     storage=FakeStorageAdapter();clients=[]
     for index in [1,2]:
-        root=tmp_path/str(index);root.mkdir()
+        root=tmp_path/str(index);root.mkdir(mode=0o700)
         organization=str(UUID(int=index))
         profile(root,monkeypatch,organization)
         settings=replace(GatewaySettings.from_environment(),db_path=root/'registry.db',apps_env_dir=root/'env',spool_dir=root/'spool',minimum_free_bytes=1)
