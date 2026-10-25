@@ -110,6 +110,14 @@ done
     die "$SECRETS_FILE must already be owned by root:root with mode 0600"
 [ -s "$SECRETS_FILE" ] || die "$SECRETS_FILE must be populated before installation"
 
+# Identity comes from the initialized Runtime, never an application parameter.
+# Existing OSS profiles without namespaceMode retain their legacy key prefix.
+# Fail before replacing a running gateway when the trusted identity is missing.
+GATEWAY_RUNTIME_PROFILE=/etc/zhuojian/runtime.json \
+GATEWAY_NAMESPACE_MODE=profile PYTHONPATH="$SOURCE_DIR/src" \
+    python3 -c 'from zhuojian_storage_gateway.config import configured_namespace; configured_namespace()' \
+    >/dev/null 2>&1 || die "initialized private Runtime profile has an invalid storage namespace"
+
 check_root_directory() {
     crd_path=$1
     if [ -e "$crd_path" ] || [ -L "$crd_path" ]; then
