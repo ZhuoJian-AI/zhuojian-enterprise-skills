@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **GATEWAY-RUNTIME-PROFILE-COMPAT-20261025** (@fix_platform_self_service)：修复网关把非敏感 Runtime 档案误用凭据 0600 校验导致旧 0640/0644 安装失败的问题；保持 root 所有权、不可组/其他用户写入、非符号链接及真实 OSS 凭据 0600 边界，使用独立 Linux 权限用例验收。仅 Skill 模板源码，不部署网关或修改企业档案；根代理统一整合、发布与双账号同步。
+
 - [ ] **MULTI-OWNER-SELF-SERVICE-20261025** (@codex-root)：按已确认企业root共同维护，修模板跨模块事件幂等与数据库兼容，清除普通企业AI依赖平台管理员页面的验收流程，补服务器Git、共享OSS企业隔离与机外备份恢复契约。Runtime/SaaS实现由独立工作树协调集成；不新增人员权限隔离，不扩大员工业务权限。验收覆盖真实接收分支/重投/冲突/旧库迁移、无管理员页面的开发交接、对应完整核心测试及稳定分发；源码、发布、服务器安装、实际业务验收分别记账。
 - [x] **MULTI-OWNER-RUNTIME-20261025 本地实现与验收完成，未部署** (@fix_runtime_reliability)：冻结 Git 构建、任务 worktree 精确提交/运行基线 CAS、发布源码 refs、切换前 v2 Git/数据/配置备份、维护恢复与共享 OSS 企业前缀契约完成；211 宿主相关测试通过、1 Windows POSIX 权限跳过。仅本分支源码和隔离测试，无 push/合并/生产修改，发布及企业安装由根代理协调。见 [交接](docs/handoff/2026-10-25_multi-owner-runtime-reliability.md)。
 - [x] **MULTI-OWNER-SHARED-STORAGE-20261025 本地实现待整合/发布** (@fix_storage_inventory)：企业共享 Bucket 的受信组织/环境前缀与旧布局兼容；独立 Runtime 机外备份发布/发现/完整读回与隔离下载工具，消费 v2 一致性归档。保持受信 root 开发权限，不修改其他企业或执行云迁移；以企业隔离、>512MiB流式归档、幂等/未知结果、SHA与版本和恢复边界测试验收。Runtime helper、核心版本与入口由根/Runtime代理维护。
