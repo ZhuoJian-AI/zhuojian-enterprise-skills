@@ -24,6 +24,8 @@
 
 ## 交付状态与上线范围
 
+最新稳定版本已为 **1.1.47 / bundle-v1.4.50**，修复后续发现的共享OSS档案校验入口；见[补丁发布与同步结果](2026-10-25_shared-oss-validator.md#正式发布与同步结果)。下文保留1.1.46首次分发的历史证据。
+
 core **1.1.46 / bundle-v1.4.49 已正式公开并完成双账号限定同步**。发布源为上述 `343d578097a10353e9d38f2cc4936ee4f496d838`，由干净 LF 工作树构建。Release 与个人安装的实际结果如下；Skill 发布不会自动安装企业 Runtime 或部署 SaaS。
 
 ### 实际发布与个人同步
@@ -35,7 +37,7 @@ core **1.1.46 / bundle-v1.4.49 已正式公开并完成双账号限定同步**�
 
 ### 尚未上线的运行时范围
 
-SaaS [PR #669](https://github.com/ZhuoJian-AI/ai-platform/pull/669) 当前 source `e903fb3`，本页记录时正式 CI 仍在运行，**未合并、未部署**。这与已公开的 Skill Release 是独立状态。
+SaaS [PR #669](https://github.com/ZhuoJian-AI/ai-platform/pull/669) 在25项检查SUCCESS、2项跳过后，已合并为 `44752317bf9838dbccc5a15f926b171e651c1674`；文档[PR #670](https://github.com/ZhuoJian-AI/ai-platform/pull/670) 已合并为 `87d9f296`。**本轮SaaS变更仍未部署**，这与已公开的Skill Release是独立状态。
 
 `ZhuoJian-AI/zhuojian-enterprise-skills` 的 core 分发与个人同步已完成。尚需另行交付 `ZhuoJian-AI/ai-platform` 的 0088 后端/worker/Control 与 root 发布器，以及 47.97.90.161 上受控 Runtime/gateway/backup helper 更新、共享桶初始化与实际恢复验证。现有业务系统只在后续获权改动中适配新模板；本轮不自动重建九个系统，不修改员工权限。SaaS/Runtime 尚未部署，云 IAM 与 bucket 尚未修改，实际迁移另以完整逐对象核对和回退副本验收。
 
