@@ -3,6 +3,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import tarfile
@@ -40,7 +41,8 @@ def local_archive(tmp_path, data=b'archive', git_source=None):
     path.chmod(0o600)
     meta = {'managedBy': b.MANAGED_BY, 'applicationSlug': 'example', 'archive': NAME,
             'schemaVersion': 2, 'consistentOfflineSnapshot': True, 'source': git_source or source(),
-            'sha256': hashlib.sha256(data).hexdigest(), 'sizeBytes': len(data), 'commit': 'b' * 40,
+            'sha256': hashlib.sha256(data).hexdigest(), 'sizeBytes': len(data),
+            'commit': (git_source or source())['requiredReleaseCommit'],
             'createdAt': '2026-10-25T09:00:00Z'}
     b.atomic_json(path.with_suffix('.gz.json'), meta)
     return scope, path
@@ -372,3 +374,73 @@ def test_configure_failed_boundary_keeps_existing_profile(tmp_path,monkeypatch):
     monkeypatch.setattr(b,'OssBackend',Cloud)
     assert b.main(['--runtime-profile',str(path),'configure','--bucket','shared-backups','--region','cn-hangzhou'])==2
     assert path.read_bytes()==before
+
+
+def test_current_runtime_fractional_timestamp_roundtrips_through_remote_discovery(tmp_path):
+    scope, old_path = local_archive(tmp_path)
+    metadata = b.read_json(old_path.with_suffix('.gz.json'))
+    stamp = b.dt.datetime(2026, 10, 25, 9, 0, 0, 123456).strftime('%Y%m%dT%H%M%S.%fZ')
+    name = f'{stamp}-{metadata["commit"][:12]}.tar.gz'
+    path = old_path.with_name(name)
+    old_path.rename(path)
+    metadata['archive'] = name
+    b.atomic_json(path.with_suffix('.gz.json'), metadata)
+    remote = Backend()
+    result = b.publish(scope, remote, 'example', path)
+    assert result['archive'] == name
+    assert b.discover(scope, remote, 'example')[0]['archive'] == name
+    assert b.download(scope, remote, 'example', name, tmp_path / 'isolated')['status'] == 'downloaded_and_verified'
+
+
+@pytest.mark.parametrize('change', [{'schemaVersion': 1}, {'schemaVersion': True}, {'commit': 'c' * 40}])
+def test_local_backup_schema_and_running_source_must_match_before_upload(tmp_path, change):
+    scope, path = local_archive(tmp_path)
+    sidecar = path.with_suffix('.gz.json')
+    b.atomic_json(sidecar, {**b.read_json(sidecar), **change})
+    remote = Backend()
+    with pytest.raises(b.BackupError):
+        b.publish(scope, remote, 'example', path)
+    assert remote.uploads == 0
+
+
+def test_publish_latest_accepts_runtime_metadata_mode_and_continues_other_apps(tmp_path, monkeypatch, capsys):
+    scope, path = local_archive(tmp_path)
+    runtime_path = tmp_path / 'runtime.json'
+    b.atomic_json(runtime_path, profile(tmp_path))
+    good_release = scope.deployments / 'example' / 'release.json'
+    b.atomic_json(good_release, {'managedBy': b.MANAGED_BY, 'applicationSlug': 'example'})
+    good_release.chmod(0o640)
+    bad_release = scope.deployments / 'broken' / 'release.json'
+    b.atomic_json(bad_release, {'managedBy': b.MANAGED_BY, 'applicationSlug': 'wrong-app'})
+    bad_release.chmod(0o640)
+    remote = Backend()
+    remote.assert_scope = lambda _scope: None
+    monkeypatch.setattr(b, 'OssBackend', lambda _scope: remote)
+    assert b.main(['--runtime-profile', str(runtime_path), 'publish-latest']) == 2
+    result = json.loads(capsys.readouterr().out)
+    assert [row['applicationSlug'] for row in result['backups']] == ['example']
+    assert [row['applicationSlug'] for row in result['failed']] == ['broken']
+    assert path.exists()
+
+
+@pytest.mark.skipif(os.name != 'posix', reason='real POSIX metadata/credential permission distinction')
+def test_readable_runtime_metadata_does_not_relax_private_backup_credentials(tmp_path):
+    path = tmp_path / 'metadata.json'
+    b.atomic_json(path, {'applicationSlug': 'example'})
+    path.chmod(0o640)
+    assert b.read_json(path, allow_group_read=True)['applicationSlug'] == 'example'
+    with pytest.raises(b.BackupError):
+        b.private_file(path)
+    path.chmod(0o660)
+    with pytest.raises(b.BackupError):
+        b.read_json(path, allow_group_read=True)
+
+
+def test_restore_checks_download_capacity_before_creating_partial_files(tmp_path, monkeypatch):
+    scope, path = local_archive(tmp_path)
+    remote = Backend()
+    b.publish(scope, remote, 'example', path)
+    monkeypatch.setattr(b.shutil, 'disk_usage', lambda _: SimpleNamespace(free=1))
+    with pytest.raises(b.BackupError, match='disk space'):
+        b.download(scope, remote, 'example', NAME, tmp_path / 'restore')
+    assert not (tmp_path / 'restore').exists()

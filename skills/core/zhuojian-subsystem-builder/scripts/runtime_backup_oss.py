@@ -29,7 +29,7 @@ CHUNK = 8 * 1024 * 1024
 MAX_MANIFEST = 256 * 1024
 SLUG = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 SHA = re.compile(r"^[a-f0-9]{64}$")
-ARCHIVE = re.compile(r"^[0-9]{8}T[0-9]{6}Z-[a-f0-9]{12}\.tar\.gz$")
+ARCHIVE = re.compile(r"^[0-9]{8}T[0-9]{6}(?:\.[0-9]{6})?Z-[a-f0-9]{12}\.tar\.gz$")
 MANAGED_BY = "zhuojian-runtime-admin/v1"
 
 
@@ -37,20 +37,21 @@ class BackupError(RuntimeError):
     pass
 
 
-def private_file(path: Path):
+def private_file(path: Path, *, allow_group_read=False):
     try:
         info = path.lstat()
     except OSError as exc:
         raise BackupError("required protected file is unavailable") from exc
     if not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode):
         raise BackupError("protected file must be regular and not a symlink")
-    if os.name == "posix" and (info.st_uid != 0 or stat.S_IMODE(info.st_mode) & 0o077):
+    forbidden = 0o037 if allow_group_read else 0o077
+    if os.name == "posix" and (info.st_uid != 0 or stat.S_IMODE(info.st_mode) & forbidden):
         raise BackupError("protected file must be root owned and mode 0600 or stricter")
     return info
 
 
-def read_json(path: Path, maximum=MAX_MANIFEST):
-    info = private_file(path)
+def read_json(path: Path, maximum=MAX_MANIFEST, *, allow_group_read=False):
+    info = private_file(path, allow_group_read=allow_group_read)
     if info.st_size > maximum:
         raise BackupError("metadata exceeds the supported size")
     try:
@@ -309,10 +310,13 @@ class OssBackend:
 def validate_manifest(scope,slug,archive_name,manifest):
     if not isinstance(manifest,dict):raise BackupError("remote manifest must be an object")
     expected={"schemaVersion":1,"organizationId":scope.organization,"environment":scope.environment,"applicationSlug":valid_slug(slug),"bucket":scope.bucket,"archive":archive_name,"objectKey":scope.archive_key(slug,archive_name),"status":"verified"}
-    if any(manifest.get(k)!=v for k,v in expected.items()):raise BackupError("remote manifest is outside the requested enterprise or backup")
-    if not SHA.fullmatch(str(manifest.get('sha256',''))) or not isinstance(manifest.get('sizeBytes'),int) or manifest['sizeBytes']<=0:
+    if type(manifest.get('schemaVersion')) is not int or any(manifest.get(k)!=v for k,v in expected.items()):raise BackupError("remote manifest is outside the requested enterprise or backup")
+    if not SHA.fullmatch(str(manifest.get('sha256',''))) or type(manifest.get('sizeBytes')) is not int or manifest['sizeBytes']<=0:
         raise BackupError("remote backup integrity fields are invalid")
     if not isinstance(manifest.get('versionId'),str) or not manifest['versionId'] or manifest['versionId']=='null':raise BackupError("remote backup version is missing")
+    validate_source(manifest.get('source'))
+    if manifest.get('commit') != manifest['source']['requiredReleaseCommit']:
+        raise BackupError('remote backup source does not match its recorded running commit')
     return manifest
 
 
@@ -355,9 +359,11 @@ def _publish(scope,backend,slug,archive_path):
     key=scope.archive_key(slug,archive_path.name)
     metadata=read_json(archive_path.with_suffix(archive_path.suffix+'.json'))
     source=metadata.get('source') or {}
-    if metadata.get('managedBy')!=MANAGED_BY or metadata.get('applicationSlug')!=slug or metadata.get('archive')!=archive_path.name or metadata.get('consistentOfflineSnapshot') is not True or source.get('restoreVerified') is not True:
+    if type(metadata.get('schemaVersion')) is not int or metadata['schemaVersion'] != 2 or metadata.get('managedBy')!=MANAGED_BY or metadata.get('applicationSlug')!=slug or metadata.get('archive')!=archive_path.name or metadata.get('consistentOfflineSnapshot') is not True or source.get('restoreVerified') is not True:
         raise BackupError("backup must include a Runtime-verified consistency snapshot and Git recovery bundle")
     validate_source(source)
+    if metadata.get('commit') != source['requiredReleaseCommit']:
+        raise BackupError('backup source does not match its recorded running commit')
     source={key:source[key] for key in ('bundleMember','bundleSha256','headCommit','requiredReleaseCommit','uncommittedStateIncluded','restoreVerified')}
     sha,size=sha_file(archive_path)
     if metadata.get('sha256')!=sha or metadata.get('sizeBytes')!=size:raise BackupError("local archive does not match its verified metadata")
@@ -410,6 +416,8 @@ def download(scope,backend,slug,archive_name,destination):
     backend.assert_private(manifest['objectKey'],manifest['versionId'])
     destination=Path(destination)
     if destination.exists() or destination.is_symlink():raise BackupError("recovery directory must not already exist")
+    if not destination.parent.is_dir() or shutil.disk_usage(destination.parent).free < manifest['sizeBytes'] + 64 * 1024 * 1024:
+        raise BackupError('not enough disk space to download this isolated recovery point')
     # New isolated directory only. No automatic extraction, Git checkout or live restore.
     destination.mkdir(parents=False,mode=0o700)
     partial=destination/(archive_name+'.partial')
@@ -439,7 +447,8 @@ def stage_restore(scope,backend,slug,archive_name,destination):
             if not parts or parts[0] not in {'data','config','code'} or any(p in {'..','.'} for p in parts) or '\\' in member.name or ':' in member.name or PurePosixPath(member.name).is_absolute() or not (member.isfile() or member.isdir()):
                 raise BackupError('backup contains an unsafe restore member')
             total+=member.size
-        if shutil.disk_usage(destination).free < total+64*1024*1024:
+        bundle_size=sum(member.size for member in members if member.name=='code/repository.bundle')
+        if shutil.disk_usage(destination).free < total+2*bundle_size+64*1024*1024:
             raise BackupError('not enough disk space for this isolated restore')
         for member in members:
             output=target/member.name
@@ -524,7 +533,7 @@ def main(argv=None):
             # Same host-wide lock as the Runtime publisher prevents lost profile
             # updates; this configures storage only, never cloud IAM or buckets.
             with publication_lock(Path('/run/lock/zhuojian-runtime-admin.lock')):
-                profile=read_json(args.runtime_profile)
+                profile=read_json(args.runtime_profile,allow_group_read=True)
                 try:organization=str(UUID(str(profile['organizationId'])))
                 except (ValueError,KeyError) as exc:raise BackupError('Runtime enterprise identity is invalid') from exc
                 storage={'provider':'aliyun-oss','namespaceMode':'enterprise-v1','bucket':args.bucket,'region':args.region,
@@ -538,7 +547,7 @@ def main(argv=None):
                 storage['boundaryVerified']=True
                 atomic_json(args.runtime_profile,candidate)
                 print(json.dumps({'ok':True,'configured':True,'rootPrefix':scope.prefix,'uploadVerified':False}));return 0
-        scope=BackupScope(read_json(args.runtime_profile))
+        scope=BackupScope(read_json(args.runtime_profile,allow_group_read=True))
         if args.command=='status':
             print(json.dumps({'ok':True,'configured':True,'organizationId':scope.organization,'environment':scope.environment,'bucket':scope.bucket,'rootPrefix':scope.prefix,'cloudVerified':False}));return 0
         backend=OssBackend(scope)
@@ -549,11 +558,13 @@ def main(argv=None):
         elif args.command=='publish-latest':
             result={'ok':True,'backups':[],'failed':[]}
             for release_path in sorted(scope.deployments.glob('*/release.json')):
-                release=read_json(release_path)
-                if release.get('managedBy')!=MANAGED_BY:continue
                 slug=valid_slug(release_path.parent.name)
-                archives=sorted((scope.backups/slug).glob('*.tar.gz'),reverse=True)
                 try:
+                    release=read_json(release_path,allow_group_read=True)
+                    if release.get('managedBy')!=MANAGED_BY:continue
+                    if release.get('applicationSlug') != slug:
+                        raise BackupError('managed release identity differs from its application directory')
+                    archives=sorted((scope.backups/slug).glob('*.tar.gz'),reverse=True)
                     if not archives:raise BackupError("no local consistency backup exists")
                     result['backups'].append(publish(scope,backend,slug,archives[0]))
                 except Exception:
