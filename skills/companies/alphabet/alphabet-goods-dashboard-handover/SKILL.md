@@ -1,11 +1,11 @@
 ---
 name: alphabet-goods-dashboard-handover
-description: "维护 Alphabet 的 aifabei-hk-01 上的商品动销看板，解释数据口径、排查同步或访问异常并安全发布；原48仅保留退役观察和旧入口定位。仅适用于该看板及其道讯只读数据链路。"
+description: "维护 Alphabet 的 aifabei-hk-01 上的商品动销看板，解释数据口径、排查同步或访问异常并安全发布；原48仅保留历史身份和旧入口定位。仅适用于该看板及其道讯只读数据链路。"
 ---
 
 # Alphabet 商品动销看板交接
 
-本 Skill 是商品动销看板的交接层。2026-10-25 已归并至既有 `aifabei-hk-01`；原 `aifabei-hk-48` 已停用，源主机只作退役观察和旧入口转发，不能继续发布业务。当前入口、数据通道及独立待验收项见[服务器访问](references/server-access.md)。必须与 `$zhuojian-subsystem-builder` 同时使用。总 Skill 负责服务器访问、开发、部署、统一登录、权限、文件存储和 SaaS 接入；本 Skill 只补充该看板的真实现状、业务口径和维护边界，不取代或放宽总契约。
+本 Skill 是商品动销看板的交接层。2026-10-25 已归并至既有 `aifabei-hk-01`；原 `aifabei-hk-48` 已停用，源服务器退役状态和机外恢复位置见[服务器访问](references/server-access.md)，不再将源地址作为发布或日常连接目标。旧 `hk48` 网址继续访问01。必须与 `$zhuojian-subsystem-builder` 同时使用。总 Skill 负责服务器访问、开发、部署、统一登录、权限、文件存储和 SaaS 接入；本 Skill 只补充该看板的真实现状、业务口径和维护边界，不取代或放宽总契约。
 
 本 Skill 由 `ZhuoJian-AI/zhuojian-enterprise-skills` 稳定目录托管。总 Skill 根据 ECS Runtime 档案或主机地址安装、更新本 Skill 后，立即重新读取本文件以及当前任务需要的 references，不使用更新前的交接事实。
 

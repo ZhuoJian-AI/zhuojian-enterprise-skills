@@ -43,10 +43,9 @@
         "alphabet",
         "aifabei"
       ],
-      "runtimeIds": ["aifabei-hk-48", "aifabei-hk-01"],
+      "runtimeIds": ["aifabei-hk-01"],
       "hosts": [
         "47.243.48.78",
-        "101.37.173.94",
         "47.97.90.161"
       ]
     },
@@ -58,14 +57,12 @@
         "aifabei"
       ],
       "runtimeIds": [
-        "aifabei-hk-01",
-        "aifabei-hk-48"
+        "aifabei-hk-01"
       ],
       "hosts": [
         "8.218.208.205",
         "47.243.48.78",
-        "47.97.90.161",
-        "101.37.173.94"
+        "47.97.90.161"
       ]
     }
   }

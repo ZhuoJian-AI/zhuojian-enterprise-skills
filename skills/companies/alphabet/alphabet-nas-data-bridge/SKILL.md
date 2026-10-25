@@ -1,11 +1,11 @@
 ---
 name: alphabet-nas-data-bridge
-description: "在 Alphabet 当前 aifabei-hk-01 Runtime 主机上，经既有群晖 NAS 反向隧道只读浏览企业共享资料；原48仅用于历史和退役观察定位。用户提到 10.0.0.33、NAS、共享盘、000、AI、outshare、TEST 或子系统查询公司文件时使用。"
+description: "在 Alphabet 当前 aifabei-hk-01 Runtime 主机上，经既有群晖 NAS 反向隧道只读浏览企业共享资料；原48仅用于历史定位，旧连接已撤除。用户提到 10.0.0.33、NAS、共享盘、000、AI、outshare、TEST 或子系统查询公司文件时使用。"
 ---
 
 # Alphabet NAS 数据桥接
 
-本 Skill 记录 Alphabet 当前01主机的 NAS 通道及原48的历史/退役观察资料。主机归并已完成，业务使用01；源48停用不等于旧NAS设备连接已自动撤除，不能据此重建01监听或删除旧密钥。构建、部署、统一登录、权限、Manifest、Action、iframe Bridge 和 OSS 必须同时使用 `$zhuojian-subsystem-builder`；本 Skill 只说明 NAS 的真实入口、已验证共享、只读边界和验收方法。
+本 Skill 记录 Alphabet 当前01主机的 NAS 通道及原48历史资料。主机归并已完成；2026-10-25已精确撤除NAS旧48连接与开机分支，原01连接保持，最终NAS业务容器四共享只读验收通过。不能重放历史双机脚本、重建01监听或删除原密钥。构建、部署、统一登录、权限、Manifest、Action、iframe Bridge 和 OSS 必须同时使用 `$zhuojian-subsystem-builder`；本 Skill 只说明 NAS 的真实入口、已验证共享、只读边界和验收方法。
 
 本 Skill 由 `ZhuoJian-AI/zhuojian-enterprise-skills` 的稳定 Release 托管。每次任务先让总 Skill 更新自身和本机交接 Skills；本 Skill 被安装或更新后，立即重新读取本文件和 [当前环境](references/environment.md)。
 

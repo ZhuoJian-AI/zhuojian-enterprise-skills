@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Synology boot hook for the two Alphabet NAS -> ECS reverse tunnels.
+# Synology boot hook for the active Alphabet NAS -> ECS reverse tunnel.
 # Install as /usr/local/etc/rc.d/zhuojian-nas-tunnels.sh, owned by root and mode 700.
 
 PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
@@ -109,18 +109,15 @@ status_one() {
 
 start_all() {
     start_one aifabei-hk-01 47.97.90.161 "$HOME_DIR/.ssh/zhuojian_nas_8_218_208_205"
-    start_one aifabei-hk-48 101.37.173.94 "$HOME_DIR/.ssh/zhuojian_nas_47_243_48_78"
 }
 
 stop_all() {
     stop_one aifabei-hk-01
-    stop_one aifabei-hk-48
 }
 
 status_all() {
     result=0
     status_one aifabei-hk-01 || result=1
-    status_one aifabei-hk-48 || result=1
     return "$result"
 }
 
