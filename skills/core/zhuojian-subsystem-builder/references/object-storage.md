@@ -9,11 +9,11 @@
 外部 NAS 原件按需访问不是以下存储后端迁移。负责人要求原件留在内网时，遵守 [外部资料源只读访问](external-readonly-files.md)；不把 NAS 原件套入默认上传、临时转换或 OSS 复制流程。
 
 - `local-managed`：Runtime 尚未验收 OSS 时的安全初始模式。持久文件进入 `/srv/zhuojian/data/<applicationSlug>/files/`，由模块后端鉴权后读写。
-- `oss-gateway`：管理员部署同地域私有 OSS 和文件网关并通过真实探针后的默认模式。每个未来系统由 Runtime 自动获得 `apps/<applicationSlug>/` 和自己的项目身份；OSS 不要求也不应预先创建“文件夹”。
+- `oss-gateway`：管理员部署同地域私有 OSS 和文件网关并通过真实探针后的默认模式。新初始化网关的每个系统由 Runtime 自动获得 `enterprises/<organizationId>/<environment>/apps/<applicationSlug>/` 和自己的项目身份；旧网关保留已冻结的 `apps/<applicationSlug>/`；OSS 不要求也不应预先创建“文件夹”。
 - 已有系统已经使用 OSS、S3 或其他稳定对象存储时保留现状，不得为了套用默认值迁回本地磁盘。
 - `/etc/zhuojian/runtime.json` 只提供尚未初始化系统的默认模式；系统第一次 `ensure-app` 后，实际模式必须记录并冻结在 `/srv/zhuojian/deployments/<applicationSlug>/release.json`。后续默认值变化不能改写已有 release，也不得在 OSS 故障、本地目录故障或磁盘不足时静默切换。
 
-本规范的 OSS 只保存子系统自己的业务附件和业务记录关联文件，不承载 SaaS AI 产物、数据库、Docker 卷、Git 仓库或高频随机写数据。SaaS AI 生成的 Word、Excel、PPT、PDF、文本、图片和压缩包统一写入当前员工获权的 SaaS 工作空间，默认个人空间；子系统只提供权限过滤后的业务数据。外部宿主本机生成后需要交回平台的产物，同样通过平台受控上传、校验、提交取得真实文件版本回执，不落到子系统附件 OSS、不下发 OSS 长期密钥；见 [外部宿主文件交付](external-agent-access.md#文件交付)。无论哪种模式，数据库、Docker、本地 Git、构建缓存和临时处理仍需要磁盘空间。
+本节业务附件 Bucket 只保存子系统自己的业务附件和业务记录关联文件，不承载 SaaS AI 产物、数据库、Docker 卷、Git 仓库或高频随机写数据。数据、配置与 Git bundle 的一致性归档进入独立共享备份 Bucket，详见 [机外备份与隔离恢复](runtime-backup-recovery.md)。SaaS AI 生成的 Word、Excel、PPT、PDF、文本、图片和压缩包统一写入当前员工获权的 SaaS 工作空间，默认个人空间；子系统只提供权限过滤后的业务数据。外部宿主本机生成后需要交回平台的产物，同样通过平台受控上传、校验、提交取得真实文件版本回执，不落到子系统附件 OSS、不下发 OSS 长期密钥；见 [外部宿主文件交付](external-agent-access.md#文件交付)。无论哪种模式，数据库、Docker、本地 Git、构建缓存和临时处理仍需要磁盘空间。
 
 ## 从第一天就遵守的可迁移契约
 
@@ -105,9 +105,9 @@ FILE_STORAGE_RECOVERY_IO_TIMEOUT_SECONDS=5
 
 只有管理员明确要求启用 OSS 时才执行：
 
-1. 创建或绑定与 ECS 同地域的企业专用私有 Bucket；其他企业、环境、平台公共资产或不同地域的 Bucket 不得复用。
+1. 复用与 ECS 同地域的共享私有业务附件 Bucket。企业与环境用服务端确定的前缀隔离，不再默认每企业新建 Bucket；备份必须使用另一个共享私有备份 Bucket。不要把平台 AI 工作空间桶、公共资产桶直接当作企业附件桶，也不跨地域随意复用。既有企业独立桶继续服务，按下方专门迁移流程处理。
 2. 选择标准存储；测试或非关键数据可选本地冗余，生产关键数据优先同城冗余。ACL 保持私有并开启阻止公共访问。
-3. 创建一个无控制台登录的 RAM 用户，只给文件网关使用；每个公司/环境一枚网关身份，不是每个项目一枚 AccessKey。策略必须同时把列举限制在 `apps`/`apps/*`，并把对象操作限制在该 Bucket 的 `apps/*`：
+3. 创建一个无控制台登录的 RAM 用户，只给文件网关使用；每个公司/环境一枚网关身份，不是每个项目一枚 AccessKey。策略必须同时把列举限制在企业当前环境的业务前缀，并把对象操作限制在同一前缀。将下例中的 `<业务前缀>` 替换为 `enterprises/<组织UUID>/<environment>/apps`（UUID取可信 Runtime，不取业务提交值），将 `<共享业务Bucket>` 替换为已登记桶名：
 
    ```json
    {
@@ -116,8 +116,8 @@ FILE_STORAGE_RECOVERY_IO_TIMEOUT_SECONDS=5
        {
          "Effect": "Allow",
          "Action": "oss:ListObjects",
-         "Resource": "acs:oss:*:*:<企业Bucket>",
-         "Condition": {"StringLike": {"oss:Prefix": ["apps", "apps/*"]}}
+         "Resource": "acs:oss:*:*:<共享业务Bucket>",
+         "Condition": {"StringLike": {"oss:Prefix": ["<业务前缀>", "<业务前缀>/*"]}}
        },
        {
          "Effect": "Allow",
@@ -125,7 +125,7 @@ FILE_STORAGE_RECOVERY_IO_TIMEOUT_SECONDS=5
            "oss:GetObject", "oss:PutObject", "oss:DeleteObject",
            "oss:ListParts", "oss:AbortMultipartUpload"
          ],
-         "Resource": "acs:oss:*:*:<企业Bucket>/apps/*"
+         "Resource": "acs:oss:*:*:<共享业务Bucket>/<业务前缀>/*"
        }
      ]
    }
@@ -136,7 +136,7 @@ FILE_STORAGE_RECOVERY_IO_TIMEOUT_SECONDS=5
 
    ```text
    OSS_ENDPOINT=https://oss-<地域ID>.aliyuncs.com
-   OSS_BUCKET=<企业Bucket>
+   OSS_BUCKET=<共享业务Bucket>
    OSS_ACCESS_KEY_ID=<仅管理员写入>
    OSS_ACCESS_KEY_SECRET=<仅管理员写入>
    ```
@@ -146,11 +146,11 @@ FILE_STORAGE_RECOVERY_IO_TIMEOUT_SECONDS=5
 
    ```text
    zhuojian-runtime configure-oss-gateway \
-     --bucket <企业Bucket> \
+     --bucket <共享业务Bucket> \
      --region <阿里云地域ID>
    ```
 
-   该命令会对真实对象验证匿名读取拒绝，验证 RAM 对 `apps/*` 外的列举、读取、写入和删除全部拒绝，再执行 PUT、GET、DELETE、两个临时应用同名对象隔离和临时身份撤销。越界写探针必须使用不会留下对象的无效校验值；探针失败时不改 Runtime，成功后才原子写入 `verified=true` 并把 `oss-gateway` 设为尚未初始化系统的默认模式。
+   该命令会对真实对象验证匿名读取拒绝，验证 RAM 对当前企业业务前缀外（含其他企业与本企业备份前缀）的列举、读取、写入和删除全部拒绝，再执行 PUT、GET、DELETE、两个临时应用同名对象隔离和临时身份撤销。越界写探针必须使用不会留下对象的无效校验值；探针失败时不改 Runtime，成功后才原子写入 `verified=true` 并把 `oss-gateway` 设为尚未初始化系统的默认模式。
 7. 新系统不再需要管理员。业务 AI 在本地 Git 首次干净提交后执行 `zhuojian-runtime ensure-app <applicationSlug>`；Runtime 幂等生成项目身份并写入网关专用的 `/etc/zhuojian/storage-apps/<applicationSlug>.storage.env`，部署时自动注入，并把 `oss-gateway` 冻结进该系统的 release。该目录与普通应用 Secret 目录分离，网关看不到 SaaS 四类项目凭证或 Session Secret。Host 先升级、网关尚未升级的短暂过渡期，Runtime 也能接受旧网关写入的 `/etc/zhuojian/apps/<applicationSlug>.storage.env`，但只允许新旧两个固定位置中恰好存在一个且与 release 记录一致；网关升级后由迁移器移动 Secret 并同步 release。双文件或任意路径一律拒绝。命令不输出令牌，重复执行复用原身份与后端；被管理员暂停或撤销的身份不会被自动复活。
 8. 网关上传会使用 ECS 临时空间做有界缓冲，而不是宣称完全不落盘。默认单对象上限 `512 MiB`、网关自身同时缓冲最多 `2` 个对象，并保留至少 `5 GiB` 空闲空间；原生模块还通过全 ECS 共享锁把正常上传占盘阶段串行化，形成第二道保护。Nginx 请求体上限固定为 `512m`。应用等待网关和 Nginx 等待应用的默认响应窗口统一为 `900` 秒；`uploading` 恢复宽限默认 `1800` 秒，避免把超时后仍可能完成的 OSS 请求误删成无主对象。修改时必须同步调整这些层并做慢速、断连和延迟提交验收。需要更大文件时，管理员必须先评估磁盘、带宽与中断清理，再实现并验收 OSS 分片直传，不能简单调大上限。
 
@@ -164,7 +164,7 @@ zhuojian-runtime rotate-app-storage <applicationSlug> --grace-seconds 300
 
 Runtime 先把随机 operation-id、冻结镜像和确定的回滚容器名持久写入 release，再让网关执行 prepare：新身份会写入 Secret，但旧身份此时不设失效时间。Runtime 用 operation-id 标签识别新旧容器，从而能在 stop、rename、start、健康检查或进程重启的任一中断点继续；只有新容器健康后才让网关 commit，并从 commit 时刻开始计算旧身份宽限期。prepare 与 commit 都可按同一 operation-id 幂等重放，commit 已成功但响应丢失也不会重复生成身份或延长宽限。若健康检查失败，Runtime 恢复旧容器并保留待续 marker，旧身份仍长期有效；修复原因后重跑同一条命令即可。待续期间 deploy、rollback、restore 会拒绝执行。不要单独调用网关兼容用的 `rotate`，因为它无法完成容器切换与 Host 恢复流程。
 
-OSS 模式继续兼容以下档案：
+新网关档案示例（已有档案缺少 `namespaceMode` 时按 `legacy-apps` 处理，保留 `rootPrefix: apps`）：
 
 ```json
 {
@@ -180,9 +180,10 @@ OSS 模式继续兼容以下档案：
   "objectStorage": {
     "provider": "aliyun-oss",
     "mode": "gateway-api-v1",
-    "bucket": "alphabet-production-<region>-files-<suffix>",
+    "bucket": "<同地域共享业务Bucket>",
     "region": "<ECS所在地域ID>",
-    "rootPrefix": "apps",
+    "namespaceMode": "enterprise-v1",
+    "rootPrefix": "enterprises/<组织UUID>/<environment>/apps",
     "gatewayBaseUrl": "http://zhuojian-storage-gateway:8080",
     "credentialRef": "/etc/zhuojian/oss-gateway.env",
     "verified": true
@@ -206,7 +207,7 @@ OSS 模式继续兼容以下档案：
 
 ### 2. 复制和校验
 
-1. 将本地 `<storageKey>` 上传到 `apps/<applicationSlug>/<storageKey>`。保留原 `storageKey`，不要改文件名来表示版本。
+1. 将本地 `<storageKey>` 上传到已验证档案的 `<rootPrefix>/<applicationSlug>/<storageKey>`。保留原 `storageKey`，不要改文件名来表示版本。
 2. 上传程序必须可断点续跑和幂等：目标对象存在且大小与 SHA-256 一致时跳过；不一致时报告冲突，不覆盖未知对象。
 3. 每个对象上传后核对大小和 SHA-256。OSS ETag 不能普遍当作文件 MD5，尤其是分片上传；以迁移清单中的 SHA-256 为准。
 4. 复制阶段数据库仍保持 `storageBackend=local`，用户继续从本地读取。
@@ -233,7 +234,7 @@ OSS 模式继续兼容以下档案：
 4. 清理按迁移清单逐个删除已验证文件，禁止对数据根目录执行递归清空。先移到受控隔离目录并保留一个约定周期，再按精确清单删除。
 5. 清理完成后仍保留数据库备份、迁移清单、失败清单、切换批次和回滚记录；Secret 和 AccessKey 不进入这些记录。
 
-Runtime 的普通 `backup` 只覆盖应用数据库、本地数据和恢复配置，不复制 OSS 对象，也不保证数据库与 OSS 在同一时刻快照。OSS 系统必须另外配置管理员认可的对象版本、清单或异地保护策略，并在恢复演练中验证数据库引用与对象集合一致；不得把“本地备份成功”描述为“OSS 文件已经备份”。
+新版 Runtime 的普通 `backup` 覆盖应用数据库、本地数据、恢复配置与已验证的 Git bundle；产物仍是本机归档，`offServer=false`，不复制 OSS 对象，也不保证数据库与 OSS 在同一时刻快照。OSS 系统必须另外配置管理员认可的对象版本、清单或异地保护策略，并在恢复演练中验证数据库引用与对象集合一致；不得把“本地备份成功”描述为“OSS 文件已经备份”。
 
 ## 验收
 
@@ -248,6 +249,15 @@ Runtime 的普通 `backup` 只覆盖应用数据库、本地数据和恢复配�
 ### OSS 模式或迁移完成
 
 - Bucket 私有、阻止公共访问且与 ECS 同地域；应用容器中没有 OSS AccessKey。
-- 每种实际文件类型完成上传和下载；匿名请求被拒绝，另一个系统的令牌无法访问，RAM 身份无法列举、读取、写入或删除 `apps/*` 之外的对象。
+- 每种实际文件类型完成上传和下载；匿名请求被拒绝，另一个系统的令牌无法访问，RAM 身份无法列举、读取、写入或删除当前企业与环境业务前缀之外的对象。
 - 数据库引用、对象数量、总字节和 SHA-256 与迁移清单一致。
 - 重建容器后文件仍可访问，普通应用数据卷不再按附件大小持续增长；网关临时缓冲受单文件、并发和剩余磁盘三重限制。
+
+
+## 共享桶初始化与旧桶迁移
+
+- 新安装的网关从只读挂载的可信 `runtime.json` 推导组织 UUID 和环境；`namespaceMode=enterprise-v1`。运行 `configure-oss-gateway --namespace-mode enterprise-v1 --bucket <共享业务Bucket> --region <地域>` 前，网关身份必须已按上面的企业前缀配置。省略 mode 时，已有档案继承既有模式；没有 OSS 配置的新 Runtime 默认企业前缀。
+- 网关安装器先验证 Runtime 身份，`probe --expected-root-prefix <完整前缀>` 必须返回完全相同的前缀。相同应用名在两家企业可以共存，应用无法指定或覆盖组织前缀；企业 root 持有的 RAM 身份也只访问本企业范围。企业内部多人仍可用获授权 root 协作，不引入个人发布者隔离。
+- 现有 registry 保存应用 slug、状态和 token 哈希，实际对象键由网关统一 `root_prefix + slug + relative_key` 派生。因此改变网关前缀会同时影响所有应用，不能仅改环境变量、Runtime 默认值或 `rootPrefix` 就当成迁移。任何现存 OSS release 的 Bucket/地域/前缀变更均被普通 configure 拒绝。
+- 最小迁移方案：先导出旧 Bucket、registry 的应用 slug/状态、按旧 rootPrefix 推导的每应用对象范围、release 与数据库对象清单；复制 `apps/<slug>/<key>` 到 `enterprises/<org>/<env>/apps/<slug>/<key>`，保留相对业务键和 fileId，逐对象核对字节数和 SHA-256；维护窗口冻结新写入并核对最后增量。随后用已测试的专项迁移操作保留 registry 与应用 token，协调切换网关凭据/可信 rootPrefix、Runtime 档案和被冻结的 release，重建网关并验证；失败恢复整套旧状态。普通 installer 不负责这次数据搬迁。
+- 原桶和原键至少保留一个约定观察周期；下载、上传、删除、跨系统业务流程和备份恢复全部验收后才能按精确清单清理。没有完成复制与实际验收就继续报告旧桶在用。

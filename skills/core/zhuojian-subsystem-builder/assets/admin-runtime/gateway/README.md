@@ -2,7 +2,7 @@
 
 This service gives every subsystem an isolated view of one private Alibaba Cloud
 OSS bucket. Applications only see relative object keys. The gateway derives the
-real key as `apps/<application-slug>/<relative-key>` from a high-entropy Bearer
+real key as `enterprises/<organization-uuid>/<environment>/apps/<application-slug>/<relative-key>` for new Runtime profiles from a high-entropy Bearer
 credential stored as a SHA-256 hash in SQLite. An application cannot submit or
 override its slug or OSS prefix.
 
@@ -25,7 +25,7 @@ The root secret file is a plain `KEY=VALUE` file and is never sourced as shell:
 
 ```dotenv
 OSS_ENDPOINT=https://oss-cn-hongkong.aliyuncs.com
-OSS_BUCKET=replace-with-private-company-bucket
+OSS_BUCKET=replace-with-shared-private-business-bucket
 OSS_ACCESS_KEY_ID=replace-on-server
 OSS_ACCESS_KEY_SECRET=replace-on-server
 ```
@@ -84,14 +84,14 @@ with the expected non-secret Bucket name and region ID:
 
 ```console
 sudo zhuojian-storage-gateway-admin probe \
-  --expected-bucket <company-private-bucket> \
+  --expected-bucket <shared-private-business-bucket> \
   --expected-region <region-id>
 ```
 
 The probe creates two temporary application identities, exercises real
 put/get/delete operations and cross-application isolation, proves anonymous
 reads of a real object are denied, and proves the RAM identity cannot
-list/read/write/delete outside `apps/*`. It then revokes the temporary
+list/read/write/delete outside the configured enterprise/environment business prefix (including a sibling enterprise and the backup namespace). It then revokes the temporary
 credentials and removes their exact test objects. A successful probe therefore
 means the live Bucket is private at the object boundary as well as correctly
 scoped for the gateway.
@@ -166,3 +166,25 @@ and idempotent provisioning with no plaintext token in SQLite.
 python -m pip install -e ".[test]"
 python -m pytest
 ```
+
+
+## Shared bucket namespace and legacy installs
+
+The installer requires the existing private `/etc/zhuojian/runtime.json`; Compose
+mounts it read-only. `GATEWAY_NAMESPACE_MODE=profile` derives organization UUID and
+environment from that trusted file. A new profile without objectStorage defaults
+to `enterprise-v1`. Existing objectStorage without namespaceMode stays
+`legacy-apps` and retains `apps/`. `probe --expected-root-prefix <exact-prefix>`
+checks and returns `rootPrefix` and `namespaceMode`. Application requests cannot
+override these identities.
+
+Each enterprise gets a RAM identity scoped to its prefix in the shared business
+bucket. Never put shared-bucket-wide credentials on an enterprise host. Backup
+archives use a different bucket and identity; the business gateway's 512 MiB
+object limit does not apply to the independent root-only multipart backup tool.
+
+The registry persists application slugs, states, and token hashes. Full keys are
+derived from the configured root prefix plus slug and relative key, so a prefix
+change affects every application at once. Moving from a legacy private bucket
+needs a verified object migration and coordinated credentials/profile/release
+switch while preserving registry identities; changing defaults is not migration.

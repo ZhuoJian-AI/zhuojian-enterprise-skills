@@ -154,6 +154,13 @@ def git(project: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
+def require_running_source_commit(project: Path, commit: str) -> None:
+    if not isinstance(commit, str) or len(commit) != 40 or any(c not in "0123456789abcdef" for c in commit):
+        raise SystemExit("Runtime 当前源码提交无效")
+    if git(project, "rev-parse", "--verify", commit + "^{commit}").lower() != commit:
+        raise SystemExit("项目 Git 缺少当前运行提交，先恢复准确源码再登记")
+
+
 def load_object(path: Path, label: str) -> dict:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -534,7 +541,7 @@ def main() -> int:
     parser.add_argument(
         "--use-running-release",
         action="store_true",
-        help="回滚后按 Runtime 当前运行镜像登记，不使用 Git HEAD",
+        help="按 Runtime 已核实的当前运行镜像登记，支持任务worktree发布与回滚，不使用 Git HEAD",
     )
     parser.add_argument("--runtime-release-file", type=Path)
     parser.add_argument(
@@ -547,9 +554,9 @@ def main() -> int:
     project = args.project_path.resolve()
     if not project.is_dir():
         raise SystemExit(f"项目目录不存在: {project}")
-    if git(project, "status", "--porcelain"):
+    if not args.use_running_release and git(project, "status", "--porcelain"):
         raise SystemExit("发布被拒绝：本地 Git 工作树不干净，请先审查并提交本次修改")
-    git_commit = git(project, "rev-parse", "HEAD").lower()
+    git_commit = git(project, "rev-parse", "HEAD").lower() if not args.use_running_release else None
 
     profile = load_object(args.runtime_profile, "Runtime 环境档案")
     platform_url = str((profile.get("platform") or {}).get("baseUrl") or "").rstrip("/")
@@ -592,10 +599,13 @@ def main() -> int:
     verify_running_container(release, str(profile.get("enterpriseKey") or ""), inferred_slug)
     if args.use_running_release:
         commit = str(running["commit"])
+        # The public Manifest and managed container above are the registration
+        # source. Other developers' working files are neither read nor published.
+        require_running_source_commit(project, commit)
     else:
         commit = git_commit
         if running.get("commit") != commit:
-            raise SystemExit("Git HEAD 与 Runtime 当前运行版本不一致；回滚后请使用 --use-running-release")
+            raise SystemExit("Git HEAD 与 Runtime 当前运行版本不一致；登记已运行的任务版本或回滚版本请使用 --use-running-release")
     image_ref = str(running["image"])
     if registered_origin:
         require_registered_origin(profile, runtime_credential, registered_origin, commit)

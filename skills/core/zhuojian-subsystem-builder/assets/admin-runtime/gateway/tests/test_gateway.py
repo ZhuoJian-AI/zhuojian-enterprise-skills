@@ -109,6 +109,7 @@ def test_probe_accepts_aliyun_region_id_with_or_without_oss_prefix(
         ),
         encoding="utf-8",
     )
+    secret_path.chmod(0o600)
     settings = GatewaySettings(
         db_path=tmp_path / "registry.sqlite3",
         apps_env_dir=tmp_path / "apps",

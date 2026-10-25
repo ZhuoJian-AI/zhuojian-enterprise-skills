@@ -67,6 +67,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     probe.add_argument("--expected-bucket", required=True)
     probe.add_argument("--expected-region", required=True)
+    probe.add_argument("--expected-root-prefix")
     return parser
 
 
@@ -165,6 +166,7 @@ def main(argv: list[str] | None = None) -> int:
                 gateway_url=args.gateway_url,
                 expected_bucket=args.expected_bucket,
                 expected_region=args.expected_region,
+                expected_root_prefix=args.expected_root_prefix,
             )
             print(json.dumps(result, ensure_ascii=False, sort_keys=True))
         else:  # guarded by argparse
@@ -192,6 +194,7 @@ def probe_gateway(
     gateway_url: str,
     expected_bucket: str,
     expected_region: str,
+    expected_root_prefix: str | None = None,
 ) -> dict[str, object]:
     """Exercise real OSS through two temporary app identities without leaking tokens."""
 
@@ -200,6 +203,8 @@ def probe_gateway(
     if not bucket or not _REGION.fullmatch(region):
         raise GatewayProbeError("expected OSS bucket or region is invalid")
     credentials = load_oss_credentials(settings.oss_secrets_file)
+    if expected_root_prefix is not None and settings.root_prefix != expected_root_prefix:
+        raise GatewayProbeError("gateway namespace does not match the requested Runtime scope")
     endpoint_host = (urlsplit(credentials.endpoint).hostname or "").lower()
     endpoint_region = region if region.startswith("oss-") else f"oss-{region}"
     expected_hosts = {
@@ -210,7 +215,7 @@ def probe_gateway(
         raise GatewayProbeError("OSS secret scope does not match the requested bucket and region")
 
     run_id = secrets.token_hex(6)
-    _assert_outside_prefix_denied(credentials, run_id)
+    _assert_outside_prefix_denied(credentials, run_id, settings.root_prefix)
     slugs = (f"storage-probe-a-{run_id}", f"storage-probe-b-{run_id}")
     relative_key = f"acceptance/{run_id}.bin"
     payload_a = f"alphabet-storage-probe-a:{run_id}".encode()
@@ -285,6 +290,8 @@ def probe_gateway(
         "action": "probe",
         "bucket": bucket,
         "region": region,
+        "rootPrefix": settings.root_prefix,
+        "namespaceMode": settings.namespace_mode,
         "checks": {
             "put": True,
             "get": True,
@@ -297,8 +304,8 @@ def probe_gateway(
     }
 
 
-def _assert_outside_prefix_denied(credentials: OssCredentials, run_id: str) -> None:
-    """Verify list/read/write/delete are denied outside ``apps/*``.
+def _assert_outside_prefix_denied(credentials: OssCredentials, run_id: str, root_prefix: str = "apps") -> None:
+    """Verify the RAM principal cannot escape this gateway's exact namespace.
 
     The write probe deliberately carries an invalid Content-MD5.  A correctly
     scoped identity is rejected with 403 before object validation.  An
@@ -322,38 +329,52 @@ def _assert_outside_prefix_denied(credentials: OssCredentials, run_id: str) -> N
                 credentials.access_key_secret,
             )
         bucket = oss2.Bucket(auth, credentials.endpoint, credentials.bucket)
-        outside_prefix = f"zhuojian-policy-probe/{run_id}/"
-        outside_key = f"{outside_prefix}missing.bin"
-        checks = (
-            ("list", lambda: bucket.list_objects_v2(prefix=outside_prefix, max_keys=1)),
-            ("read", lambda: bucket.head_object(outside_key)),
-            ("delete", lambda: bucket.delete_object(outside_key)),
-            (
-                "write",
-                lambda: bucket.put_object(
-                    outside_key,
-                    b"policy-probe",
-                    headers={"Content-MD5": "AAAAAAAAAAAAAAAAAAAAAA=="},
-                ),
-            ),
-        )
-        for operation_name, operation in checks:
-            try:
-                operation()
-            except Exception as exc:
-                if getattr(exc, "status", None) == 403:
-                    continue
-                raise GatewayProbeError(
-                    "OSS policy denial probe could not confirm that "
-                    f"outside-prefix {operation_name} is denied"
-                ) from exc
-            raise GatewayProbeError(
-                f"OSS credential permits outside-prefix {operation_name}"
-            )
+        outside_prefixes = [f"zhuojian-policy-probe/{run_id}/"]
+        if root_prefix.startswith("enterprises/"):
+            from uuid import UUID
+            parts = root_prefix.split("/")
+            sibling = str(UUID(int=UUID(parts[1]).int ^ 1))
+            outside_prefixes.extend([
+                f"enterprises/{sibling}/{parts[2]}/apps/zhuojian-policy-probe-{run_id}/",
+                f"enterprises/{parts[1]}/{parts[2]}/backups/zhuojian-policy-probe-{run_id}/",
+            ])
+        for outside_prefix in outside_prefixes:
+            _check_outside_prefix(bucket, outside_prefix)
     except GatewayProbeError:
         raise
     except Exception as exc:
         raise GatewayProbeError("OSS policy denial probe could not run") from exc
+
+
+def _check_outside_prefix(bucket, outside_prefix: str) -> None:
+    outside_key = f"{outside_prefix}missing.bin"
+    checks = (
+        ("list", lambda: bucket.list_objects_v2(prefix=outside_prefix, max_keys=1)),
+        ("read", lambda: bucket.head_object(outside_key)),
+        ("delete", lambda: bucket.delete_object(outside_key)),
+        (
+            "write",
+            lambda: bucket.put_object(
+                outside_key,
+                b"policy-probe",
+                headers={"Content-MD5": "AAAAAAAAAAAAAAAAAAAAAA=="},
+            ),
+        ),
+    )
+    for operation_name, operation in checks:
+        try:
+            operation()
+        except Exception as exc:
+            if getattr(exc, "status", None) == 403:
+                continue
+            raise GatewayProbeError(
+                "OSS policy denial probe could not confirm that "
+                f"outside-prefix {operation_name} is denied"
+            ) from exc
+        raise GatewayProbeError(
+            f"OSS credential permits outside-prefix {operation_name}"
+        )
+
 
 
 def _assert_anonymous_read_denied(

@@ -36,7 +36,7 @@ import urllib.request
 import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 try:  # Linux production dependency; the fallback permits local syntax/unit tests.
@@ -720,6 +720,21 @@ def default_storage_mode(profile: dict[str, Any]) -> str:
     return validate_storage_mode(storage.get("defaultMode", storage.get("mode", LOCAL_STORAGE_MODE)))
 
 
+def storage_root_prefix(profile: dict[str, Any], namespace_mode: str) -> str:
+    if namespace_mode == "legacy-apps":
+        return "apps"
+    if namespace_mode != "enterprise-v1":
+        raise AdminError("unsupported OSS namespace mode")
+    try:
+        organization = str(uuid.UUID(str(profile.get("organizationId"))))
+    except (ValueError, TypeError, AttributeError):
+        raise AdminError("shared OSS namespace requires the Runtime organization UUID") from None
+    environment = profile.get("environment")
+    if environment not in {"development", "staging", "production"}:
+        raise AdminError("shared OSS namespace requires the Runtime environment")
+    return f"enterprises/{organization}/{environment}/apps"
+
+
 def validate_oss_profile(profile: dict[str, Any]) -> dict[str, Any]:
     storage = profile.get("objectStorage")
     if not isinstance(storage, dict):
@@ -736,8 +751,8 @@ def validate_oss_profile(profile: dict[str, Any]) -> dict[str, Any]:
         normalize_aliyun_region(region)
     except AdminError:
         raise AdminError("objectStorage region is invalid") from None
-    if storage.get("rootPrefix") != "apps":
-        raise AdminError("objectStorage.rootPrefix must equal apps")
+    if storage.get("rootPrefix") != storage_root_prefix(profile, storage.get("namespaceMode", "legacy-apps")):
+        raise AdminError("objectStorage.rootPrefix does not match the trusted Runtime namespace")
     if storage.get("gatewayBaseUrl") != STORAGE_GATEWAY_URL:
         raise AdminError(f"objectStorage.gatewayBaseUrl must equal {STORAGE_GATEWAY_URL}")
     if storage.get("credentialRef") != str(STORAGE_CREDENTIAL):
@@ -940,7 +955,7 @@ def storage_foundation_ready(profile: dict[str, Any]) -> None:
         raise AdminError("managed storage gateway is not running and healthy")
 
 
-def verify_storage_foundation(bucket: str, region: str) -> None:
+def verify_storage_foundation(bucket: str, region: str, expected_root_prefix: str = "apps") -> None:
     """Run real OSS CRUD and two-app isolation before enabling the Runtime."""
 
     result = subprocess.run(
@@ -951,6 +966,8 @@ def verify_storage_foundation(bucket: str, region: str) -> None:
             bucket,
             "--expected-region",
             region,
+            "--expected-root-prefix",
+            expected_root_prefix,
         ],
         text=True,
         capture_output=True,
@@ -965,6 +982,8 @@ def verify_storage_foundation(bucket: str, region: str) -> None:
     except json.JSONDecodeError as exc:
         raise AdminError("OSS gateway acceptance probe returned invalid output") from exc
     checks = payload.get("checks") if isinstance(payload, dict) else None
+    if not isinstance(payload, dict) or payload.get("rootPrefix") != expected_root_prefix:
+        raise AdminError("OSS gateway namespace differs from the Runtime enterprise scope")
     required = {
         "anonymousReadDenied",
         "put",
@@ -1160,17 +1179,24 @@ def configure_oss_gateway(args: argparse.Namespace, paths: Paths = PATHS) -> dic
         if args.credential_ref != str(STORAGE_CREDENTIAL):
             raise AdminError(f"gateway credential reference must equal {STORAGE_CREDENTIAL}")
         current_storage = profile.get("objectStorage")
+        if current_storage == {}:
+            current_storage = None
+        namespace_mode = getattr(args, "namespace_mode", None) or (
+            current_storage.get("namespaceMode", "legacy-apps") if isinstance(current_storage, dict) else "enterprise-v1"
+        )
+        root_prefix = storage_root_prefix(profile, namespace_mode)
         if isinstance(current_storage, dict):
             current_scope = (
                 current_storage.get("bucket"),
                 normalize_aliyun_region(current_storage.get("region")),
+                current_storage.get("rootPrefix", "apps"),
             )
-            requested_scope = (bucket, region)
+            requested_scope = (bucket, region, root_prefix)
             if current_scope != requested_scope:
                 oss_releases = oss_releases_for_scope_change(paths)
                 if oss_releases:
                     raise AdminError(
-                        "refusing to change the OSS bucket or region while managed "
+                        "refusing to change the OSS bucket, region or namespace while managed "
                         "OSS releases exist: " + ", ".join(oss_releases)
                     )
         original = paths.runtime.read_bytes()
@@ -1194,7 +1220,8 @@ def configure_oss_gateway(args: argparse.Namespace, paths: Paths = PATHS) -> dic
             "mode": "gateway-api-v1",
             "bucket": bucket,
             "region": region,
-            "rootPrefix": "apps",
+            "rootPrefix": root_prefix,
+            "namespaceMode": namespace_mode,
             "gatewayBaseUrl": STORAGE_GATEWAY_URL,
             "credentialRef": str(STORAGE_CREDENTIAL),
             "verified": True,
@@ -1207,7 +1234,7 @@ def configure_oss_gateway(args: argparse.Namespace, paths: Paths = PATHS) -> dic
         # Validate all gateway prerequisites before replacing the profile.  The
         # Runtime publisher credential is only stat'ed and is never opened.
         storage_foundation_ready(updated)
-        verify_storage_foundation(bucket, region)
+        verify_storage_foundation(bucket, region, root_prefix)
         comparable_existing = copy.deepcopy(profile)
         comparable_updated = copy.deepcopy(updated)
         comparable_existing.pop("verifiedAt", None)
@@ -1541,13 +1568,17 @@ def allocate_port(profile: dict[str, Any], paths: Paths = PATHS) -> int:
     raise AdminError(f"no free loopback application port in {low}-{high}")
 
 
-def git_release(project: Path) -> tuple[str, str]:
+def assert_git_repository_root(project: Path) -> None:
     assert_directory(project)
     if run(["git", "-C", str(project), "rev-parse", "--is-inside-work-tree"]).stdout.strip() != "true":
         raise AdminError(f"not a Git repository: {project}")
     top_level = Path(run(["git", "-C", str(project), "rev-parse", "--show-toplevel"]).stdout.strip()).resolve()
     if top_level != project.resolve():
         raise AdminError("project directory must be the root of its own local Git repository")
+
+
+def git_release(project: Path) -> tuple[str, str]:
+    assert_git_repository_root(project)
     dirty = run(["git", "-C", str(project), "status", "--porcelain=v1", "--untracked-files=all"]).stdout
     if dirty.strip():
         raise AdminError("deployment refused: local Git worktree is not clean")
@@ -1555,6 +1586,65 @@ def git_release(project: Path) -> tuple[str, str]:
     if not re.fullmatch(r"[0-9a-f]{40}", commit):
         raise AdminError("Git HEAD is not a full immutable commit SHA")
     return commit, commit[:12]
+
+
+def assert_deploy_baseline(project: Path, commit: str, current: str | None, expected: str | None) -> None:
+    """Ordinary updates must include the live commit; rollback is a separate command."""
+    if expected is not None:
+        if expected != "none" and not re.fullmatch(r"[0-9a-f]{40}", expected):
+            raise AdminError("expected current commit must be a full SHA or 'none'")
+        if expected != (current or "none"):
+            raise AdminError("current release changed after preflight; merge the live version and retry")
+    if current is not None and run(
+        ["git", "-C", str(project), "merge-base", "--is-ancestor", current, commit], check=False
+    ).returncode:
+        raise AdminError("candidate omits the current release; merge it first or use explicit rollback")
+
+
+def selected_git_commit(project: Path, explicit_commit: str | None) -> str:
+    if explicit_commit is None:
+        return git_release(project)[0]
+    assert_git_repository_root(project)
+    if not re.fullmatch(r"[0-9a-f]{40}", explicit_commit):
+        raise AdminError("source commit must be a full immutable SHA from the managed repository")
+    run(["git", "-C", str(project), "cat-file", "-e", f"{explicit_commit}^{{commit}}"])
+    return explicit_commit
+
+
+def pin_release_commit(project: Path, commit: str) -> None:
+    """Keep deployed source reachable after a completed task branch is removed."""
+    reference = f"refs/zhuojian/releases/{commit}"
+    existing = run(["git", "-C", str(project), "rev-parse", "--verify", reference], check=False)
+    if existing.returncode == 0:
+        if existing.stdout.strip() != commit:
+            raise AdminError("protected source ref differs from its release commit")
+        return
+    run(["git", "-C", str(project), "update-ref", reference, commit, "0" * 40])
+
+
+@contextlib.contextmanager
+def frozen_git_context(project: Path, commit: str) -> Iterator[Path]:
+    """Build only committed bytes, even while another root session edits the worktree."""
+    tree = run(["git", "-C", str(project), "ls-tree", "-r", commit]).stdout
+    if any(line.startswith("160000 ") for line in tree.splitlines()):
+        raise AdminError("build requires a self-contained commit; materialize pinned submodules first")
+    with tempfile.TemporaryDirectory(prefix=".zhuojian-build-", dir=project.parent) as temporary:
+        root = Path(temporary)
+        os.chmod(root, 0o700)
+        archive, context = root / "source.tar", root / "context"
+        context.mkdir(mode=0o700)
+        run(["git", "-C", str(project), "archive", "--format=tar", "--output", str(archive), commit])
+        with tarfile.open(archive, "r:") as bundle:
+            members = bundle.getmembers()
+            for member in members:
+                name = PurePosixPath(member.name)
+                if (name.is_absolute() or ".." in name.parts or "\\" in member.name
+                        or not name.parts or name.parts[0] == ".git"
+                        or not (member.isfile() or member.isdir())):
+                    raise AdminError("commit contains an unsafe or linked build entry")
+            filters = {"filter": "data"} if hasattr(tarfile, "data_filter") else {}
+            bundle.extractall(context, members=members, **filters)
+        yield context
 
 
 def managed_labels(slug: str, profile: dict[str, Any]) -> list[str]:
@@ -1901,6 +1991,20 @@ server {{
     }}
 }}
 """
+
+
+def maintenance_nginx_text(slug: str, release: dict[str, Any], profile: dict[str, Any], paths: Paths = PATHS) -> bytes:
+    # Generated at the host boundary, so pages, SSO and Actions share one gate.
+    normal = nginx_text(slug, release["port"], profile, paths)
+    marker = "    ssl_protocols TLSv1.2 TLSv1.3;"
+    if normal.count(marker) != 1:
+        raise AdminError("cannot establish the managed application maintenance gate")
+    return normal.replace(marker, marker + "\n" + (
+        "    types {}\n"
+        "    default_type application/json;\n"
+        "    add_header Retry-After 30 always;\n"
+        "    return 503 '{\"code\":\"SUBSYSTEM_MAINTENANCE\"}';"
+    ), 1).encode()
 
 
 def challenge_text(host: str, paths: Paths = PATHS) -> str:
@@ -2424,6 +2528,7 @@ def recover_pending_release_switch(
 ) -> dict[str, Any]:
     """Restore the pre-switch runtime, then and only then reopen the SaaS gate."""
 
+    release = recover_pending_backup(release, profile, paths)
     marker = validated_release_switch_marker(release, profile)
     if marker is None:
         return release
@@ -2472,9 +2577,9 @@ def recover_pending_release_switch(
             assert_container_release_identity(canonical_state, target_commit, target_image)
             run(["docker", "rm", "--force", canonical])
 
-    restore_nginx(Path(release["nginxConfig"]), decode_nginx_snapshot(marker["previousNginx"]))
     if had_existing:
         wait_for_health(release["port"], release["hostname"], marker["healthTimeout"])
+    restore_nginx(Path(release["nginxConfig"]), decode_nginx_snapshot(marker["previousNginx"]))
 
     # Persist that local recovery is complete before touching SaaS.  If power
     # fails during cancel, the next invocation safely repeats the same checks.
@@ -2538,7 +2643,7 @@ def cmd_deploy(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, Any]
             raise AdminError("deployment refused by disk policy (90% used or less than 5 GiB free)")
         names = expected_names(slug, profile, paths)
         project = Path(names["projectDir"])
-        commit, _ = git_release(project)
+        commit = selected_git_commit(project, getattr(args, "source_commit", None))
         image = f"zhuojian/{profile['enterpriseKey']}/{slug}:{commit}"
         cert_dir = Path("/etc/letsencrypt/live") / names["hostname"]
         if not (cert_dir / "fullchain.pem").is_file() and not args.issue_certificate:
@@ -2573,18 +2678,23 @@ def cmd_deploy(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, Any]
                 "canonical managed container and release.json current must either both exist or both be absent"
             )
         had_existing = canonical_state is not None
+        assert_deploy_baseline(project, commit, recorded_identity[0] if recorded_identity else None,
+                               getattr(args, "expected_current_commit", None))
         if had_existing:
             assert recorded_identity is not None and canonical_state is not None
             assert_container_release_identity(canonical_state, *recorded_identity)
             if not canonical_state["running"]:
                 raise AdminError("current managed container is stopped; refusing an update switch")
             wait_for_health(release["port"], release["hostname"], timeout=10)
-        run([
-            "docker", "build", "--label", f"com.zhuojian.managed-by={MANAGED_BY}",
-            "--label", f"com.zhuojian.enterprise={profile['enterpriseKey']}",
-            "--label", f"com.zhuojian.application={slug}",
-            "--label", f"com.zhuojian.commit={commit}", "--tag", image, str(project),
-        ])
+            pin_release_commit(project, recorded_identity[0])
+        pin_release_commit(project, commit)
+        with frozen_git_context(project, commit) as build_context:
+            run([
+                "docker", "build", "--label", f"com.zhuojian.managed-by={MANAGED_BY}",
+                "--label", f"com.zhuojian.enterprise={profile['enterpriseKey']}",
+                "--label", f"com.zhuojian.application={slug}",
+                "--label", f"com.zhuojian.commit={commit}", "--tag", image, str(build_context),
+            ])
         validated_network_attachments(slug, profile, paths)
         old_nginx = read_optional_plain(nginx_path)
         marker = create_release_switch_marker(
@@ -2609,7 +2719,10 @@ def cmd_deploy(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, Any]
             persist_release_switch_phase(release, "gate-closed", paths)
             persist_release_switch_phase(release, "switching", paths)
             if had_existing:
+                replace_nginx(nginx_path, maintenance_nginx_text(slug, release, profile, paths))
                 run(["docker", "stop", "--time", "30", canonical])
+                marker["safetyBackup"] = backup_one(slug, profile, paths, stopped_release=release)
+                persist_release_switch_phase(release, "switching", paths)
                 run(["docker", "rename", canonical, previous_name])
             start_container(canonical, image, release, slug, profile, paths)
             wait_for_health(release["port"], release["hostname"], args.health_timeout)
@@ -2621,8 +2734,13 @@ def cmd_deploy(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, Any]
             history = list(committed.get("history") or [])
             if previous and previous.get("commit") != commit:
                 history.append(previous)
-            committed["history"] = history[-20:]
+            committed["history"] = history
             committed["current"] = {"commit": commit, "image": image, "deployedAt": utc_now()}
+            committed["lastDeployment"] = {
+                "mode": "controlled-maintenance" if had_existing else "initial",
+                "reason": "single-instance data snapshot and release switch" if had_existing else "initial deployment",
+                "safetyBackup": marker.get("safetyBackup"),
+            }
             committed["status"] = "awaiting_platform_registration"
             committed["updatedAt"] = utc_now()
             committed.pop("lastFailure", None)
@@ -2662,6 +2780,8 @@ def cmd_deploy(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, Any]
         "image": image,
         "loopbackPort": release["port"],
         "status": "awaiting_platform_registration",
+        "deploymentMode": "controlled-maintenance" if had_existing else "initial",
+        "safetyBackup": marker.get("safetyBackup"),
     }
 
 
@@ -2978,6 +3098,9 @@ def cmd_rollback(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, An
         if not canonical_state["running"]:
             raise AdminError("current managed container is stopped; refusing rollback")
         wait_for_health(release["port"], release["hostname"], timeout=10)
+        expected = getattr(args, "expected_current_commit", None)
+        if expected is not None and expected != current_identity[0]:
+            raise AdminError("current release changed after rollback preflight; read the current state first")
         validated_network_attachments(slug, profile, paths)
         nginx_path = Path(release["nginxConfig"])
         marker = create_release_switch_marker(
@@ -3001,7 +3124,10 @@ def cmd_rollback(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, An
             )
             persist_release_switch_phase(release, "gate-closed", paths)
             persist_release_switch_phase(release, "switching", paths)
+            replace_nginx(nginx_path, maintenance_nginx_text(slug, release, profile, paths))
             run(["docker", "stop", "--time", "30", canonical])
+            marker["safetyBackup"] = backup_one(slug, profile, paths, stopped_release=release)
+            persist_release_switch_phase(release, "switching", paths)
             run(["docker", "rename", canonical, previous_name])
             start_container(canonical, image, release, slug, profile, paths)
             wait_for_health(release["port"], release["hostname"], args.health_timeout)
@@ -3014,8 +3140,10 @@ def cmd_rollback(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, An
             remaining = [entry for entry in history if entry is not target]
             remaining.append(current)
             committed = copy.deepcopy(release)
-            committed["history"] = remaining[-20:]
+            committed["history"] = remaining
             committed["current"] = {**target, "deployedAt": utc_now()}
+            committed["lastDeployment"] = {"mode": "controlled-maintenance", "reason": "explicit rollback",
+                                           "safetyBackup": marker.get("safetyBackup")}
             committed["status"] = "awaiting_platform_registration"
             committed["updatedAt"] = utc_now()
             committed.pop("releaseSwitch", None)
@@ -3048,6 +3176,8 @@ def cmd_rollback(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, An
         "applicationSlug": slug,
         "commit": target["commit"],
         "status": "awaiting_platform_registration",
+        "deploymentMode": "controlled-maintenance",
+        "safetyBackup": marker.get("safetyBackup"),
     }
 
 
@@ -3066,9 +3196,83 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def backup_one(slug: str, profile: dict[str, Any], paths: Paths = PATHS) -> dict[str, Any]:
-    release = load_release(slug, profile, paths)
-    release = recover_pending_release_switch(release, profile, paths)
+def backup_git_repository(project: Path, required_commit: str, destination: Path) -> dict[str, Any]:
+    """A self-contained bundle, verified through an isolated repository readback."""
+    assert_git_repository_root(project)
+    head = run(["git", "-C", str(project), "rev-parse", "HEAD"]).stdout.strip()
+    if not re.fullmatch(r"[0-9a-f]{40}", head) or not re.fullmatch(r"[0-9a-f]{40}", required_commit):
+        raise AdminError("source backup requires exact committed source and running release")
+    dirty = run(["git", "--no-optional-locks", "-C", str(project), "status", "--porcelain=v1", "--untracked-files=all"]).stdout
+    run(["git", "-C", str(project), "cat-file", "-e", f"{required_commit}^{{commit}}"])
+    run(["git", "-C", str(project), "bundle", "create", str(destination), "--all", "HEAD", required_commit])
+    os.chmod(destination, 0o600)
+    run(["git", "-C", str(project), "bundle", "verify", str(destination)])
+    with tempfile.TemporaryDirectory(prefix=".verify-git-", dir=destination.parent) as temporary:
+        restored = Path(temporary) / "repository.git"
+        run(["git", "clone", "--mirror", str(destination), str(restored)])
+        run(["git", "-C", str(restored), "cat-file", "-e", f"{required_commit}^{{commit}}"])
+        run(["git", "-C", str(restored), "cat-file", "-e", f"{head}^{{commit}}"])
+    return {
+        "bundleMember": "code/repository.bundle",
+        "bundleSha256": sha256_file(destination),
+        "headCommit": head,
+        "requiredReleaseCommit": required_commit,
+        "workingTreeClean": not bool(dirty.strip()),
+        "uncommittedStateIncluded": False,
+        "restoreVerified": True,
+    }
+
+
+def verify_backup_archive(archive: Path) -> None:
+    """Read all archive bytes back so truncation fails before success is reported."""
+    with tarfile.open(archive, "r:gz") as bundle:
+        for member in bundle:
+            if member.isfile():
+                handle = bundle.extractfile(member)
+                if handle is None:
+                    raise AdminError("backup archive member cannot be read")
+                with handle:
+                    count = 0
+                    for block in iter(lambda: handle.read(1024 * 1024), b""):
+                        count += len(block)
+                    if count != member.size:
+                        raise AdminError("backup archive member is truncated")
+
+
+def recover_pending_backup(release: dict[str, Any], profile: dict[str, Any], paths: Paths = PATHS) -> dict[str, Any]:
+    marker = release.get("backupMaintenance")
+    if marker is None:
+        return release
+    if not isinstance(marker, dict) or release.get("releaseSwitch") is not None:
+        raise AdminError("invalid or overlapping backup recovery record")
+    current = validated_recorded_release_identity(release, profile, required=True)
+    if (marker.get("commit"), marker.get("image")) != current or not isinstance(marker.get("wasRunning"), bool):
+        raise AdminError("backup recovery no longer matches the recorded release")
+    nginx = decode_nginx_snapshot(marker.get("previousNginx"))
+    canonical = release["containerName"]
+    actual = inspect_managed_release_container(canonical, release["applicationSlug"], profile)
+    assert actual is not None and current is not None
+    assert_container_release_identity(actual, *current)
+    if marker["wasRunning"]:
+        if not actual["running"]:
+            run(["docker", "start", canonical])
+        wait_for_health(release["port"], release["hostname"])
+    restore_nginx(Path(release["nginxConfig"]), nginx)
+    recovered = copy.deepcopy(release)
+    recovered.pop("backupMaintenance", None)
+    recovered["updatedAt"] = utc_now()
+    atomic_json(release_path(release["applicationSlug"], paths), recovered, 0o640)
+    return recovered
+
+
+def backup_one(
+    slug: str, profile: dict[str, Any], paths: Paths = PATHS, *,
+    stopped_release: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    # An in-progress code switch already owns the durable stop/recovery marker.
+    release = copy.deepcopy(stopped_release) if stopped_release is not None else load_release(slug, profile, paths)
+    if stopped_release is None:
+        release = recover_pending_release_switch(release, profile, paths)
     if not release.get("current"):
         raise AdminError(f"{slug} has no healthy release to back up")
     data_dir = Path(release["dataDir"])
@@ -3076,6 +3280,8 @@ def backup_one(slug: str, profile: dict[str, Any], paths: Paths = PATHS) -> dict
     reject_symlinks(data_dir)
     canonical = release["containerName"]
     was_running = container_running(canonical)
+    if stopped_release is not None and was_running:
+        raise AdminError("pre-switch backup requires the original container to be stopped")
     if container_exists(canonical):
         assert_managed_container(canonical, slug, profile)
     app_backup = paths.backups / slug
@@ -3084,40 +3290,68 @@ def backup_one(slug: str, profile: dict[str, Any], paths: Paths = PATHS) -> dict
     assert_plain_file(Path(release["envFile"]))
     if Path(release["nginxConfig"]).exists() or Path(release["nginxConfig"]).is_symlink():
         assert_plain_file(Path(release["nginxConfig"]))
-    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
     archive = app_backup / f"{stamp}-{release['current']['commit'][:12]}.tar.gz"
     fd, temp_name = tempfile.mkstemp(prefix=".backup-", suffix=".tar.gz", dir=app_backup)
     os.close(fd)
     temp = Path(temp_name)
+    source_temp = Path(tempfile.mkdtemp(prefix=".backup-source-", dir=app_backup))
+    maintenance_started = False
     try:
+        source = backup_git_repository(Path(release["projectDir"]), release["current"]["commit"], source_temp / "repository.bundle")
         if was_running:
+            release["backupMaintenance"] = {
+                "commit": release["current"]["commit"], "image": release["current"]["image"],
+                "wasRunning": True, "previousNginx": encode_nginx_snapshot(read_optional_plain(Path(release["nginxConfig"]))),
+                "startedAt": utc_now(),
+            }
+            atomic_json(release_path(slug, paths), release, 0o640)
+            maintenance_started = True
+            replace_nginx(Path(release["nginxConfig"]), maintenance_nginx_text(slug, release, profile, paths))
             run(["docker", "stop", "--time", "30", canonical])
+        archived_release = copy.deepcopy(release)
+        marker = archived_release.pop("releaseSwitch", None)
+        backup_marker = archived_release.pop("backupMaintenance", None)
+        atomic_json(source_temp / "release.json", archived_release, 0o600)
+        original_marker = marker or backup_marker
+        nginx = (decode_nginx_snapshot(original_marker["previousNginx"]) if original_marker is not None
+                 else read_optional_plain(Path(release["nginxConfig"])))
+        if nginx is not None:
+            atomic_write(source_temp / "nginx.conf", nginx, 0o600)
         with tarfile.open(temp, "w:gz", format=tarfile.PAX_FORMAT) as bundle:
             bundle.add(data_dir, arcname="data", recursive=True)
-            bundle.add(release_path(slug, paths), arcname="config/release.json", recursive=False)
+            bundle.add(source_temp / "release.json", arcname="config/release.json", recursive=False)
             bundle.add(Path(release["envFile"]), arcname="config/app.env", recursive=False)
-            if Path(release["nginxConfig"]).is_file():
-                bundle.add(Path(release["nginxConfig"]), arcname="config/nginx.conf", recursive=False)
+            if nginx is not None:
+                bundle.add(source_temp / "nginx.conf", arcname="config/nginx.conf", recursive=False)
+            bundle.add(source_temp / "repository.bundle", arcname="code/repository.bundle", recursive=False)
         os.chmod(temp, 0o600)
+        verify_backup_archive(temp)
         os.replace(temp, archive)
     finally:
         with contextlib.suppress(FileNotFoundError):
             temp.unlink()
-        if was_running:
-            run(["docker", "start", canonical])
-            wait_for_health(release["port"], release["hostname"])
+        with contextlib.suppress(OSError):
+            shutil.rmtree(source_temp)
+        if maintenance_started:
+            recover_pending_backup(release, profile, paths)
     metadata = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "managedBy": MANAGED_BY,
         "applicationSlug": slug,
         "createdAt": utc_now(),
         "commit": release["current"]["commit"],
         "archive": archive.name,
         "sha256": sha256_file(archive),
+        "sizeBytes": archive.stat().st_size,
         "consistentOfflineSnapshot": True,
+        "source": source,
+        "offServer": False,
     }
-    atomic_json(archive.with_suffix(archive.suffix + ".json"), metadata, 0o600)
-    return {"applicationSlug": slug, "archive": str(archive), "sha256": metadata["sha256"]}
+    sidecar = archive.with_suffix(archive.suffix + ".json")
+    atomic_json(sidecar, metadata, 0o600)
+    return {"applicationSlug": slug, "archive": str(archive), "manifest": str(sidecar),
+            "sha256": metadata["sha256"], "sizeBytes": metadata["sizeBytes"], "offServer": False}
 
 
 def cmd_backup(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, Any]:
@@ -3166,14 +3400,15 @@ def safe_extract_data(archive: Path, destination: Path) -> Path:
         members = bundle.getmembers()
         for member in members:
             pure = Path(member.name)
-            if pure.is_absolute() or ".." in pure.parts or not pure.parts or pure.parts[0] not in {"data", "config"}:
+            if pure.is_absolute() or ".." in pure.parts or not pure.parts or pure.parts[0] not in {"data", "config", "code"}:
                 raise AdminError("backup contains an unsafe path")
             if member.issym() or member.islnk() or member.isdev():
                 raise AdminError("backup contains a link or device and cannot be restored")
         data_members = [member for member in members if Path(member.name).parts[0] == "data"]
         if not data_members:
             raise AdminError("backup does not contain module data")
-        bundle.extractall(destination, members=data_members)
+        filters = {"filter": "data"} if hasattr(tarfile, "data_filter") else {}
+        bundle.extractall(destination, members=data_members, **filters)
     return destination / "data"
 
 
@@ -3293,14 +3528,17 @@ def cmd_preflight(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, A
         profile = load_runtime(paths)
         verify_upload_lock(paths)
         names = expected_names(slug, profile, paths)
-        commit, _ = git_release(Path(names["projectDir"]))
+        commit = selected_git_commit(Path(names["projectDir"]), getattr(args, "source_commit", None))
         state = disk_state(paths)
         conflicts: list[str] = []
         record = release_path(slug, paths)
+        current_commit = None
         if record.exists():
             release = load_release(slug, profile, paths)
             release = recover_pending_release_switch(release, profile, paths)
             storage_mode = release["storageMode"]
+            current_commit = (release.get("current") or {}).get("commit")
+            assert_deploy_baseline(Path(names["projectDir"]), commit, current_commit, None)
         else:
             storage_mode = default_storage_mode(profile)
             for key in ("dataDir", "envFile", "nginxConfig"):
@@ -3328,6 +3566,8 @@ def cmd_preflight(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, A
         "applicationSlug": slug,
         "hostname": names["hostname"],
         "sourceCommit": commit,
+        "expectedCurrentCommit": current_commit or "none",
+        "deploymentMode": "controlled-maintenance" if current_commit else "initial",
         "disk": state,
         "storageMode": storage_mode,
         "namespaceAvailable": True,
@@ -3415,6 +3655,8 @@ def parser() -> argparse.ArgumentParser:
     storage.add_argument("--region", required=True)
     storage.add_argument("--gateway-url", default=STORAGE_GATEWAY_URL)
     storage.add_argument("--credential-ref", default=str(STORAGE_CREDENTIAL))
+    storage.add_argument("--namespace-mode", choices=["legacy-apps", "enterprise-v1"],
+                         help="inherit existing namespace; new profiles default to enterprise-v1")
     storage.set_defaults(func=configure_oss_gateway)
     disk = sub.add_parser("disk-check", help="write the upload/deployment disk gate")
     disk.add_argument("--write-state", action="store_true")
@@ -3431,6 +3673,7 @@ def parser() -> argparse.ArgumentParser:
         help="Git, namespace, Runtime, disk checks, and interrupted-switch recovery",
     )
     preflight.add_argument("application_slug")
+    preflight.add_argument("--source-commit", help="exact committed task/worktree SHA in the managed repository")
     preflight.set_defaults(func=cmd_preflight)
     prepare = sub.add_parser("prepare", help="allocate fixed paths and loopback port without deployment")
     prepare.add_argument("application_slug")
@@ -3463,6 +3706,8 @@ def parser() -> argparse.ArgumentParser:
     certify.set_defaults(func=cmd_certify)
     deploy = sub.add_parser("deploy", help="build and atomically deploy one fixed local Git application")
     deploy.add_argument("application_slug")
+    deploy.add_argument("--source-commit", help="build this exact task/worktree SHA without using mutable worktree bytes")
+    deploy.add_argument("--expected-current-commit", help="preflight current SHA, or none for first deployment")
     deploy.add_argument("--issue-certificate", action="store_true")
     deploy.add_argument("--email")
     deploy.add_argument("--health-timeout", type=int, default=60)
@@ -3478,6 +3723,7 @@ def parser() -> argparse.ArgumentParser:
     rollback = sub.add_parser("rollback", help="switch to an exact previously healthy image")
     rollback.add_argument("application_slug")
     rollback.add_argument("--commit")
+    rollback.add_argument("--expected-current-commit", help="refuse if the live release changed since inspection")
     rollback.add_argument("--health-timeout", type=int, default=60)
     rollback.set_defaults(func=cmd_rollback)
     backup = sub.add_parser("backup", help="consistent offline database+file backup for one managed app")

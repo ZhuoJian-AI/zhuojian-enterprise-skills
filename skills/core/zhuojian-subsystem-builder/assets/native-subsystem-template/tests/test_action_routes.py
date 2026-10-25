@@ -1186,6 +1186,127 @@ class ActionRouteTests(unittest.TestCase):
         self.assertEqual(cross.status_code, 403, cross.text)
         self.assertEqual(wrong_claim.status_code, 403, wrong_claim.text)
 
+    def test_event_fanout_scopes_consumption_to_source_and_target_module(self):
+        body = self.event_body()
+        second_key = "event_audit.second"
+        subscriptions = {"events": {"subscribes": [body["event"]["eventType"]]}}
+        with mock.patch.dict(self.application.MODULES, {
+            self.module_key: subscriptions, second_key: subscriptions,
+        }):
+            first = self.post_event(body)
+            second_body = {**body, "deliveryId": "second-" + uuid4().hex}
+            second = self.post_event(second_body, token=self.event_token(second_body, targetModuleKey=second_key))
+            other_source_body = {**body, "deliveryId": "other-" + uuid4().hex,
+                                 "sourceApplicationSlug": "other-inventory"}
+            other_source = self.post_event(other_source_body)
+            for response in (first, second, other_source):
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(response.json()["status"], "accepted")
+            with self.application.db() as connection:
+                self.assertEqual(connection.execute(
+                    "SELECT COUNT(*) FROM event_deliveries WHERE event_id=?", (body["event"]["eventId"],)
+                ).fetchone()[0], 3)
+
+    def test_event_route_replacement_reuses_completed_result_and_binds_new_delivery(self):
+        body = self.event_body()
+        with mock.patch.dict(self.application.MODULES, {
+            self.module_key: {"events": {"subscribes": [body["event"]["eventType"]]}},
+        }):
+            self.assertEqual(self.post_event(body).status_code, 200)
+            completed = {"deliveryId": body["deliveryId"], "processed": True,
+                         "receipt": {"id": "receipt-one", "status": "completed", "entityId": "record-one"}}
+            with self.application.db() as connection:
+                connection.execute("UPDATE event_deliveries SET result=? WHERE delivery_id=?",
+                                   (json.dumps(completed), body["deliveryId"]))
+            replacement = {**body, "deliveryId": "replacement-" + uuid4().hex}
+            replay = self.post_event(replacement)
+            self.assertEqual(replay.status_code, 200, replay.text)
+            self.assertEqual(replay.json()["status"], "duplicate")
+            self.assertTrue(replay.json()["processed"])
+            self.assertEqual(replay.json()["deliveryId"], replacement["deliveryId"])
+            self.assertEqual(replay.json()["receipt"], completed["receipt"])
+            rebound = {**replacement, "event": {**body["event"], "eventId": "other-" + uuid4().hex}}
+            self.assertEqual(self.post_event(rebound).status_code, 409)
+            changed = {**replacement, "deliveryId": "changed-" + uuid4().hex,
+                       "event": {**body["event"], "payload": {"available": 99}}}
+            self.assertEqual(self.post_event(changed).status_code, 409)
+            with self.application.db() as connection:
+                self.assertEqual(connection.execute(
+                    "SELECT COUNT(*) FROM event_deliveries WHERE event_id=?", (body["event"]["eventId"],)
+                ).fetchone()[0], 1)
+
+    def test_concurrent_event_deliveries_have_one_logical_consumption(self):
+        body = self.event_body()
+        replacement = {**body, "deliveryId": "concurrent-" + uuid4().hex}
+        with mock.patch.dict(self.application.MODULES, {
+            self.module_key: {"events": {"subscribes": [body["event"]["eventType"]]}},
+        }):
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                responses = list(executor.map(self.post_event, (body, replacement)))
+            self.assertEqual([r.status_code for r in responses], [200, 200])
+            self.assertEqual(sorted(r.json()["status"] for r in responses), ["accepted", "duplicate"])
+            with self.application.db() as connection:
+                self.assertEqual(connection.execute(
+                    "SELECT COUNT(*) FROM event_deliveries WHERE event_id=?", (body["event"]["eventId"],)
+                ).fetchone()[0], 1)
+
+    def test_event_inbox_upgrade_preserves_legacy_rows_and_allows_module_fanout(self):
+        with closing(sqlite3.connect(":memory:")) as connection:
+            connection.row_factory = sqlite3.Row
+            connection.execute("""CREATE TABLE event_deliveries (
+                delivery_id TEXT PRIMARY KEY,event_id TEXT NOT NULL UNIQUE,event_type TEXT NOT NULL,
+                source_application_slug TEXT NOT NULL DEFAULT '',target_module_key TEXT NOT NULL DEFAULT '',
+                request_hash TEXT NOT NULL DEFAULT '',result TEXT NOT NULL,received_at TEXT NOT NULL)""")
+            connection.execute("INSERT INTO event_deliveries VALUES(?,?,?,?,?,?,?,?)",
+                               ("d1", "e1", "event.v1", "source", "m1", "legacy-hash", '{"processed":true}', "now"))
+            self.application.migrate_event_inbox(connection)
+            self.application.migrate_event_inbox(connection)
+            legacy = connection.execute("SELECT * FROM event_deliveries WHERE delivery_id='d1'").fetchone()
+            self.assertEqual(legacy["request_hash"], "legacy-hash")
+            self.assertEqual(legacy["result"], '{"processed":true}')
+            connection.execute("INSERT INTO event_deliveries VALUES(?,?,?,?,?,?,?,?,?)",
+                               ("d2", "e1", "event.v1", "source", "m2", "transport-hash", "content", "{}", "now"))
+            with self.assertRaises(sqlite3.IntegrityError):
+                connection.execute("INSERT INTO event_deliveries VALUES(?,?,?,?,?,?,?,?,?)",
+                                   ("d3", "e1", "event.v1", "source", "m1", "hash", "content", "{}", "now"))
+
+    def test_event_inbox_upgrade_does_not_discard_custom_columns(self):
+        with closing(sqlite3.connect(":memory:")) as connection:
+            connection.row_factory = sqlite3.Row
+            connection.execute("""CREATE TABLE event_deliveries (
+                delivery_id TEXT PRIMARY KEY,event_id TEXT NOT NULL UNIQUE,custom_result TEXT)""")
+            connection.execute("INSERT INTO event_deliveries VALUES('d1','e1','keep-me')")
+            with self.assertRaisesRegex(RuntimeError, "reviewed migration"):
+                self.application.migrate_event_inbox(connection)
+            self.assertEqual(connection.execute("SELECT custom_result FROM event_deliveries").fetchone()[0], "keep-me")
+
+    def test_old_receipt_hash_is_backfilled_without_reprocessing_or_rebinding_content(self):
+        body = self.event_body()
+        legacy_hash = self.application.canonical_hash({**body, "targetModuleKey": self.module_key})
+        completed = {"processed": True, "receipt": {"id": "old-receipt", "status": "completed"}}
+        with self.application.db() as connection:
+            connection.execute("""INSERT INTO event_deliveries(
+                delivery_id,event_id,event_type,source_application_slug,target_module_key,
+                request_hash,content_hash,result,received_at) VALUES(?,?,?,?,?,?,?,?,'before-upgrade')""",
+                (body["deliveryId"], body["event"]["eventId"], body["event"]["eventType"],
+                 body["sourceApplicationSlug"], self.module_key, legacy_hash, "", json.dumps(completed)))
+        with mock.patch.dict(self.application.MODULES, {
+            self.module_key: {"events": {"subscribes": [body["event"]["eventType"]]}},
+        }):
+            replacement = {**body, "deliveryId": "new-route-" + uuid4().hex}
+            replay = self.post_event(replacement)
+            self.assertEqual(replay.status_code, 200, replay.text)
+            self.assertEqual(replay.json()["receipt"], completed["receipt"])
+            self.assertEqual(replay.json()["deliveryId"], replacement["deliveryId"])
+            with self.application.db() as connection:
+                row = connection.execute("SELECT * FROM event_deliveries WHERE delivery_id=?", (body["deliveryId"],)).fetchone()
+                self.assertEqual(row["request_hash"], legacy_hash)
+                self.assertTrue(row["content_hash"])
+                self.assertEqual(json.loads(row["result"]), completed)
+            changed = {**body, "deliveryId": "changed-" + uuid4().hex,
+                       "event": {**body["event"], "payload": {"different": True}}}
+            self.assertEqual(self.post_event(changed).status_code, 409)
+
     def test_jwt_requires_exp_and_enforces_contract_lifetime(self):
         now = int(time.time())
         for token_type, maximum_lifetime, signing_secret in (

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import os
+import json
 import re
 import stat
 from dataclasses import dataclass
 from pathlib import Path
+from uuid import UUID
 
 
 class ConfigurationError(RuntimeError):
@@ -28,10 +30,11 @@ class GatewaySettings:
     spool_dir: Path = Path("/var/lib/zhuojian-storage-gateway/tmp")
     minimum_free_bytes: int = 5 * 1024**3
     max_concurrent_uploads: int = 2
+    namespace_mode: str = "legacy-apps"
 
     @classmethod
     def from_environment(cls) -> "GatewaySettings":
-        root_prefix = _normalise_root_prefix(os.environ.get("GATEWAY_ROOT_PREFIX", "apps"))
+        root_prefix, namespace_mode = configured_namespace()
         internal_url = os.environ.get(
             "GATEWAY_INTERNAL_URL", "http://zhuojian-storage-gateway:8080"
         ).strip()
@@ -70,7 +73,61 @@ class GatewaySettings:
                 "GATEWAY_MINIMUM_FREE_BYTES", 5 * 1024**3
             ),
             max_concurrent_uploads=_positive_int("GATEWAY_MAX_CONCURRENT_UPLOADS", 2),
+            namespace_mode=namespace_mode,
         )
+
+
+def configured_namespace() -> tuple[str, str]:
+    """Derive shared-bucket identity from the host-owned Runtime, never an app request."""
+    profile_path = os.environ.get("GATEWAY_RUNTIME_PROFILE")
+    profile = {}
+    if profile_path:
+        path = Path(profile_path)
+        _require_root_metadata_file(path, "Runtime profile")
+        if path.stat().st_size > 131072:
+            raise ConfigurationError("Runtime profile is too large")
+        try:
+            profile = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise ConfigurationError("Runtime profile is invalid") from exc
+        if not isinstance(profile, dict):
+            raise ConfigurationError("Runtime profile must be an object")
+    storage = profile.get("objectStorage") or {}
+    if not isinstance(storage, dict):
+        raise ConfigurationError("Runtime objectStorage is invalid")
+    mode = os.environ.get("GATEWAY_NAMESPACE_MODE", "profile")
+    if mode == "profile":
+        mode = storage.get("namespaceMode", "legacy-apps" if storage or not profile else "enterprise-v1")
+    if mode == "legacy-apps":
+        return _normalise_root_prefix(os.environ.get("GATEWAY_ROOT_PREFIX", "apps")), mode
+    if mode != "enterprise-v1" or not profile:
+        raise ConfigurationError("shared namespace requires a trusted Runtime profile")
+    try:
+        organization_id = str(UUID(str(profile["organizationId"])))
+    except (KeyError, ValueError, TypeError) as exc:
+        raise ConfigurationError("Runtime organizationId must be a UUID") from exc
+    environment = profile.get("environment")
+    if environment not in {"development", "staging", "production"}:
+        raise ConfigurationError("Runtime environment is invalid")
+    prefix = f"enterprises/{organization_id}/{environment}/apps"
+    if storage.get("namespaceMode") == mode and storage.get("rootPrefix") not in {None, prefix}:
+        raise ConfigurationError("Runtime shared namespace does not match its identity")
+    override = os.environ.get("GATEWAY_ROOT_PREFIX")
+    if override not in {None, "apps", prefix}:
+        raise ConfigurationError("shared namespace cannot be overridden")
+    return prefix, mode
+
+
+def _require_root_metadata_file(path: Path, label: str) -> None:
+    """Runtime identity is readable metadata; only root may change it."""
+    try:
+        info = path.lstat()
+    except OSError as exc:
+        raise ConfigurationError(f"{label} is unavailable") from exc
+    if stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode):
+        raise ConfigurationError(f"{label} must be a regular file")
+    if os.name == "posix" and (info.st_uid != 0 or stat.S_IMODE(info.st_mode) & 0o022):
+        raise ConfigurationError(f"{label} must be root owned and not group/other writable")
 
 
 @dataclass(frozen=True)

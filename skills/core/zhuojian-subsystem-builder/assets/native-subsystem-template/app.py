@@ -453,6 +453,68 @@ def require_upload_capacity(incoming_bytes: int = 0, *, copies: int = 1) -> None
         raise HTTPException(507, "File storage space is insufficient; contact an administrator")
 
 
+def migrate_event_inbox(connection: sqlite3.Connection) -> None:
+    """Keep delivery identity separate from one logical module consumption."""
+    columns = {row["name"] for row in connection.execute("PRAGMA table_info(event_deliveries)")}
+    indexes = list(connection.execute("PRAGMA index_list(event_deliveries)"))
+    global_event_unique = any(
+        row["unique"]
+        and [part["name"] for part in connection.execute(
+            "SELECT name FROM pragma_index_info(?) ORDER BY seqno", (row["name"],)
+        )] == ["event_id"]
+        for row in indexes
+    )
+    if global_event_unique:
+        expected = {
+            "delivery_id", "event_id", "event_type", "source_application_slug",
+            "target_module_key", "request_hash", "result", "received_at", "content_hash",
+        }
+        custom_objects = connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE tbl_name='event_deliveries' "
+            "AND type IN ('trigger','index') AND sql IS NOT NULL LIMIT 1"
+        ).fetchone()
+        referenced = any(
+            foreign_key["table"] == "event_deliveries"
+            for table in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            for foreign_key in connection.execute("SELECT * FROM pragma_foreign_key_list(?)", (table["name"],))
+        )
+        if columns - expected or custom_objects or referenced:
+            raise RuntimeError("Custom event inbox requires a reviewed migration; existing rows were preserved")
+        connection.execute("SAVEPOINT event_inbox_upgrade")
+        try:
+            connection.execute("""
+                CREATE TABLE event_deliveries_v2 (
+                  delivery_id TEXT PRIMARY KEY, event_id TEXT NOT NULL, event_type TEXT NOT NULL,
+                  source_application_slug TEXT NOT NULL DEFAULT '', target_module_key TEXT NOT NULL DEFAULT '',
+                  request_hash TEXT NOT NULL DEFAULT '', content_hash TEXT NOT NULL DEFAULT '',
+                  result TEXT NOT NULL, received_at TEXT NOT NULL,
+                  UNIQUE(source_application_slug,event_id,target_module_key)
+                )
+            """)
+            content_column = "content_hash" if "content_hash" in columns else "''"
+            connection.execute(
+                "INSERT INTO event_deliveries_v2 "
+                "SELECT delivery_id,event_id,event_type,source_application_slug,target_module_key,"
+                f"request_hash,{content_column},result,received_at FROM event_deliveries"
+            )
+            connection.execute("DROP TABLE event_deliveries")
+            connection.execute("ALTER TABLE event_deliveries_v2 RENAME TO event_deliveries")
+            connection.execute("RELEASE event_inbox_upgrade")
+        except BaseException:
+            connection.execute("ROLLBACK TO event_inbox_upgrade")
+            connection.execute("RELEASE event_inbox_upgrade")
+            raise
+    elif "content_hash" not in columns:
+        connection.execute("ALTER TABLE event_deliveries ADD COLUMN content_hash TEXT NOT NULL DEFAULT ''")
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS event_delivery_aliases (
+          delivery_id TEXT PRIMARY KEY, canonical_delivery_id TEXT NOT NULL,
+          request_hash TEXT NOT NULL,
+          FOREIGN KEY(canonical_delivery_id) REFERENCES event_deliveries(delivery_id)
+        )
+    """)
+
+
 def init_db() -> None:
     with db() as connection:
         connection.executescript("""
@@ -489,9 +551,11 @@ def init_db() -> None:
         CREATE INDEX IF NOT EXISTS idx_browser_sessions_expiry
           ON browser_sessions(expires_at);
         CREATE TABLE IF NOT EXISTS event_deliveries (
-          delivery_id TEXT PRIMARY KEY, event_id TEXT NOT NULL UNIQUE, event_type TEXT NOT NULL,
+          delivery_id TEXT PRIMARY KEY, event_id TEXT NOT NULL, event_type TEXT NOT NULL,
           source_application_slug TEXT NOT NULL DEFAULT '', target_module_key TEXT NOT NULL DEFAULT '',
-          request_hash TEXT NOT NULL DEFAULT '', result TEXT NOT NULL, received_at TEXT NOT NULL
+          request_hash TEXT NOT NULL DEFAULT '', content_hash TEXT NOT NULL DEFAULT '',
+          result TEXT NOT NULL, received_at TEXT NOT NULL,
+          UNIQUE(source_application_slug,event_id,target_module_key)
         );
         CREATE TABLE IF NOT EXISTS stored_files (
           storage_key TEXT PRIMARY KEY, file_id TEXT NOT NULL UNIQUE,
@@ -555,6 +619,7 @@ def init_db() -> None:
                 connection.execute(
                     f"ALTER TABLE event_deliveries ADD COLUMN {column} {declaration}"
                 )
+        migrate_event_inbox(connection)
         confirmation_columns = {
             row["name"] for row in connection.execute("PRAGMA table_info(consumed_confirmations)")
         }
@@ -2150,31 +2215,66 @@ async def receive_event(request: Request, authorization: str | None = Header(def
         raise HTTPException(403, "Cross-enterprise event delivery is forbidden")
     if event["eventType"] not in subscribed:
         raise HTTPException(403, "Target module does not subscribe to this event type")
-    request_hash = canonical_hash({
-        "deliveryId": delivery_id,
+    logical_request = {
         "sourceApplicationSlug": source_slug,
         "event": event,
         "targetModuleKey": target_module_key,
-    })
+    }
+    request_hash = canonical_hash({"deliveryId": delivery_id, **logical_request})
+    content_hash = canonical_hash(logical_request)
     with db() as connection:
         connection.execute("BEGIN IMMEDIATE")
+        alias = connection.execute(
+            "SELECT canonical_delivery_id,request_hash FROM event_delivery_aliases WHERE delivery_id=?",
+            (delivery_id,),
+        ).fetchone()
+        if alias and not hmac.compare_digest(alias["request_hash"], request_hash):
+            raise HTTPException(409, "deliveryId is bound to different event content")
+        original_delivery = connection.execute(
+            "SELECT * FROM event_deliveries WHERE delivery_id=?", (delivery_id,)
+        ).fetchone()
+        if original_delivery and (
+            not original_delivery["request_hash"]
+            or not hmac.compare_digest(original_delivery["request_hash"], request_hash)
+        ):
+            raise HTTPException(409, "deliveryId is bound to different event content")
         existing = connection.execute(
             """
-            SELECT delivery_id,event_id,request_hash,result
-            FROM event_deliveries WHERE delivery_id=? OR event_id=?
+            SELECT * FROM event_deliveries
+            WHERE source_application_slug=? AND event_id=? AND target_module_key=?
             """,
-            (delivery_id, event["eventId"]),
+            (source_slug, event["eventId"], target_module_key),
         ).fetchone()
         if existing:
-            if (
-                existing["delivery_id"] != delivery_id
-                or existing["event_id"] != event["eventId"]
-                or not existing["request_hash"]
-                or not hmac.compare_digest(existing["request_hash"], request_hash)
-            ):
-                raise HTTPException(409, "deliveryId or eventId is bound to different event content")
-            return {"status": "duplicate", **json.loads(existing["result"])}
+            stored_hash = existing["content_hash"]
+            legacy_hash = canonical_hash({"deliveryId": existing["delivery_id"], **logical_request})
+            valid = (
+                hmac.compare_digest(stored_hash, content_hash) if stored_hash else
+                bool(existing["request_hash"]) and hmac.compare_digest(existing["request_hash"], legacy_hash)
+            )
+            if not valid or (alias and alias["canonical_delivery_id"] != existing["delivery_id"]):
+                raise HTTPException(409, "Logical event is bound to different content")
+            if not stored_hash:
+                connection.execute(
+                    "UPDATE event_deliveries SET content_hash=? WHERE delivery_id=?",
+                    (content_hash, existing["delivery_id"]),
+                )
+            connection.execute(
+                "INSERT OR IGNORE INTO event_delivery_aliases VALUES(?,?,?)",
+                (delivery_id, existing["delivery_id"], request_hash),
+            )
+            return {
+                "status": "duplicate", **json.loads(existing["result"]),
+                "deliveryId": delivery_id, "eventId": event["eventId"], "targetModuleKey": target_module_key,
+            }
+        if alias or original_delivery or connection.execute(
+            "SELECT 1 FROM event_deliveries WHERE event_id=? "
+            "AND (source_application_slug='' OR target_module_key='') LIMIT 1",
+            (event["eventId"],),
+        ).fetchone():
+            raise HTTPException(409, "Historical event context requires verification before replay")
         result = {
+            "deliveryId": delivery_id,
             "eventId": event["eventId"],
             "accepted": True,
             "processed": False,
@@ -2184,8 +2284,8 @@ async def receive_event(request: Request, authorization: str | None = Header(def
             """
             INSERT INTO event_deliveries(
               delivery_id,event_id,event_type,source_application_slug,
-              target_module_key,request_hash,result,received_at
-            ) VALUES(?,?,?,?,?,?,?,?)
+              target_module_key,request_hash,content_hash,result,received_at
+            ) VALUES(?,?,?,?,?,?,?,?,?)
             """,
             (
                 delivery_id,
@@ -2194,6 +2294,7 @@ async def receive_event(request: Request, authorization: str | None = Header(def
                 source_slug,
                 target_module_key,
                 request_hash,
+                content_hash,
                 json.dumps(result, ensure_ascii=False),
                 datetime.now(timezone.utc).isoformat(),
             ),

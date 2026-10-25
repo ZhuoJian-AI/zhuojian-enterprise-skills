@@ -57,6 +57,7 @@ class RuntimeHostTests(unittest.TestCase):
             "schemaVersion": 2,
             "enterpriseKey": "aifabei",
             "organizationId": "00000000-0000-4000-8000-000000000001",
+            "environment": "staging",
             "domains": {"suffix": "aifabei.example.com"},
             "deployment": {
                 "repositoriesRoot": str(paths.repositories),
@@ -318,7 +319,8 @@ class RuntimeHostTests(unittest.TestCase):
             self.assertEqual(paths.credential.read_bytes(), credential)
             self.assertEqual(old_release.read_bytes(), old_release_before)
             self.assertEqual(configured["fileStorage"]["defaultMode"], "oss-gateway")
-            self.assertEqual(configured["objectStorage"]["rootPrefix"], "apps")
+            self.assertEqual(configured["objectStorage"]["namespaceMode"], "enterprise-v1")
+            self.assertEqual(configured["objectStorage"]["rootPrefix"], "enterprises/00000000-0000-4000-8000-000000000001/staging/apps")
 
     def test_configure_gateway_probe_failure_does_not_replace_runtime_profile(self):
         with tempfile.TemporaryDirectory() as directory:

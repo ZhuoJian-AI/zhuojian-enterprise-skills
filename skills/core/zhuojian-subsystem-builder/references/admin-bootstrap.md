@@ -13,7 +13,7 @@
 
 1. 只读记录实例区域、公网/内网地址、系统版本、CPU、内存、Swap、磁盘、Git、Docker、Nginx、监听端口、容器、数据目录、现有域名和备份状态。磁盘盘点必须同时列出块设备、分区、文件系统、UUID、挂载点和当前占用；发现未初始化数据盘、磁盘告警或容量布局调整需求时，转到 [ECS 数据盘与容量迁移](data-disk-capacity.md)，不得仅凭设备名直接格式化。
 2. 确认通配 DNS `*.<企业域名后缀>` 解析到该 ECS。一个模块系统一个子域名；多个系统共享 ECS 时使用独立容器、回环端口和数据目录。
-3. 按 [文件存储与 OSS 迁移](object-storage.md) 确定文件策略。Runtime 首次登记固定使用 `local-managed`；后续主机工具会建立数据目录、模块隔离、磁盘阈值和数据库加文件的一致性备份。若本地数据实际放在独立云盘，稳定 Runtime 路径保持不变，由宿主机挂载或绑定挂载承载，不能把设备路径写进业务代码。管理员可以先准备同地域私有 Bucket 和网关身份，但只有 Runtime 与主机工具安装完成后，才安装文件网关并通过真实验收切换默认模式。
+3. 按 [文件存储与 OSS 迁移](object-storage.md) 确定文件策略。Runtime 首次登记固定使用 `local-managed`；后续主机工具会建立数据目录、模块隔离、磁盘阈值和数据库加文件的一致性备份。若本地数据实际放在独立云盘，稳定 Runtime 路径保持不变，由宿主机挂载或绑定挂载承载，不能把设备路径写进业务代码。获权初始化 AI 可以先绑定同地域共享私有业务 Bucket 和本企业前缀限定的网关身份，但只有 Runtime 与主机工具安装完成后，才安装文件网关并通过真实验收切换默认模式。
 4. 安装或核验 Git、Docker、Docker Compose、Nginx 和 HTTPS 证书工具。不得安装 GitHub CLI、GitHub App、Coolify Agent 或 Coolify Server 作为本流程依赖。
 5. Web 只公开 80/443；管理连接优先使用业务 VPN 可达的标准 SSH `22`。只有 `22` 在业务路径上不可用时，才按 [SSH、VPN 与代理访问](ssh-access.md) 让公网 `443` 同时承载 HTTPS 和 SSH，并把 Nginx TLS 后端改为回环 `8443`。数据库、Redis、文件网关和模块内部端口只绑定 Docker 网络或 `127.0.0.1`。
 6. 建立固定目录并限制权限：
@@ -22,7 +22,7 @@
    /srv/zhuojian/repositories/   ECS 本地 Git 仓库
    /srv/zhuojian/deployments/    容器与版本记录
    /srv/zhuojian/data/           模块持久数据
-   /srv/zhuojian/backups/        数据和配置备份
+   /srv/zhuojian/backups/        数据、配置和 Git bundle 的本地恢复点
    /etc/zhuojian/                环境档案与 Secret 引用
    /etc/nginx/conf.d/             每个模块的 Host 路由
    ```
@@ -30,7 +30,7 @@
 7. 在签发任何 Runtime 凭证前，先从业务实际使用的外部 Codex（允许启用 VPN/代理）验证 SSH Banner，并在真实 PTY 密码提示中完成一次 root 登录。只有已验证的连接路径才能写进 Runtime 档案；不能把云控制台登录误记为业务 AI 已可连接。
 8. 管理员在灼见为该企业签发一枚 **ECS Runtime 登记凭证**。运行 `scripts/provision_runtime.py`：脚本先检查目标目录、目标文件、所有权和权限，再对固定数据目录执行真实写入、读取、删除和磁盘余量探针；全部通过后才调用平台接口，并分别原子写入 `/etc/zhuojian/runtime-registration.key` 与不含密钥的 `/etc/zhuojian/runtime.json`。不得把凭证复制到命令参数、终端回显或回复。凭证文件权限固定为目录 `0700`、文件 `0600`。同企业多个业务负责人沿用已有 Runtime，不按负责人重复初始化。它允许本组织/域名后缀的健康模块登记及固定托管授权；目标SaaS明确支持时，还可按 [跨系统对接](cross-system-integration.md) 查询本企业目录、提精确事件计划，并以当前归属端点的Runtime委托确认/拒绝/撤销，由申请Runtime应用齐全确认后的配置。同Runtime两端由AI本机确认一次；确有多Runtime时才各用本机key，不能汇集凭证或冒充人类管理员；旧平台没有该能力时不靠本地改档案启用。它不允许自选角色、通用管理员操作、部署代码、管理服务器或访问其他企业，不能替代员工业务操作权限。
 9. Runtime 档案和登记凭证已经落盘后，把 `assets/admin-runtime/host/` 传到 ECS 并以 root 在该目录运行 `sh ./install.sh`，安装 `zhuojian-runtime` 受控直接部署入口。标准 SSH `22` 已验证时不得传 443 参数；只有管理员已另外安装并实测 SSH/HTTPS 复用后，才运行 `sh ./install.sh --enable-ssh-https-multiplex --public-address <ECS公网地址>`。入口只能在固定目录内创建/更新指定 `applicationSlug`，分配回环端口、建立固定文件目录、构建不可变镜像、生成 Nginx 虚拟主机、检查 HTTPS/健康和回滚本次发布；不得运行全局 Docker prune、删除未知卷或重启无关服务。
-10. 管理员选择 OSS 时，再按 [文件存储与 OSS 迁移](object-storage.md) 安装 `assets/admin-runtime/gateway/`，写入企业级 root-only 凭证，并运行 `zhuojian-runtime configure-oss-gateway`。只有匿名读取拒绝、`apps/*` 外的列举/读/写/删全部拒绝、真实 PUT/GET/DELETE、双应用隔离和临时身份撤销全部通过后，尚未初始化的新系统默认存储才切换成 `oss-gateway`；已有 release 不迁移。
+10. 管理员选择 OSS 时，再按 [文件存储与 OSS 迁移](object-storage.md) 安装 `assets/admin-runtime/gateway/`，写入企业级 root-only 凭证，并运行 `zhuojian-runtime configure-oss-gateway`。只有匿名读取拒绝、当前企业/环境业务前缀外的列举/读/写/删全部拒绝、真实 PUT/GET/DELETE、双应用隔离和临时身份撤销全部通过后，尚未初始化的新系统默认存储才切换成 `oss-gateway`；已有 release 不迁移。
 11. 用两个独立的最小测试应用验证域名隔离、HTTPS、`/health`、Manifest、登记链路、本地上传/下载、目录隔离、磁盘阈值和重建容器后读取。OSS 模式必须额外完成网关重启复验、新应用自动分配独立网络/前缀/身份，以及另一应用和匿名请求均无法读取。测试资源使用独立名称和数据目录，不碰已有项目。
 12. Runtime 与最小应用验收完成后，立即执行 [企业交接 Skill 自动同步](managed-handoff-skills.md) 的“初始化后的强制收尾”。检查该 ECS 是否存在既有系统、专用数据通道、隧道、特殊网络、读写边界、固定业务口径或其他以后无法从通用 Runtime 自动推导的事实；有则自动创建或更新交接 Skill并发布稳定版，无则明确记录“不需要专属交接 Skill”。这一步完成或得到明确的发布阻塞结果前，不得结束管理员初始化任务。
 
@@ -149,11 +149,11 @@ python <skill>/scripts/provision_runtime.py \
 
 ```text
 zhuojian-runtime configure-oss-gateway \
-  --bucket <企业私有Bucket> \
+  --bucket <同地域共享业务Bucket> \
   --region <阿里云地域ID>
 ```
 
-该命令会先检查网关、秘密文件和 Docker 私网，再运行匿名读取拒绝、`apps/*` 外列举/读/写/删拒绝、真实对象读写删除、两个临时应用隔离和临时身份撤销探针。任一项失败时保持原 Runtime 档案和既有应用不变；通过后才把 `oss-gateway` 设置成尚未初始化的新系统的默认模式。Runtime 已纳管的 `local-managed`/`oss-gateway` release 继续使用自己记录的后端；使用既有签名上传等不同结构、尚未由 Runtime 纳管的容器只保持原样，完成专项导入前不得用普通 `ensure-app/deploy` 接管。
+该命令会先检查网关、秘密文件和 Docker 私网，再运行匿名读取拒绝、当前企业/环境业务前缀外列举/读/写/删拒绝、真实对象读写删除、两个临时应用隔离和临时身份撤销探针。任一项失败时保持原 Runtime 档案和既有应用不变；通过后才把 `oss-gateway` 设置成尚未初始化的新系统的默认模式。Runtime 已纳管的 `local-managed`/`oss-gateway` release 继续使用自己记录的后端；使用既有签名上传等不同结构、尚未由 Runtime 纳管的容器只保持原样，完成专项导入前不得用普通 `ensure-app/deploy` 接管。
 
 平台管理员可用以下接口查看、停用或轮换，业务 AI 不得调用：
 
@@ -176,7 +176,16 @@ POST  /api/v1/ecs-publisher/organizations/{organizationId}/runtimes/{runtimeId}/
 
 ## 验收与回滚
 
-- 验收：外部 Codex 通过业务实际使用的网络路径（允许 VPN/代理）在标准 `22` 或已配置的 `443` 读取 SSH Banner，并通过交互式 root 密码登录；同时 HTTPS、通配 DNS、两个 Host 不串站、Docker 健康、Nginx 配置、数据库端口不公网暴露、ECS 登记凭证只能登记本企业，且除固定的“系统研发者”托管授权和既有角色有界继承外不能修改权限；本地文件目录固定挂载、权限隔离、真实读写删除、磁盘阈值与一致性备份有效。OSS 模式追加检查 Bucket 私有且同地域、匿名读取被拒绝、RAM 对 `apps/*` 外的列举/读/写/删全部拒绝、网关不暴露公网端口、真实 PUT/GET/DELETE、双应用隔离、临时身份撤销、重启后复验和新应用自动 `ensure-app`。每个新 OSS 应用只和网关共享自己的 Docker 网络，不和其他应用共享存储网络。
+- 验收：外部 Codex 通过业务实际使用的网络路径（允许 VPN/代理）在标准 `22` 或已配置的 `443` 读取 SSH Banner，并通过交互式 root 密码登录；同时 HTTPS、通配 DNS、两个 Host 不串站、Docker 健康、Nginx 配置、数据库端口不公网暴露、ECS 登记凭证只能登记本企业，且除固定的“系统研发者”托管授权和既有角色有界继承外不能修改权限；本地文件目录固定挂载、权限隔离、真实读写删除、磁盘阈值与一致性备份有效。OSS 模式追加检查 Bucket 私有且同地域、匿名读取被拒绝、RAM 对 当前企业/环境业务前缀外的列举/读/写/删全部拒绝、网关不暴露公网端口、真实 PUT/GET/DELETE、双应用隔离、临时身份撤销、重启后复验和新应用自动 `ensure-app`。每个新 OSS 应用只和网关共享自己的 Docker 网络，不和其他应用共享存储网络。
 - 记录新增 DNS record ID、安全组 rule ID、Nginx 文件、容器、数据目录和证书域名。
 - 回滚只删除本次新增且带精确标识的测试容器、Nginx 文件和空测试目录；不删除已有 Git 仓库、业务数据或未知卷。
-- 本地 Git 和业务数据与 ECS 同盘时必须配置 ECS 快照或企业指定的异地备份；GitHub 不作为必需备份目标。
+- 本地 Git 是日常代码权威来源，但同服务器 Git 不等于机外备份。初始化时配置独立共享备份 Bucket 的企业前缀身份，按 [机外备份与隔离恢复](runtime-backup-recovery.md) 上传一致性归档与 Git bundle、完整回读并隔离恢复；GitHub 不是必需备份目标。后续企业 root/Codex 自行备份、查询和验收，无需逐次找 SaaS 管理员。
+
+
+## 共享 OSS 与机外备份初始化
+
+同一公司多人共用一台企业 ECS，允许获授权 Codex 使用 root。只在企业之间隔离云资源，不新增个人发布权限限制。初始化 AI 一次性绑定同地域共享业务 Bucket 与独立共享备份 Bucket：业务对象进入 `enterprises/<组织UUID>/<环境>/apps/<系统>/`，含配置秘密和 Git 的备份进入 `enterprises/<组织UUID>/<环境>/backups/applications/<系统>/`。两个身份均只允许本企业的相应前缀；不得把共享桶全量 AccessKey 放到企业 ECS。
+
+网关新安装默认 `enterprise-v1`，旧 `apps/` 安装和旧独立桶保持原状；需要迁移时先完成对象清单、复制、校验与专项原子切换。不能通过重跑首次登记或更换默认值来搬数据。
+
+备份按 [机外备份与隔离恢复](runtime-backup-recovery.md) 安装 CLI，先完成真实上传、精确版本 SHA 回读与隔离恢复，再接入现有备份定时任务。初始化涉及共享桶/RAM 权限时由已经获权的管理员 AI 一次完成；企业负责人日常只确认业务范围，后续新建系统、打通模块、备份和有限本地清理均由企业 Codex 完成，不操作云控制台或 SaaS 前端。
