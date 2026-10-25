@@ -54,3 +54,14 @@ CLI/API/PostgreSQL joint fixture also passed two tests using SaaS `4d36a43117cbf
 Evidence in the SaaS workspace: `audit-2026-10-25/multi-owner-self-service-fix/storage/IMPLEMENTATION-AND-LINUX-RESULT.md`, `linux-final-results.json` (full commands and bundle hash), `linux-final-*.log`, and sibling `platform/tests-joint1.log` / `inputs-joint1.json`. The storage worktree's Linux fixture correction is `5b4315d` (two chmod/mkdir test fixes, no weaker runtime checks).
 
 Subsequent review found that non-secret Runtime metadata may legally be mode 0644. Root's backup compatibility follow-up `b330cdb` and the independent gateway-profile fix require targeted POSIX verification after integration. The `2710a57` full-run receipt does not claim to cover later changes. Root owns final systemd-sandbox evidence and live rollout; this child has made no live OSS changes or production write.
+
+### Final affected-path verification and CI cleanup
+
+After those review fixes and absolute-path validation were integrated, final code commit `5a9831606cee8919bab9493f74e54252d8936775` passed actual Linux/root POSIX checks from a new exact Git bundle clone:
+
+- Core root: `python -m pytest -p no:cacheprovider -o addopts= -q -rs tests/test_runtime_backup_oss.py tests/test_install_runtime_backup.py` — **40 passed, no skips**.
+- Gateway assets root with its own `src` in PYTHONPATH: `python -m pytest -p no:cacheprovider -o addopts= -q -rs tests` — **60 passed, no skips**, including 13 new metadata/credential mode, symlink, directory and non-root ownership tests. Only the existing anyio deprecation warning remains.
+
+These targeted checks close the later backup/gateway review changes; unrelated full suites were not needlessly repeated. The actual CLI file hash remains the joint-test hash above at this final code revision. Exact command arrays, source commit and bundle checksum are in `storage/linux-targeted-5a9831606cee-results.json`; logs are the matching `-backup.log` and `-gateway.log`.
+
+All four task-owned CI directories were removed after evidence was copied locally. No task containers remain; the runner created no networks or volumes. Other agents' resources were not touched. The reusable Git test image remains available for later CI; its Dockerfile/build log are saved locally. Cleanup evidence: `storage/ci-cleanup.actual.json`. No production backups, business data, buckets, IAM or live services were changed by this cleanup.
