@@ -444,3 +444,12 @@ def test_restore_checks_download_capacity_before_creating_partial_files(tmp_path
     with pytest.raises(b.BackupError, match='disk space'):
         b.download(scope, remote, 'example', NAME, tmp_path / 'restore')
     assert not (tmp_path / 'restore').exists()
+
+
+def test_remote_inventory_preserves_excluded_uncommitted_work_status(tmp_path):
+    scope, path = local_archive(tmp_path, git_source={**source(), 'workingTreeClean': False})
+    remote = Backend()
+    b.publish(scope, remote, 'example', path)
+    restored_source = b.discover(scope, remote, 'example')[0]['source']
+    assert restored_source['workingTreeClean'] is False
+    assert restored_source['uncommittedStateIncluded'] is False

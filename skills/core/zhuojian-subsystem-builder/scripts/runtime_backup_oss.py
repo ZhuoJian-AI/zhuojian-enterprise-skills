@@ -327,6 +327,8 @@ def validate_source(source):
         raise BackupError('backup Git recovery commit is invalid')
     if source.get('uncommittedStateIncluded') is not False:
         raise BackupError('backup must explicitly describe its committed Git recovery scope')
+    if 'workingTreeClean' in source and type(source['workingTreeClean']) is not bool:
+        raise BackupError('backup working tree state must be an explicit boolean')
 
 
 def verify_remote(backend,manifest,destination=None):
@@ -364,7 +366,7 @@ def _publish(scope,backend,slug,archive_path):
     validate_source(source)
     if metadata.get('commit') != source['requiredReleaseCommit']:
         raise BackupError('backup source does not match its recorded running commit')
-    source={key:source[key] for key in ('bundleMember','bundleSha256','headCommit','requiredReleaseCommit','uncommittedStateIncluded','restoreVerified')}
+    source={key:source[key] for key in ('bundleMember','bundleSha256','headCommit','requiredReleaseCommit','uncommittedStateIncluded','restoreVerified','workingTreeClean') if key in source}
     sha,size=sha_file(archive_path)
     if metadata.get('sha256')!=sha or metadata.get('sizeBytes')!=size:raise BackupError("local archive does not match its verified metadata")
     manifest_key=scope.manifest_key(slug,archive_path.name)
