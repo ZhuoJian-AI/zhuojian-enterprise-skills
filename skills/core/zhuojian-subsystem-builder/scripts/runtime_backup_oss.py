@@ -37,21 +37,23 @@ class BackupError(RuntimeError):
     pass
 
 
-def private_file(path: Path, *, allow_group_read=False):
+def private_file(path: Path, *, allow_metadata_read=False):
     try:
         info = path.lstat()
     except OSError as exc:
         raise BackupError("required protected file is unavailable") from exc
     if not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode):
         raise BackupError("protected file must be regular and not a symlink")
-    forbidden = 0o037 if allow_group_read else 0o077
+    # Runtime installers permit 0600/0640/0644 for non-secret identity metadata.
+    # Credentials and backup payloads still use the strict private default.
+    forbidden = 0o133 if allow_metadata_read else 0o077
     if os.name == "posix" and (info.st_uid != 0 or stat.S_IMODE(info.st_mode) & forbidden):
         raise BackupError("protected file must be root owned and mode 0600 or stricter")
     return info
 
 
-def read_json(path: Path, maximum=MAX_MANIFEST, *, allow_group_read=False):
-    info = private_file(path, allow_group_read=allow_group_read)
+def read_json(path: Path, maximum=MAX_MANIFEST, *, allow_metadata_read=False):
+    info = private_file(path, allow_metadata_read=allow_metadata_read)
     if info.st_size > maximum:
         raise BackupError("metadata exceeds the supported size")
     try:
@@ -535,7 +537,7 @@ def main(argv=None):
             # Same host-wide lock as the Runtime publisher prevents lost profile
             # updates; this configures storage only, never cloud IAM or buckets.
             with publication_lock(Path('/run/lock/zhuojian-runtime-admin.lock')):
-                profile=read_json(args.runtime_profile,allow_group_read=True)
+                profile=read_json(args.runtime_profile,allow_metadata_read=True)
                 try:organization=str(UUID(str(profile['organizationId'])))
                 except (ValueError,KeyError) as exc:raise BackupError('Runtime enterprise identity is invalid') from exc
                 storage={'provider':'aliyun-oss','namespaceMode':'enterprise-v1','bucket':args.bucket,'region':args.region,
@@ -549,7 +551,7 @@ def main(argv=None):
                 storage['boundaryVerified']=True
                 atomic_json(args.runtime_profile,candidate)
                 print(json.dumps({'ok':True,'configured':True,'rootPrefix':scope.prefix,'uploadVerified':False}));return 0
-        scope=BackupScope(read_json(args.runtime_profile,allow_group_read=True))
+        scope=BackupScope(read_json(args.runtime_profile,allow_metadata_read=True))
         if args.command=='status':
             print(json.dumps({'ok':True,'configured':True,'organizationId':scope.organization,'environment':scope.environment,'bucket':scope.bucket,'rootPrefix':scope.prefix,'cloudVerified':False}));return 0
         backend=OssBackend(scope)
@@ -562,7 +564,7 @@ def main(argv=None):
             for release_path in sorted(scope.deployments.glob('*/release.json')):
                 slug=valid_slug(release_path.parent.name)
                 try:
-                    release=read_json(release_path,allow_group_read=True)
+                    release=read_json(release_path,allow_metadata_read=True)
                     if release.get('managedBy')!=MANAGED_BY:continue
                     if release.get('applicationSlug') != slug:
                         raise BackupError('managed release identity differs from its application directory')

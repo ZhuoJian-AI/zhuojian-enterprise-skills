@@ -428,12 +428,16 @@ def test_readable_runtime_metadata_does_not_relax_private_backup_credentials(tmp
     path = tmp_path / 'metadata.json'
     b.atomic_json(path, {'applicationSlug': 'example'})
     path.chmod(0o640)
-    assert b.read_json(path, allow_group_read=True)['applicationSlug'] == 'example'
+    assert b.read_json(path, allow_metadata_read=True)['applicationSlug'] == 'example'
+    with pytest.raises(b.BackupError):
+        b.private_file(path)
+    path.chmod(0o644)
+    assert b.read_json(path, allow_metadata_read=True)['applicationSlug'] == 'example'
     with pytest.raises(b.BackupError):
         b.private_file(path)
     path.chmod(0o660)
     with pytest.raises(b.BackupError):
-        b.read_json(path, allow_group_read=True)
+        b.read_json(path, allow_metadata_read=True)
 
 
 def test_restore_checks_download_capacity_before_creating_partial_files(tmp_path, monkeypatch):
