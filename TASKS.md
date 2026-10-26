@@ -1,6 +1,6 @@
 # 当前任务
 
-- [ ] **ENTERPRISE-LOCAL-INTEGRATION-20261026** (@codex-root)：用户重新授权修复 Runtime 漏报与企业旧项目规则；候选 core1.1.49，保留上游1.1.48交接隔离修复。精确能力投影、开发/员工身份分离及企业服务路径已实现；定向246通过/1跳过，全套core940通过/77跳过。企业9仓库12活动工作树的16份规则/交接已备份并以仅docs提交FF迁移，运行服务未改。独立流程评估、正式PR/Release、双账号同步和单文件Runtime安装由root收尾，业务对接仍由企业开发AI完成。
+- [x] **ENTERPRISE-LOCAL-INTEGRATION-20261026 已发布、双账号同步并修复企业现场** (@codex-root)：PR98/main `120a2254`，PR/main CI 940通过/77跳过/1warning；core1.1.49/bundle52/Release423937379于15:02:05CST发布。11匿名资产、4latest、15selectors、原updater新装/48升级/CURRENT及legacy入口通过；两账号18路径备份/CAS限定同步及CURRENT49通过。161 Runtime投影于15:03:32安装，真实CLI与SaaS原始15项features完全一致，doctor与9业务健康通过，配置/容器未变；9仓库12活动工作树16文档已Git备份及FF修正。独立三系统流程评估通过；具体产品尺寸业务服务与真实页面验收仍由企业AI接续，未宣称已打通。见[最终交接](docs/handoff/2026-10-26_enterprise-local-integration.md#正式发布与安装结果)。
 
 - [x] **SHARED-OSS-VALIDATOR-20261025 已发布并双账号同步** (@codex-root)：PR95/main `e0d048b8`，PR/main CI均840通过/77跳过/1 warning，Windows/Linux定向各21通过。core1.1.47/bundle50、Release423318318于18:21:19 CST公开；十匿名资产、四latest、八selector、原updater新装/46升级/CURRENT及legacy入口通过。两账号各5路径备份/CAS同步、范围外保持及CURRENT47已核；未部署Runtime、改云权限或迁移文件。见[最终交接](docs/handoff/2026-10-25_shared-oss-validator.md#正式发布与同步结果)。
 
