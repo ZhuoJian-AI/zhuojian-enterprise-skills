@@ -76,6 +76,19 @@ known, validated protocol fields are printed, never credentials, model
 configuration or arbitrary response/error bodies. The command does not register,
 deploy or modify an application, host profile, release or credential.
 
+The validated projection includes the advertised integration plan, Runtime
+endpoint authorization, self-service discovery/recovery, workspace policy,
+initial application access and message-delivery contracts. Integration plans
+describe **event configuration only**; they do not supply an Excel transfer or
+business import service. Optional feature absence means "not advertised", not
+an explicit denial or a restriction on authorized enterprise development.
+`capabilityProjection.revision=2` identifies this projection. If SaaS advertises
+unknown features, `complete=false` and `unrecognizedFeatureCount` make the
+omission visible without printing unknown names or payloads. Update the helper
+or inspect the authenticated contract before concluding that a feature is
+absent. A known feature with an incompatible version/contract fails as unknown
+instead of silently becoming `supported=false`.
+
 The response describes implementation support, **not** enterprise enablement,
 employee authorization, live subsystem availability or completed business
 acceptance. The employee-session endpoint and current host Bridge still have to
@@ -83,8 +96,10 @@ authorize/negotiate each use. Background delegation and unattended execution are
 explicitly unsupported in this protocol. HTTP 404, denied/revoked credentials,
 unreachable services and unknown response versions fail with a nonzero exit;
 they must not be reported as verified support. Older installed host tools need
-an administrator-controlled helper upgrade before this command exists; updating
-the development Skill alone does not update an ECS host.
+a helper upgrade by an authorized root maintainer; updating the development
+Skill alone does not update an ECS host. The enterprise's authorized development
+AI can perform that upgrade on its own server; SaaS main-server access is not
+required.
 
 `deploy` and `rollback` close the matching SaaS release before switching the
 container and return `awaiting_platform_registration`. Run

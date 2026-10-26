@@ -8,7 +8,7 @@
 - 助手需要理解办理流程时，从真实代码与已确认业务事实提取可选 aiSemantics.workflowGuides，绑定真实页面/Action、前提、完成证据和异常；不是把 docs/ai-delivery.json 上线执行，也不凭说明断言当前阶段。当前页提醒仅在平台真实支持、员工开启、页面可见且登记合法 proactiveCheck 时调用只读 query；参数固定 context，返回显式 assistantCheck，不调用模型、不创建 Run/不写业务；保留旧版本与人工入口。完整边界按 builder 的 assistant-workflow-guidance.md。
 - 页面可打开、Action 获权与记录归属分开校验。公共读取仅返回当前企业已发布内容，本人操作绑定可信用户 ID，管理查询按同名 actionDataScopes；不按姓名认领历史记录，不以非全企业范围为由拒绝整页。permissionPolicy 必须与真实实现一致，既有未声明操作保留旧范围。
 - 显示名可空，不能阻断获权本人表单。业务名单只存参与/分组等状态；需要选人的 create/update 才声明 employeeDirectory，后端用 platform_employee_directory 搜索并在保存时精确 resolve，不接受手输任意平台 ID 或姓名认领。历史身份修复须核查全部业务引用、条件事务及积分/快照不变，按 builder 的 employee-identity.md 验收。
-- 业务对象由明确的权威服务保存；同应用模块复用同一业务服务，独立应用按真实需求选择获权API/Action或版本化事件，不直连另一业务数据库。配置与整链验收按builder的cross-system-integration.md及multi-system-integration.md，由AI使用已初始化Runtime完成，不要求负责人操作平台管理员前端。
+- 业务对象由明确的权威服务保存；企业内同步服务、文件原件交付和结果回读可由已获权root开发AI自行实现及配置，按builder的intra-enterprise-service-integration.md选择专用服务/API、获权Action或事件，不要求SaaS为企业业务新增接口，也不直写另一应用数据库。员工入口检查当前权限，机器调用使用独立受限身份；已被当前业务授权纠正的旧“跨模块只能事件”约束须同步修订并提交Git。配置与整链验收按builder的cross-system-integration.md及multi-system-integration.md完成，不要求负责人操作平台管理员前端。
 - 同企业可信开发AI可使用root，先登记任务并创建独立Git worktree，发布固定提交且核对当前线上基线，避免混入另一负责人的未提交改动。Git和业务数据/私有配置分开管理，变更前生成可验证恢复点，并按Runtime实际能力备份到共享OSS本企业前缀；root不改变员工业务角色。
 - 修改、审批和删除要求 `expectedVersion`；Action 的 `requestId` 必须满足模板 schema，并绑定用户、参数和版本，业务提交、Outbox、确认消费与幂等结果必须同事务完成。
 - 页面高风险按钮与平台 Action 共用服务端确认校验；必须检查一次性 `confirmationId`、确认人、五分钟时效和规范 JSON 参数哈希。文件删除也不得提供绕过该流程的裸路由。
@@ -30,7 +30,7 @@
 - 本地预览和真实页面验收分别覆盖电脑端、手机端的关键流程及独立/嵌入模式，保存截图、浏览器/视口、结果和未测项；按 builder 的 platform-contract.md 双端矩阵执行。浏览器模拟不等于真机，任一端关键操作失败不得报告交付完成。
 - 处理 `zhuojian:refresh` 时只重新读取当前模块数据并返回同请求号的 `zhuojian:refresh-result`；必须校验父窗口、Origin、应用、模块、页面和 `launch_nonce`，合并并发刷新，存在未保存编辑时返回 `deferred`，禁止整页刷新。
 - 完整 SSO claims 只存服务端 `browser_sessions`；浏览器业务读取和页面 Action 逐次调用 SaaS session-check。平台机器 Action 使用 SaaS 当前授权后签发的短期 JWT，子系统复验签名、期限、资源和范围；两条链分别验收撤权，不把静态 HTML 加载或本地签名测试算作实时授权通过。
-- 新增或保留旧 REST、直链、下载等业务入口时也执行同一授权；本地密码/旧 Cookie 不能绕过或在 SaaS 故障时回退放行。操作者从可信 sub 写入，不能使用客户端 createdBy 或被选负责人替换。按 builder 的 identity-acceptance.md 盘点入口并测试实际路由、业务回读、电脑/手机表单，模板与技术预检通过不能代替本系统验收；遗留失败/未测项写入任务及交接。
+- 新增或保留员工 REST、直链、下载等业务入口时也执行同一员工授权；本地密码/旧 Cookie 不能绕过或在 SaaS 故障时回退放行。员工操作者从可信 sub 写入，不接受客户端 createdBy 或被选负责人替换。企业服务专用路由另校验已实现的机器委托和业务范围，机器主体与来源员工分开留痕，不伪装成员工会话。按 builder 的 identity-acceptance.md 盘点并实测各类入口，模板与技术预检通过不能代替本系统验收；遗留失败/未测项写入任务及交接。
 - 通用 create/update 禁止直接写 `status` 等受控状态；审批、删除和其他状态迁移只能走对应 Action，其中审批和删除不得取消确认。
 - 不删除已有数据卷；变更前后运行单元测试、协议验证和浏览器冒烟。
 - 不把业务值拼入 `innerHTML`；使用 DOM 节点和 `textContent`。运行 Uvicorn 时关闭 access log，避免一次性 SSO ticket 进入查询字符串日志。

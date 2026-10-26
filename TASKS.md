@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **ENTERPRISE-LOCAL-INTEGRATION-20261026** (@codex-root)：用户重新授权修复 Runtime 漏报与企业旧项目规则；候选 core1.1.49，保留上游1.1.48交接隔离修复。精确能力投影、开发/员工身份分离及企业服务路径已实现；定向246通过/1跳过，全套core940通过/77跳过。企业9仓库12活动工作树的16份规则/交接已备份并以仅docs提交FF迁移，运行服务未改。独立流程评估、正式PR/Release、双账号同步和单文件Runtime安装由root收尾，业务对接仍由企业开发AI完成。
+
 - [x] **SHARED-OSS-VALIDATOR-20261025 已发布并双账号同步** (@codex-root)：PR95/main `e0d048b8`，PR/main CI均840通过/77跳过/1 warning，Windows/Linux定向各21通过。core1.1.47/bundle50、Release423318318于18:21:19 CST公开；十匿名资产、四latest、八selector、原updater新装/46升级/CURRENT及legacy入口通过。两账号各5路径备份/CAS同步、范围外保持及CURRENT47已核；未部署Runtime、改云权限或迁移文件。见[最终交接](docs/handoff/2026-10-25_shared-oss-validator.md#正式发布与同步结果)。
 
 - [x] **GATEWAY-RUNTIME-PROFILE-COMPAT-20261025 已随 Skill 发布并同步，企业网关未安装** (@fix_platform_self_service)：旧 0640/0644 非敏感 Runtime metadata 兼容修复随 PR93/main `343d578`、core1.1.46/bundle49 交付；真实 OSS 凭据仍要求 0600。Linux 增量及正式 CI 通过，不修改企业档案或部署网关。见[本轮发布交接](docs/handoff/2026-10-25_multi-owner-self-service.md#实际发布与个人同步)。

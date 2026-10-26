@@ -73,6 +73,70 @@ def capability_payload():
     }
 
 
+def projected_payload(*, unrecognized_features=0):
+    return {
+        **capability_payload(),
+        "capabilityProjection": {
+            "revision": 2,
+            "complete": unrecognized_features == 0,
+            "unrecognizedFeatureCount": unrecognized_features,
+            "missingFeatureMeaning": "not-advertised",
+        },
+    }
+
+
+def current_publisher_features():
+    # Public GET /ecs-publisher/platform-capabilities contracts, including the
+    # exact event-only scope. These are input fixtures, not assumed local grants.
+    return {
+        "integrationPlans": {
+            "supported": True, "version": 1,
+            "endpoint": "/api/v1/ecs-publisher/integration-plans",
+            "authentication": "original-runtime-credential",
+            "requiresEnterpriseAdministratorApproval": True,
+            "scope": "exact-event-configuration-only",
+            "businessCompletion": "saved-target-receipts-only",
+        },
+        "integrationPlanRuntimeAuthorization": {
+            "supported": True, "version": 1,
+            "authorizationMode": "runtime_endpoints",
+            "authority": "runtime-owned-app-configuration",
+            "allParticipantRuntimesRequired": True,
+            "requiresAdministratorSession": False,
+            "endpoint": "/api/v1/ecs-publisher/integration-plans",
+        },
+        "integrationPlanSelfService": {
+            "supported": True, "version": 1,
+            "contractProjectionRevision": 2,
+            "discoveryEndpoint": "/api/v1/ecs-publisher/integration-plans/discovery",
+            "recoveryEndpoint": "/api/v1/ecs-publisher/integration-plans/{plan_id}/recovery",
+            "recoveryScope": "original-plan-event-window",
+            "routeDiscoveryEndpoint": "/api/v1/ecs-publisher/integration-plans/routes",
+            "exactActiveRouteAdoption": True,
+            "requiresAdministratorSession": False,
+        },
+        "workspaceAuthorization": {
+            "supported": True, "version": 1,
+            "policyMode": "workspaces", "defaultDepartment": "account",
+            "roleDepartments": "additional", "actionScope": "granting-role-only",
+            "scopeWire": "department_ids",
+        },
+        "initialApplicationAccess": {
+            "supported": True, "version": 1,
+            "policies": ["runtime_developer", "disabled"],
+            "scope": "new-application-only", "disabledSuppressesAutomaticGrants": True,
+        },
+        "messageDelivery": {
+            "supported": True, "version": 1,
+            "authentication": "subsystem-sso-client-and-current-employee",
+            "endpoint": "/api/v1/subsystem-sso/messages",
+            "requiresConfirmedAction": True,
+            "mode": "immutable-preview-confirm-submit",
+            "channels": ["dingtalk"], "unknownOutcomeRetry": False,
+        },
+    }
+
+
 @pytest.fixture
 def dependencies():
     profile = {"platform": {"baseUrl": "https://Portal.Example.com/"}}
@@ -104,7 +168,7 @@ def read(dependencies):
 
 
 def test_fixed_direct_get_uses_existing_credential_without_local_mutations(dependencies):
-    assert read(dependencies) == capability_payload()
+    assert read(dependencies) == projected_payload()
     request = dependencies.opener.open.call_args.args[0]
     assert request.full_url == "https://portal.example.com/api/v1/ecs-publisher/platform-capabilities"
     assert request.get_method() == "GET"
@@ -126,7 +190,7 @@ def test_output_projects_whitelist_including_nested_fields(dependencies):
     payload["features"]["assistantSuggestions"]["modelKey"] = SECRET
     payload["features"]["assistantWorkflowGuidance"]["modelKey"] = SECRET
     dependencies.response.read.return_value = json.dumps(payload).encode()
-    assert read(dependencies) == capability_payload()
+    assert read(dependencies) == projected_payload(unrecognized_features=1)
 
 
 @pytest.mark.parametrize("status", [204, 302, 403])
@@ -289,7 +353,7 @@ def test_cli_success_prints_only_the_sanitized_response(dependencies, capsys):
     with mock.patch.object(runtime, "PATHS", dependencies.paths):
         assert runtime.main(["platform-capabilities"]) == 0
     captured = capsys.readouterr()
-    assert json.loads(captured.out) == capability_payload()
+    assert json.loads(captured.out) == projected_payload()
     assert captured.err == ""
     assert SECRET not in captured.out
 
@@ -311,7 +375,10 @@ def test_missing_or_explicitly_unsupported_suggestions_do_not_break_old_backend(
         payload["features"]["assistantSuggestions"] = declaration
     dependencies.response.read.return_value = json.dumps(payload).encode()
     result = read(dependencies)
-    assert result["features"]["assistantSuggestions"] == {"supported": False}
+    if declaration is None:
+        assert "assistantSuggestions" not in result["features"]
+    else:
+        assert result["features"]["assistantSuggestions"] == {"supported": False}
     assert result["features"]["assistantEntry"]["mode"] == "draft-only"
 
 
@@ -333,7 +400,10 @@ def test_old_backend_does_not_invent_workflow_support(dependencies, declaration)
         payload["features"]["assistantWorkflowGuidance"] = declaration
     dependencies.response.read.return_value = json.dumps(payload).encode()
     result = read(dependencies)
-    assert result["features"]["assistantWorkflowGuidance"] == {"supported": False}
+    if declaration is None:
+        assert "assistantWorkflowGuidance" not in result["features"]
+    else:
+        assert result["features"]["assistantWorkflowGuidance"] == {"supported": False}
     assert result["features"]["assistantEntry"]["mode"] == "draft-only"
 
 
@@ -351,8 +421,8 @@ def test_legacy_backend_without_either_optional_feature_keeps_original_capabilit
     del payload["features"]["assistantWorkflowGuidance"]
     del payload["features"]["assistantSuggestions"]
     result = runtime.sanitized_platform_capabilities(payload)
-    assert result["features"]["assistantWorkflowGuidance"] == {"supported": False}
-    assert result["features"]["assistantSuggestions"] == {"supported": False}
+    assert "assistantWorkflowGuidance" not in result["features"]
+    assert "assistantSuggestions" not in result["features"]
     assert result["supportedContractRevisions"] == ["2.4", "2.5"]
 
 
@@ -364,7 +434,10 @@ def test_old_backend_does_not_invent_employee_directory_support(declaration):
     else:
         payload["features"]["employeeDirectory"] = declaration
     result = runtime.sanitized_platform_capabilities(payload)
-    assert result["features"]["employeeDirectory"] == {"supported": False}
+    if declaration is None:
+        assert "employeeDirectory" not in result["features"]
+    else:
+        assert result["features"]["employeeDirectory"] == {"supported": False}
 
 
 @pytest.mark.parametrize("declaration", [None, [], {}, {"supported": True}, {"supported": 1}])
@@ -373,3 +446,119 @@ def test_invalid_employee_directory_feature_is_unknown(declaration):
     payload["features"]["employeeDirectory"] = declaration
     with pytest.raises(runtime.AdminError, match="unknown"):
         runtime.sanitized_platform_capabilities(payload)
+
+
+def test_current_publisher_contracts_survive_the_real_command_path(dependencies, capsys):
+    payload = capability_payload()
+    publisher = current_publisher_features()
+    payload["features"].update(publisher)
+    dependencies.response.read.return_value = json.dumps(payload).encode()
+    with mock.patch.object(runtime, "PATHS", dependencies.paths):
+        assert runtime.main(["platform-capabilities"]) == 0
+    captured = capsys.readouterr()
+    result = json.loads(captured.out)
+    assert captured.err == ""
+    assert result["features"] == payload["features"]
+    assert result["capabilityProjection"]["complete"] is True
+    assert result["features"]["integrationPlans"]["scope"] == "exact-event-configuration-only"
+    assert result["features"]["integrationPlanRuntimeAuthorization"]["requiresAdministratorSession"] is False
+    assert result["features"]["backgroundDelegation"]["supported"] is False
+
+
+def test_known_future_version_fails_command_as_unknown_without_printing_partial_support(dependencies, capsys):
+    payload = capability_payload()
+    payload["features"].update(current_publisher_features())
+    payload["features"]["integrationPlans"].update(version=2, diagnostics=SECRET)
+    dependencies.response.read.return_value = json.dumps(payload).encode()
+    with mock.patch.object(runtime, "PATHS", dependencies.paths):
+        assert runtime.main(["platform-capabilities"]) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "unknown" in captured.err
+    assert SECRET not in captured.err
+
+
+@pytest.mark.parametrize("declaration", [None, [], {}, {"supported": 1}])
+def test_present_but_invalid_origin_registration_is_not_silently_dropped(declaration):
+    payload = capability_payload()
+    payload["features"]["registeredApplicationOriginRegistration"] = declaration
+    with pytest.raises(runtime.AdminError, match="unknown"):
+        runtime.sanitized_platform_capabilities(payload)
+
+
+def test_disabled_origin_registration_is_projected_without_private_fields():
+    payload = capability_payload()
+    payload["features"]["registeredApplicationOriginRegistration"] = {"supported": False, "secret": SECRET}
+    result = runtime.sanitized_platform_capabilities(payload)
+    assert result["features"]["registeredApplicationOriginRegistration"] == {"supported": False}
+    assert SECRET not in json.dumps(result)
+
+
+@pytest.mark.parametrize("name", current_publisher_features())
+def test_absent_additive_features_are_not_reported_as_disabled(name):
+    result = runtime.sanitized_platform_capabilities(capability_payload())
+    assert name not in result["features"]
+    assert result["capabilityProjection"]["missingFeatureMeaning"] == "not-advertised"
+
+
+@pytest.mark.parametrize("name", current_publisher_features())
+def test_explicitly_disabled_additive_feature_stays_disabled_without_arbitrary_fields(name):
+    payload = capability_payload()
+    payload["features"][name] = {"supported": False, "diagnostics": SECRET}
+    result = runtime.sanitized_platform_capabilities(payload)
+    assert result["features"][name] == {"supported": False}
+    assert SECRET not in json.dumps(result)
+
+
+@pytest.mark.parametrize("name", current_publisher_features())
+@pytest.mark.parametrize("declaration", [None, [], {}, {"supported": 1}, {"supported": True}])
+def test_incomplete_additive_declaration_fails_unknown_without_claiming_absence(name, declaration):
+    payload = capability_payload()
+    payload["features"][name] = declaration
+    with pytest.raises(runtime.AdminError, match="unknown"):
+        runtime.sanitized_platform_capabilities(payload)
+
+
+@pytest.mark.parametrize("name,key", [
+    (name, key) for name, feature in current_publisher_features().items() for key in feature
+])
+def test_altered_additive_contract_is_rejected_and_redacted(name, key):
+    payload = capability_payload()
+    payload["features"].update(current_publisher_features())
+    payload["features"][name][key] = SECRET
+    with pytest.raises(runtime.AdminError, match="unknown") as caught:
+        runtime.sanitized_platform_capabilities(payload)
+    assert SECRET not in str(caught.value)
+
+
+@pytest.mark.parametrize("name", current_publisher_features())
+def test_future_additive_feature_version_is_unknown_not_disabled(name):
+    payload = capability_payload()
+    payload["features"].update(current_publisher_features())
+    payload["features"][name]["version"] = 2
+    with pytest.raises(runtime.AdminError, match="unknown"):
+        runtime.sanitized_platform_capabilities(payload)
+
+
+def test_new_unknown_feature_marks_projection_incomplete_without_leaking_names_or_bodies():
+    payload = capability_payload()
+    payload["features"][SECRET] = {"supported": True, "endpoint": SECRET, "token": SECRET}
+    result = runtime.sanitized_platform_capabilities(payload)
+    assert result == projected_payload(unrecognized_features=1)
+    assert SECRET not in json.dumps(result)
+
+
+def test_additive_known_fields_are_copied_without_sharing_lists_or_extra_private_fields():
+    payload = capability_payload()
+    payload["features"].update(current_publisher_features())
+    for feature in payload["features"].values():
+        feature["credential"] = SECRET
+    before = copy.deepcopy(payload)
+    result = runtime.sanitized_platform_capabilities(payload)
+    assert SECRET not in json.dumps(result)
+    result["features"]["initialApplicationAccess"]["policies"].append("changed")
+    result["features"]["messageDelivery"]["channels"].append("changed")
+    assert payload == before
+    fresh = runtime.sanitized_platform_capabilities(before)
+    assert fresh["features"]["initialApplicationAccess"]["policies"] == ["runtime_developer", "disabled"]
+    assert fresh["features"]["messageDelivery"]["channels"] == ["dingtalk"]
