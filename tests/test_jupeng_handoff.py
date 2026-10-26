@@ -1,0 +1,22 @@
+"""Shared-host tenant selection and public handoff packaging."""
+import json,pathlib,sys,tempfile,unittest
+ROOT=pathlib.Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT/'scripts'))
+sys.path.insert(0,str(ROOT/'skills/core/zhuojian-subsystem-builder/scripts'))
+import build_release
+import update_managed_skills as updater
+
+class JupengHandoffTests(unittest.TestCase):
+ def test_shared_ip_respects_known_tenant_and_runtime(self):
+  with tempfile.TemporaryDirectory() as td:
+   target=pathlib.Path(td);catalog=json.loads((ROOT/'catalog.json').read_text());entries={}
+   for name in ('zhuojian-subsystem-builder','zhuojian-shared-runtime-handover','jupeng-readonly-runtime-handover'):
+    entry,_=build_release.package_skill(ROOT,target,name=name,source=catalog['skills'][name],tag='local-test-only')
+    entry['archiveUrl']=(target/(name+'-'+entry['skillVersion']+'.zip')).as_uri();entries[name]=entry
+   cp=target/'catalog.json';cp.write_text(json.dumps({'schemaVersion':1,'channel':'stable','repository':updater.REPOSITORY,'skills':entries}))
+   for label,args,expected in [('jupeng-runtime',['--enterprise-key','jupeng','--runtime-id','jupeng-hz-shared-01','--host','47.114.61.74'],{'jupeng-readonly-runtime-handover'}),('jupeng-host',['--enterprise-key','jupeng','--host','47.114.61.74'],{'jupeng-readonly-runtime-handover'}),('zhuojian-host',['--enterprise-key','zhuojian','--host','47.114.61.74'],{'zhuojian-shared-runtime-handover'}),('unknown-runtime',['--enterprise-key','jupeng','--runtime-id','unknown','--host','47.114.61.74'],set())]:
+    out=target/label
+    self.assertEqual(updater.main(['--catalog-url',cp.as_uri(),'--allow-test-url','--skills-dir',str(out),'resolve',*args]),0)
+    self.assertEqual({p.name for p in out.iterdir() if p.is_dir() and not p.name.startswith('.')} if out.exists() else set(),expected)
+
+if __name__=='__main__':unittest.main()

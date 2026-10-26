@@ -1,10 +1,10 @@
 name: Company handoff checks
 on:
   pull_request:
-    paths: ['catalog.json', 'skills/companies/**', 'tests/test_zhuojian_handoff.py', '.github/workflows/handoff-ci.yml']
+    paths: ['catalog.json', 'skills/companies/**', 'tests/test_zhuojian_handoff.py', 'tests/test_jupeng_handoff.py', '.github/workflows/handoff-ci.yml']
   push:
     branches: [main]
-    paths: ['catalog.json', 'skills/companies/**', 'tests/test_zhuojian_handoff.py', '.github/workflows/handoff-ci.yml']
+    paths: ['catalog.json', 'skills/companies/**', 'tests/test_zhuojian_handoff.py', 'tests/test_jupeng_handoff.py', '.github/workflows/handoff-ci.yml']
 permissions:
   contents: read
 jobs:
