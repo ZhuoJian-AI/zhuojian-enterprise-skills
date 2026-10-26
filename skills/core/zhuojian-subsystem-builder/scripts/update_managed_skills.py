@@ -400,8 +400,14 @@ def release_matches(
 ) -> bool:
     if release.kind != "handoff":
         return False
+    # Multiple enterprises may share one host. Known tenant/runtime identity
+    # must not be overridden by an IP fallback belonging to a different one.
+    if enterprise_key and release.enterprise_keys and enterprise_key not in release.enterprise_keys:
+        return False
     if runtime_id and runtime_id in release.runtime_ids:
         return True
+    if runtime_id and release.runtime_ids:
+        return False
     if host and host in release.hosts:
         return True
     has_server_selector = bool(release.runtime_ids or release.hosts)
