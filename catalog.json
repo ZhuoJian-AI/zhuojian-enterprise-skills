@@ -5,9 +5,15 @@
     "zhuojian-shared-runtime-handover": {
       "path": "skills/companies/zhuojian/zhuojian-shared-runtime-handover",
       "kind": "handoff",
-      "enterpriseKeys": ["zhuojian"],
-      "runtimeIds": ["zhuojian-hz-shared-01"],
-      "hosts": ["47.114.61.74"]
+      "enterpriseKeys": [
+        "zhuojian"
+      ],
+      "runtimeIds": [
+        "zhuojian-hz-shared-01"
+      ],
+      "hosts": [
+        "47.114.61.74"
+      ]
     },
     "zhuojian-subsystem-builder": {
       "path": "skills/core/zhuojian-subsystem-builder",
@@ -30,7 +36,9 @@
         "alphabet",
         "aifabei"
       ],
-      "runtimeIds": ["aifabei-hk-01"],
+      "runtimeIds": [
+        "aifabei-hk-01"
+      ],
       "hosts": [
         "8.218.208.205",
         "47.97.90.161"
@@ -43,7 +51,9 @@
         "alphabet",
         "aifabei"
       ],
-      "runtimeIds": ["aifabei-hk-01"],
+      "runtimeIds": [
+        "aifabei-hk-01"
+      ],
       "hosts": [
         "47.243.48.78",
         "47.97.90.161"
@@ -63,6 +73,19 @@
         "8.218.208.205",
         "47.243.48.78",
         "47.97.90.161"
+      ]
+    },
+    "jupeng-readonly-runtime-handover": {
+      "path": "skills/companies/jupeng/jupeng-readonly-runtime-handover",
+      "kind": "handoff",
+      "enterpriseKeys": [
+        "jupeng"
+      ],
+      "runtimeIds": [
+        "jupeng-hz-shared-01"
+      ],
+      "hosts": [
+        "47.114.61.74"
       ]
     }
   }
