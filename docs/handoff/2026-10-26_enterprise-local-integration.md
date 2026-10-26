@@ -40,13 +40,7 @@ Skill 发布、Runtime 安装、旧项目规则迁移及业务服务上线分别
 
 本子任务检查：`quick_validate.py` 返回 `Skill is valid!`；11 个相关文档的 102 个本地链接目标均存在；`git diff --check` 通过。以上只证明文档结构及基本差异质量，不替代独立流程评估、Runtime 行为测试或真实业务验收。
 
-待主任务补充：
-
-- 实际测试命令、结果及未测项。
-- PR、合并提交、稳定版本和无登录安装/升级证据。
-- 两个本机账号的精确同步范围及冲突保留结果。
-- 目标 Runtime 单文件安装、能力字段/doctor 复查及恢复点。
-- 各旧企业项目规则/待办迁移提交；业务对接与页面验收仍按各企业任务结果报告。
+以下为主任务接续结果；先前子任务状态只作过程记录。
 
 ## 源码与旧项目迁移实测
 
@@ -55,3 +49,15 @@ Skill 发布、Runtime 安装、旧项目规则迁移及业务服务上线分别
 已对现役企业服务器9个仓库、12个活动开发工作树执行16个文档路径的迁移：12份 AGENTS 和4份两应用业务交接。先保存9份经 `git bundle verify` 校验的源码恢复包与逐文件 SHA，再由专用修复分支提交，仅在原工作树 HEAD、文件及 clean 状态未变化时 `merge --ff-only`。所有原分支名保留，工作树干净；业务代码、Manifest、员工权限、数据和运行容器保持本轮盘点基线。历史构建冻结工作树未改。两应用候选仍未实现完整服务链，不能将规则修复作为业务成功证据。
 
 Runtime 单文件修复安装前将核对现有文件与上游基线 `ac7941e593cc0466619027c7869226e63659b80b68a5d79c7737e2a2be2eba4b` 一致，备份后精确替换；不重跑初始化、不轮换登记凭据、不部署或重启业务应用。
+
+## 正式发布与安装结果
+
+- PR [#98](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/pull/98) 合并为 `120a2254bbec316f04f8fe563df0eba41ad32bc0`；PR CI `40282063749`、main CI `40282811162` 均成功。独立源码审查未发现阻断，隔离三系统流程评估选择企业服务 A→B→C 与明确机器委托，不要求 SaaS 主服务器或管理员 Token；该评估不冒充真实业务调用。
+- [bundle-v1.4.52](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/releases/tag/bundle-v1.4.52) / core **1.1.49** / Release `423937379` 于2026-10-26 **15:02:05 CST**正式公开。由干净合并源码构建，发布前核对11资产摘要与大小；公开后验证11匿名资产、4个latest入口、15个企业/Runtime选择器及原更新器新装、48→49、CURRENT、legacy新装/CURRENT。其他六个Skill ZIP与独立updater保留bundle51精确原字节。固定版本资产未覆盖；不宣称仓库启用了GitHub原生immutable设置。
+- `codex02`（48→49）与 `王鑫涛`（47→49）各18路径限定同步完成：逐账号基线核对、双方备份、全树CAS及新增文件no-overwrite通过，范围外文件保持；随后两账号原更新器均返回 `SKILL_UPDATE_CURRENT 1.1.49`。此处只声明本次scope与公开包字节一致；隔离新装另验证完整公开包，不将两种证据混为个人目录全包一致。
+- **47.97.90.161** 的单文件Runtime修复于 **15:03:32 CST** 验证完成；安装前原文件精确匹配上述基线，新文件SHA256为 `71a9f49f3a7c6176f47e664e7f7b5ceb742cce0cd9845c01d9e90410a44dc320`。CLI `capabilityProjection.revision=2`、`complete=true`、`unrecognizedFeatureCount=0`；全部14项features与同进程捕获的SaaS原始响应逐字段相等，三个integration特性真实声明为支持。`doctor.ok=true`，9个业务容器均healthy，容器ID/镜像ID及Runtime档案字节保持。
+- Runtime恢复副本位于主机备份 `runtime-projection-20261026T070331Z`；旧规则恢复副本位于 `enterprise-rules-repair-20261026T064558Z`，包含9份经verify校验的Git bundle和16份文档原件。原工作树均完成精确FF合并、原分支名保留且clean。商品360主树/候选修订提交分别为 `6a081259` / `48aee419`，中台主树/候选为 `6bf33a05` / `8db34fec`，只变更规则及交接。
+
+脱敏执行证据保存在本机 `audit-2026-10-26/enterprise-owner-authority/`，包括 `core-suite.log`、`rules-repair-result.json`、`runtime-install.stdout.txt`、独立流程评估与双账号同步回执；公开安装证据为同日 `r52pub/public.actual.json`，SHA256 `888f563ca7af3ecec8ddeccceb4e5ad9b7d890dba54edd34a31f191582325a46`。
+
+本次完成的是开发权限判断、工具与接续规则修复，没有部署两应用的新导入业务、修改员工角色或业务数据。后续企业Codex更新到1.1.49、重新读取服务器当前AGENTS与业务交接后，在已确认范围内实现接口、配置及真实端到端验收；不再把缺少平台Excel转发接口当作企业开发的必经前置。
