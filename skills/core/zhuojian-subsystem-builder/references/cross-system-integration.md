@@ -2,7 +2,7 @@
 
 适用于同一家公司多个业务负责人使用的应用或模块协同、移动上传入口或共享办理结果。默认在同一台已初始化的企业服务器上复用已有应用、模块和权威业务服务；同一应用的不同模块也适用。服务器位置不决定对接方式，负责人不同不代表需要新应用、新 Runtime 或事件路由。多 Runtime/跨机保留兼容流程，不作为默认业务步骤。本流程保持既有 2.4/2.5，不要求无关子系统升级。
 
-三个及以上应用/模块或“全部系统”的共同业务目标，必须同时按 [多系统对接与整条业务流程验收](multi-system-integration.md) 处理整体范围、计划拆分、已有关系复用、部分成功恢复与整链证据。本页接口仍逐个精确计划执行，负责人可在 Codex 一次确认完整业务清单，AI 负责将各项落实到相应获权 Runtime，无需逐项进入管理员前端。
+三个及以上应用/模块或“全部系统”的共同业务目标，必须同时按 [多系统对接与整条业务流程验收](multi-system-integration.md) 处理整体范围、实现拆分、已有关系复用、部分成功恢复与整链证据。负责人可在 Codex 一次确认完整业务清单；AI 自行实现企业服务及所需配置，只有选择平台事件的关系才逐个执行精确计划，无需逐项进入管理员前端。
 
 ## 先查真实链路，再分层实施
 
@@ -19,9 +19,9 @@
 | 进入已有页面、查看已存在的结果 | navigation Bridge、已有获权查询或页面复用 | 不需要 |
 | 同一应用内多个模块复用规则/操作 | 同一业务服务，分别保持模块与动作权限 | 通常不需要 |
 | 独立应用复用同一业务功能并立即取得结果 | 复用或由企业 AI 实现专用业务服务/API，配置真实调用身份；权威业务服务保存一次 | 不因跨应用自动需要 |
-| 独立消费、异步处理或需排队重试 | 版本化事件、真实消费者及结果查询/回执 | 需要平台精确事件配置时使用 |
+| 独立消费、异步处理或需排队重试 | 企业服务队列或版本化事件，真实消费者及结果查询/回执 | 仅选用平台投递时需要 |
 
-同企业已获权开发的同步服务、原件交付与最终回读，先按 [企业服内业务服务对接](intra-enterprise-service-integration.md) 在企业项目实现并配置；没有现成接口是开发工作，不自动等于企业 AI 无权开发。核对旧项目 AGENTS，按当前业务授权修正“跨模块只能使用事件”等已不适用限制并保存 Git；不能仅更新 Skill 后保留旧架构阻断。现有集成计划 API 仅配置精确事件关系，不是任意跨应用 API 调用或业务角色授权。每条实际调用须有真实 Manifest/服务绑定、载荷与文件访问方式、可信操作者或明确机器委托、版本、幂等、失败和结果设计。不得直连另一业务数据库、共享应用密钥、以 Runtime/root 身份冒充员工，或虚构平台尚未实现的调用接口。使用平台事件时，来源必须声明 publishes、目标模块明确 subscribes，事件应带目标真正可处理的数据或受控文件引用。只有名称/版本的“已保存”摘要不能冒充可导入文件；不能复用用户临时下载链接、跨应用长期文件密钥或未获权对象来补数据通道；可由企业 AI 实现绑定精确文件/版本/目标/用途的专用文件委托，须有真实代码、配置及负例验证，不把它冒充已有 SaaS 文件接口。
+同企业已获权开发的同步服务、原件交付与最终回读，先按 [企业服务器内业务服务对接](intra-enterprise-service-integration.md) 在企业项目实现并配置；没有现成接口是开发工作，不自动等于企业 AI 无权开发。核对旧项目 AGENTS，按当前业务授权修正“跨模块只能使用事件”等已不适用限制并保存 Git；不能仅更新 Skill 后保留旧架构阻断。现有集成计划 API 仅配置精确事件关系，不是任意跨应用 API 调用或业务角色授权。每条实际调用须有真实 Manifest/服务绑定、载荷与文件访问方式、可信操作者或明确机器委托、版本、幂等、失败和结果设计。不得直连另一业务数据库、共享应用密钥、以 Runtime/root 身份冒充员工，或虚构平台尚未实现的调用接口。使用平台事件时，来源必须声明 publishes、目标模块明确 subscribes，事件应带目标真正可处理的数据或受控文件引用。只有名称/版本的“已保存”摘要不能冒充可导入文件；不能复用用户临时下载链接、跨应用长期文件密钥或未获权对象来补数据通道；可由企业 AI 实现绑定精确文件/版本/目标/用途的专用文件委托，须有真实代码、配置及负例验证，不把它冒充已有 SaaS 文件接口。
 
 ## 业务处理和最终结果必须先做实
 
@@ -55,11 +55,17 @@
 
 合法企业管理员也可通过既有后台自愿批准新模式计划，作为独立的较高授权，不要求再凑齐机器确认。此时Read明确 `authorization_authority=enterprise_administrator`，不冒称Runtime quorum已齐，CLI不再POST确认、由原申请Runtime按当前version应用。管理员只能保留或收窄原共同deadline；若平台因此重新生成授权摘要，旧摘要和机器确认不能冒用。该入口可选，不是Codex流程的前置条件。
 
-先判断缺失能力是否是所选路径的必要依赖。企业服内专用服务不以平台事件、平台跨应用文件或任意特性字段为默认前置；开发 AI 在已有服务器授权内继续实现、配置、部署和验收该路径。只有已选择且不可替代的平台能力缺失、真实端点不在已有授权内，或业务范围尚待确认时，才阻断对应步骤；继续其余已获授权的开发、测试和交付，在各项目 `docs/ai-delivery.json` 及脱敏交接列出：确切缺口、责任层、已完成部分、计划标识/状态、所需本机Runtime及业务确认、验收条件和恢复下一步。未获权操作保持待执行，不泛称“找平台方开通”后结束全部工作。平台待办按 [业务提效设计与交付](business-ai-delivery.md) 提交，未提交不能称已受理。
+先判断缺失能力是否是所选路径的必要依赖。企业服务器内专用服务不以平台事件、平台跨应用文件或任意特性字段为默认前置；开发 AI 在已有服务器授权内继续实现、配置、部署和验收该路径。只有已选择且不可替代的平台能力缺失、真实端点不在已有授权内，或业务范围尚待确认时，才阻断对应步骤；继续其余已获授权的开发、测试和交付，在各项目 `docs/ai-delivery.json` 及脱敏交接列出：确切缺口、责任层、已完成部分、计划标识/状态、所需本机Runtime及业务确认、验收条件和恢复下一步。未获权操作保持待执行，不泛称“找平台方开通”后结束全部工作。平台待办按 [业务提效设计与交付](business-ai-delivery.md) 提交，未提交不能称已受理。
 
 ## 平台接口与 Runtime 命令
 
-脚本每轮先做一次获权 `platform-capabilities` 发现。基础操作须声明 `features.integrationPlans.supported=true/version=1`；新模式还须声明 `features.integrationPlanRuntimeAuthorization` 的supported=true、version=1、authorizationMode=runtime_endpoints、authority=runtime-owned-app-configuration、allParticipantRuntimesRequired=true、requiresAdministratorSession=false。目标接口须真实可用，返回的任意URL不作为脚本可执行目标。旧能力 `integrationPlans.requiresEnterpriseAdministratorApproval=true` 仅描述兼容管理员模式，不能据它否认或推断新委托支持。Skill发布不证明SaaS已经部署。
+脚本每轮先做一次获权 `platform-capabilities` 发现。基础操作须声明 `features.integrationPlans.supported=true/version=1`；新模式还须声明 `features.integrationPlanRuntimeAuthorization` 的supported=true、version=1、authorizationMode=runtime_endpoints、authority=runtime-owned-app-configuration、allParticipantRuntimesRequired=true、requiresAdministratorSession=false。目标接口须真实可用，返回的任意URL不作为脚本可执行目标。旧能力 `integrationPlans.requiresEnterpriseAdministratorApproval=true` 仅描述兼容管理员模式，不能据它否认新委托支持或要求新模式再找管理员；按实际所选 `authorizationMode` 核权。顶层 `requiresCurrentEmployeeAuthorization` 描述员工业务调用，不能读成所有 Runtime 技术配置均需员工登录。Skill发布不证明SaaS已经部署。
+
+### 能力漏报与本机 Runtime 更新
+
+`zhuojian-runtime platform-capabilities` 是本机 Runtime 对 SaaS 响应的安全投影；旧投影可能过滤新增字段。字段缺失先记为待核实，不直接宣称平台没有实现。需要事件时，可在同一 Runtime 用本 Skill 的 `integration_plan.py catalog` 只读核对；该脚本使用档案中的固定平台地址和本机登记凭据，直接检查 SaaS 能力。记录查询时间、环境、本机脚本版本及脱敏能力字段；不要输出凭据、原始失败正文或把 key 带回开发电脑。
+
+若直接能力检查支持而 CLI 漏报，核对已安装 `runtime_admin.py` 与当前稳定 Skill 的 Runtime 资产，按 [Runtime 安装与维护](admin-bootstrap.md#runtime-维护与能力投影) 修复本机投影并复查。保留当前配置、登记凭据、应用和备份，更新 Runtime 不重新初始化企业，也不等于业务服务已部署。若 SaaS 真实响应确实缺失必要能力，仅对应平台路径受阻；可在当前授权内实现的企业服务路径继续推进。
 
 提案、列表/request_id查找、apply和verification在原申请Runtime运行；参与端按计划ID查询保存的状态/回执，并在各自本机confirm/reject/revoke，不复制登记key到开发电脑、其他Runtime或命令参数。默认读取 `/etc/zhuojian/runtime.json` 中的 `platform.baseUrl` 与 `deployment.registrationCredentialRef`；文件引用由Runtime提供。平台origin必须HTTPS，脚本不跟随重定向、不输出失败响应正文。
 

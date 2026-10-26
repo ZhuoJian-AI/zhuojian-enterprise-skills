@@ -81,6 +81,59 @@ ORIGIN_REGISTRATION_CAPABILITY = {
     "crossRuntime": "inactive-same-organization-environment-healthy-replay",
     "preservesApplicationIdentity": True,
 }
+# Exact public contracts advertised by the SaaS publisher. Do not infer support
+# from the presence of this local definition or pass through arbitrary fields.
+ADDITIONAL_PLATFORM_CAPABILITIES = {
+    "integrationPlans": {
+        "supported": True, "version": 1,
+        "endpoint": "/api/v1/ecs-publisher/integration-plans",
+        "authentication": "original-runtime-credential",
+        "requiresEnterpriseAdministratorApproval": True,
+        "scope": "exact-event-configuration-only",
+        "businessCompletion": "saved-target-receipts-only",
+    },
+    "integrationPlanRuntimeAuthorization": {
+        "supported": True, "version": 1,
+        "authorizationMode": "runtime_endpoints",
+        "authority": "runtime-owned-app-configuration",
+        "allParticipantRuntimesRequired": True,
+        "requiresAdministratorSession": False,
+        "endpoint": "/api/v1/ecs-publisher/integration-plans",
+    },
+    "integrationPlanSelfService": {
+        "supported": True, "version": 1,
+        "contractProjectionRevision": 2,
+        "discoveryEndpoint": "/api/v1/ecs-publisher/integration-plans/discovery",
+        "recoveryEndpoint": "/api/v1/ecs-publisher/integration-plans/{plan_id}/recovery",
+        "recoveryScope": "original-plan-event-window",
+        "routeDiscoveryEndpoint": "/api/v1/ecs-publisher/integration-plans/routes",
+        "exactActiveRouteAdoption": True,
+        "requiresAdministratorSession": False,
+    },
+    "workspaceAuthorization": {
+        "supported": True, "version": 1,
+        "policyMode": "workspaces",
+        "defaultDepartment": "account",
+        "roleDepartments": "additional",
+        "actionScope": "granting-role-only",
+        "scopeWire": "department_ids",
+    },
+    "initialApplicationAccess": {
+        "supported": True, "version": 1,
+        "policies": ["runtime_developer", "disabled"],
+        "scope": "new-application-only",
+        "disabledSuppressesAutomaticGrants": True,
+    },
+    "messageDelivery": {
+        "supported": True, "version": 1,
+        "authentication": "subsystem-sso-client-and-current-employee",
+        "endpoint": "/api/v1/subsystem-sso/messages",
+        "requiresConfirmedAction": True,
+        "mode": "immutable-preview-confirm-submit",
+        "channels": ["dingtalk"],
+        "unknownOutcomeRetry": False,
+    },
+}
 
 
 class AdminError(RuntimeError):
@@ -441,7 +494,7 @@ def sanitized_platform_capabilities(value: Any) -> dict[str, Any]:
             for key, required in suggestion_declaration.items():
                 if type(suggestions.get(key)) is not type(required) or suggestions[key] != required:
                     raise AdminError(invalid)
-    expected_features["assistantSuggestions"] = suggestion_declaration
+        expected_features["assistantSuggestions"] = suggestion_declaration
     workflow = features.get("assistantWorkflowGuidance")
     workflow_declaration = {"supported": False}
     if "assistantWorkflowGuidance" in features:
@@ -459,7 +512,7 @@ def sanitized_platform_capabilities(value: Any) -> dict[str, Any]:
             for key, required in workflow_declaration.items():
                 if type(workflow.get(key)) is not type(required) or workflow[key] != required:
                     raise AdminError(invalid)
-    expected_features["assistantWorkflowGuidance"] = workflow_declaration
+        expected_features["assistantWorkflowGuidance"] = workflow_declaration
     directory = features.get("employeeDirectory")
     directory_declaration = {"supported": False}
     if "employeeDirectory" in features:
@@ -477,15 +530,48 @@ def sanitized_platform_capabilities(value: Any) -> dict[str, Any]:
             for key, required in directory_declaration.items():
                 if type(directory.get(key)) is not type(required) or directory[key] != required:
                     raise AdminError(invalid)
-    expected_features["employeeDirectory"] = directory_declaration
+        expected_features["employeeDirectory"] = directory_declaration
     origin_registration = features.get("registeredApplicationOriginRegistration")
-    if origin_registration is not None:
-        if (not isinstance(origin_registration, dict)
-                or any(type(origin_registration.get(k)) is not type(v) or origin_registration[k] != v
-                       for k, v in ORIGIN_REGISTRATION_CAPABILITY.items())):
+    if "registeredApplicationOriginRegistration" in features:
+        if not isinstance(origin_registration, dict) or type(origin_registration.get("supported")) is not bool:
             raise AdminError(invalid)
-        expected_features["registeredApplicationOriginRegistration"] = dict(ORIGIN_REGISTRATION_CAPABILITY)
-    return {**expected, "supportedContractRevisions": sorted(revisions), "features": expected_features}
+        if origin_registration["supported"]:
+            if any(type(origin_registration.get(k)) is not type(v) or origin_registration[k] != v
+                   for k, v in ORIGIN_REGISTRATION_CAPABILITY.items()):
+                raise AdminError(invalid)
+            expected_features["registeredApplicationOriginRegistration"] = dict(ORIGIN_REGISTRATION_CAPABILITY)
+        else:
+            expected_features["registeredApplicationOriginRegistration"] = {"supported": False}
+    for name, declaration in ADDITIONAL_PLATFORM_CAPABILITIES.items():
+        # Missing is "not advertised", not an invented supported=false result.
+        if name not in features:
+            continue
+        feature = features[name]
+        if not isinstance(feature, dict) or type(feature.get("supported")) is not bool:
+            raise AdminError(invalid)
+        if not feature["supported"]:
+            expected_features[name] = {"supported": False}
+            continue
+        if any(type(feature.get(k)) is not type(v) or feature[k] != v
+               for k, v in declaration.items()):
+            raise AdminError(invalid)
+        expected_features[name] = copy.deepcopy(declaration)
+    known_names = set(expected_features) | set(ADDITIONAL_PLATFORM_CAPABILITIES) | {
+        "registeredApplicationOriginRegistration",
+        "assistantSuggestions", "assistantWorkflowGuidance", "employeeDirectory",
+    }
+    unrecognized_count = len(set(features) - known_names)
+    return {
+        **expected,
+        "supportedContractRevisions": sorted(revisions),
+        "features": expected_features,
+        "capabilityProjection": {
+            "revision": 2,
+            "complete": unrecognized_count == 0,
+            "unrecognizedFeatureCount": unrecognized_count,
+            "missingFeatureMeaning": "not-advertised",
+        },
+    }
 
 
 def cmd_platform_capabilities(_args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, Any]:

@@ -1,6 +1,6 @@
 # 当前任务
 
-- [ ] **ENTERPRISE-LOCAL-INTEGRATION-20261026** (@audit_skill_stops)：按同企业可信root开发授权修正企业服内业务对接流程；允许AI实现专用服务、文件委托与最终回读，分离开发身份与员工调用权限，移除平台事件唯一前置并修正旧项目AGENTS迁移指引。保持2.4/2.5，候选core1.1.48；只交源、验证与交接，根代理统一发布/同步/部署。
+- [ ] **ENTERPRISE-LOCAL-INTEGRATION-20261026** (@codex-root)：用户重新授权修复 Runtime 漏报与企业旧项目规则；候选 core1.1.49，保留上游1.1.48交接隔离修复。精确能力投影、开发/员工身份分离及企业服务路径已实现；定向246通过/1跳过，全套core940通过/77跳过。企业9仓库12活动工作树的16份规则/交接已备份并以仅docs提交FF迁移，运行服务未改。独立流程评估、正式PR/Release、双账号同步和单文件Runtime安装由root收尾，业务对接仍由企业开发AI完成。
 
 - [x] **SHARED-OSS-VALIDATOR-20261025 已发布并双账号同步** (@codex-root)：PR95/main `e0d048b8`，PR/main CI均840通过/77跳过/1 warning，Windows/Linux定向各21通过。core1.1.47/bundle50、Release423318318于18:21:19 CST公开；十匿名资产、四latest、八selector、原updater新装/46升级/CURRENT及legacy入口通过。两账号各5路径备份/CAS同步、范围外保持及CURRENT47已核；未部署Runtime、改云权限或迁移文件。见[最终交接](docs/handoff/2026-10-25_shared-oss-validator.md#正式发布与同步结果)。
 
