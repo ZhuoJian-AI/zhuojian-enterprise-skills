@@ -133,6 +133,7 @@ def snapshot_sqlite(source, destination, *, floor=FLOOR, timeout=180):
                 raise transport.BackupError('online database snapshot timed out')
             ensure_space(destination.parent, CHUNK, floor)
         incoming.backup(outgoing, pages=128, progress=progress, sleep=0.02)
+        outgoing.execute('PRAGMA journal_mode=DELETE')
     finally:
         outgoing.close(); incoming.close()
     os.chmod(destination, 0o600)
@@ -143,6 +144,56 @@ def snapshot_sqlite(source, destination, *, floor=FLOOR, timeout=180):
     sha, size = file_digest(destination)
     return {'sha256': sha, 'bytes': size, 'integrity_verified': True, 'foreign_keys_verified': True,
             'source_permissions':source_permissions(before)}
+
+
+CONTAINER_SQLITE_SCRIPT = r'''
+import os,sqlite3,stat,sys,tempfile,time
+from pathlib import Path
+source=Path(sys.argv[1]);limit=int(sys.argv[2]);info=source.lstat()
+assert source.is_absolute() and stat.S_ISREG(info.st_mode) and not source.is_symlink() and info.st_size<=limit
+with tempfile.TemporaryDirectory(prefix='zj-online-sqlite-',dir='/tmp') as temporary:
+ target=Path(temporary)/'snapshot.db'
+ incoming=sqlite3.connect(source.as_uri()+'?mode=ro',uri=True,timeout=2)
+ outgoing=sqlite3.connect(target);deadline=time.monotonic()+120
+ try:
+  incoming.execute('PRAGMA query_only=ON')
+  def progress(status,remaining,total):
+   if time.monotonic()>deadline:raise RuntimeError('snapshot deadline')
+  incoming.backup(outgoing,pages=128,progress=progress,sleep=.02)
+  outgoing.execute('PRAGMA journal_mode=DELETE')
+  assert outgoing.execute('PRAGMA integrity_check').fetchall()==[('ok',)]
+  assert outgoing.execute('PRAGMA foreign_key_check').fetchone() is None
+ finally:outgoing.close();incoming.close()
+ assert target.stat().st_size<=limit
+ with target.open('rb') as handle:
+  while block:=handle.read(1024*1024):sys.stdout.buffer.write(block)
+'''
+
+
+def snapshot_container_sqlite(container, identity, original_path, destination, *, floor=FLOOR, runner=subprocess.run):
+    """Snapshot in the source mount namespace; only an owned /tmp file is written.
+
+    SQLite canonicalizes /proc/PID/root magic links to the wrong root in some
+    containerd layouts. The fixed stdlib-only program avoids that ambiguity.
+    Binary DB bytes go directly to the private host staging file, never stdout.
+    """
+    source=Path('/proc')/str(identity['pid'])/'root'/original_path.lstrip('/')
+    before=plain_file(source)
+    maximum=64*1024**2
+    if before.st_size>maximum:raise transport.BackupError('container SQLite exceeds reviewed online snapshot bound')
+    destination.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
+    ensure_space(destination.parent,maximum,floor)
+    with destination.open('xb') as output:
+        os.chmod(destination,0o600)
+        result=runner(['docker','exec',container,'python','-I','-B','-c',CONTAINER_SQLITE_SCRIPT,original_path,str(maximum)],
+                      stdout=output,stderr=subprocess.PIPE,timeout=150)
+        output.flush();os.fsync(output.fileno())
+    if result.returncode:raise transport.BackupError('container online SQLite snapshot failed')
+    after=plain_file(source)
+    if (before.st_dev,before.st_ino)!=(after.st_dev,after.st_ino):
+        raise transport.BackupError('container SQLite source was replaced during snapshot')
+    verify_sqlite(destination);sha,size=file_digest(destination)
+    return {'sha256':sha,'bytes':size,'integrity_verified':True,'foreign_keys_verified':True,'source_permissions':source_permissions(before)}
 
 
 def tree_files(root):
@@ -368,7 +419,7 @@ def capture_one(profile, slug, app_plan, *, objects=None, runtime_helper=None, f
             source = Path('/proc')/str(identity['pid'])/'root'/primary_path.lstrip('/')
             member = 'container-data/' + relative_key(primary_path.lstrip('/'))
             target = root/member; target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-            files[member] = snapshot_sqlite(source, target, floor=floor)
+            files[member] = snapshot_container_sqlite(release['containerName'],identity,primary_path,target,floor=floor)
             databases.append({'member': member, 'primary': True, 'restore_target': primary_path})
             primary_member = member
         references = database_references(root/primary_member)
