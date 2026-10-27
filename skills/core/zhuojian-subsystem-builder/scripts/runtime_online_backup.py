@@ -78,6 +78,10 @@ def plain_file(path):
     return value
 
 
+def source_permissions(info):
+    return {'uid':info.st_uid,'gid':info.st_gid,'mode':stat.S_IMODE(info.st_mode)}
+
+
 def copy_stable(source, destination, *, floor=FLOOR):
     before = plain_file(source)
     destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -99,7 +103,7 @@ def copy_stable(source, destination, *, floor=FLOOR):
     # Detect an in-place rewrite even if a writer restores the timestamps.
     if file_digest(source) != (digest.hexdigest(), size):
         raise transport.BackupError('source content changed after copy')
-    return {'sha256': digest.hexdigest(), 'bytes': size}
+    return {'sha256': digest.hexdigest(), 'bytes': size,'source_permissions':source_permissions(before)}
 
 
 def verify_sqlite(path):
@@ -137,7 +141,8 @@ def snapshot_sqlite(source, destination, *, floor=FLOOR, timeout=180):
         raise transport.BackupError('database source was replaced during online backup')
     verify_sqlite(destination)
     sha, size = file_digest(destination)
-    return {'sha256': sha, 'bytes': size, 'integrity_verified': True, 'foreign_keys_verified': True}
+    return {'sha256': sha, 'bytes': size, 'integrity_verified': True, 'foreign_keys_verified': True,
+            'source_permissions':source_permissions(before)}
 
 
 def tree_files(root):
@@ -397,7 +402,7 @@ def capture_one(profile, slug, app_plan, *, objects=None, runtime_helper=None, f
             else:files[member]=copy_stable(source_path,target,floor=floor)
             configuration_targets[member]=str(source_path)
         if os.name=='posix' and app_plan.get('capture_container_layout',True):
-            layout_template='{"image_id":{{json .Image}},"image_reference":{{json .Config.Image}},"working_dir":{{json .Config.WorkingDir}},"entrypoint":{{json .Config.Entrypoint}},"command":{{json .Config.Cmd}},"mounts":{{json .Mounts}},"networks":{{json .NetworkSettings.Networks}},"port_bindings":{{json .HostConfig.PortBindings}},"restart_policy":{{json .HostConfig.RestartPolicy}}}'
+            layout_template='{"image_id":{{json .Image}},"image_reference":{{json .Config.Image}},"user":{{json .Config.User}},"working_dir":{{json .Config.WorkingDir}},"entrypoint":{{json .Config.Entrypoint}},"command":{{json .Config.Cmd}},"mounts":{{json .Mounts}},"networks":{{json .NetworkSettings.Networks}},"port_bindings":{{json .HostConfig.PortBindings}},"restart_policy":{{json .HostConfig.RestartPolicy}}}'
             layout=json.loads(run(['docker','inspect','--format',layout_template,release['containerName']]))
             transport.atomic_json(root/'config/container-layout.json',layout)
             sha,size=file_digest(root/'config/container-layout.json');files['config/container-layout.json']={'sha256':sha,'bytes':size}
@@ -411,6 +416,7 @@ def capture_one(profile, slug, app_plan, *, objects=None, runtime_helper=None, f
                     'environment':profile['environment'],'application_slug':slug,'captured_at':captured_at,'source_commit':commit,
                     'files':files,'databases':databases,'references':references,'source':source_proof,
                     'configuration_targets':configuration_targets,
+                    'data_root_permissions':source_permissions(data_root.stat()),
                     'oss_inventory_checked':objects is not None,'oss_object_count':len(inventory),'oss_object_bytes':sum(p['bytes'] for p in inventory.values()),
                     'limitations':['per_database_consistency','not_cross_database_atomic','external_sources_excluded','post_point_writes_excluded']}
         verify_contents(root, manifest)
