@@ -32,6 +32,8 @@ pins=json.loads(private(ROOT/'pins.json'))
 for name,expected in pins['wrappers'].items():
  p=Path('/usr/local/sbin')/name;s=p.lstat();assert stat.S_ISREG(s.st_mode) and s.st_uid==0 and not p.is_symlink() and s.st_mode&0o022==0
  assert hashlib.sha256(p.read_bytes()).hexdigest()==expected
+for name,expected in pins['modules'].items():
+ assert hashlib.sha256(private(Path(name))).hexdigest()==expected
 plan_raw=private(Path('/etc/zhuojian/backup-online-plan.json'));assert hashlib.sha256(plan_raw).hexdigest()==pins['plan_sha256']
 plan=json.loads(plan_raw);profile=json.loads(Path('/etc/zhuojian/runtime.json').read_bytes())
 assert plan['organizationId']==profile['organizationId']==ORG and plan['runtimeId']==profile['runtimeId']=='aifabei-hk-01' and plan['environment']==profile['environment']=='staging'
@@ -169,7 +171,10 @@ def main():
     import sys
     sys.path.insert(0,str(Path(wrapper[3]).parent));import runtime_backup_oss as t
     plan_path=Path('/etc/zhuojian/backup-online-plan.json');plan_raw=regular(plan_path,True);plan=json.loads(plan_raw)
-    pins={'plan_sha256':hashlib.sha256(plan_raw).hexdigest(),'wrappers':{n:hashlib.sha256(regular(Path('/usr/local/sbin')/n)).hexdigest() for n in ['zhuojian-online-backup','zhuojian-backup-oss','zhuojian-recovery-evidence']}}
+    module_root=Path(wrapper[3]).parent
+    pins={'plan_sha256':hashlib.sha256(plan_raw).hexdigest(),
+          'wrappers':{n:hashlib.sha256(regular(Path('/usr/local/sbin')/n)).hexdigest() for n in ['zhuojian-online-backup','zhuojian-backup-oss','zhuojian-recovery-evidence']},
+          'modules':{str(module_root/n):hashlib.sha256(regular(module_root/n,True)).hexdigest() for n in ['runtime_backup_oss.py','runtime_online_backup.py','runtime_recovery_evidence.py']}}
     gates={};scope=t.BackupScope(profile)
     for slug in plan['applications']:
         gate=point_gate(Path('/srv/zhuojian/backups')/slug,scope,slug,t)
