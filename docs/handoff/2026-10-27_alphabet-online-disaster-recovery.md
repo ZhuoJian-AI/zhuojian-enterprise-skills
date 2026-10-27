@@ -1,9 +1,12 @@
 # Alphabet online recovery implementation
 
-Status: candidate code and local fixture verification only. No production installation,
-service switch, new backup, cloud upload, or fresh business restore is claimed here.
-Root owns the common Skill documentation/version release and dedicated enterprise
-backup identity. This branch owns the Runtime helpers and Alphabet compatibility patch.
+Status at 2026-10-28 01:10 CST: reviewed Runtime helpers are installed, all nine
+applications have new private OSS points with exact-version full readback and
+isolated database/Git/file checks. Eight have complete captured file references;
+garment has an explicit 220-reference gap. The measured third-generation
+capacity/retention gate passed and the independent online timer is enabled.
+Root owns the common Skill
+release, both-account synchronization, platform API/UI and main-host changes.
 
 ## Evidence and scope
 
@@ -12,7 +15,8 @@ Fresh metadata observation at 2026-10-27 22:44–23:10 CST verified the existing
 keep their actual SQLite databases at container `/app/subsystem.db`, outside the
 existing `/data` archive. New online plans explicitly record those original targets.
 Seven apps use the existing `apps/` namespace; two continue local-managed storage.
-The existing Windows offsite chain remains limited to its original two applications.
+The existing Windows offsite chain remains limited to its original two applications;
+it is an additional copy, not a prerequisite for the nine-system cloud chain.
 
 `runtime_online_backup.py` uses the SQLite online-backup API, full file hashes,
 bounded metadata reference checks, and fixed application-prefix OSS list/head/get.
@@ -26,14 +30,15 @@ Schema 3 explicitly sets `consistentOfflineSnapshot=false`. Its private embedded
 manifest is hashed, uploaded using the existing enterprise-scoped transport, bound
 to an exact object version and fully read back. Isolated restore verifies the
 manifest member set, every file hash, SQLite integrity/foreign keys, Git commits,
-file references and configuration identity. It never starts the restored app or
+file references re-queried from the restored primary databases and configuration
+identity. It never starts the restored app or
 executes external business actions. Safe UI restore status remains partial until
 a separately controlled service reconstruction is tested. Image bytes and external
 NAS/Daoxun originals are explicitly excluded.
 
 `runtime_recovery_evidence.py` observes only existing local receipts, never archive
 or object bodies, DB rows, Docker, cloud clients, backup or restore. Its fixed CLI
-will publish safe metadata to `/var/lib/zhuojian-operations/recovery-points-source.json`.
+publishes safe metadata to `/var/lib/zhuojian-operations/recovery-points-source.json`.
 Original capture/upload/readback/restore times remain original; fresh observation
 does not invent a new recovery point. Latest job failure preserves prior points.
 
@@ -45,18 +50,109 @@ pre-authorized same-enterprise backup identity; do not change source bucket righ
 Run namespace/version/private-object probes and full restore per application,
 sequentially, preserving at least 5 GiB for production.
 
-Only after all nine new points have exact-version offsite/readback/isolated proofs
-may the existing daily timer's ExecStart be changed by a narrow drop-in. Do not call
-the old backup routine, which stops applications. The reviewed maintenance patch
-accepts schema 3 in the existing Windows gate/exporter without forging the offline
-flag or changing the two-app/eight-file/ACK/retention contract. Runtime and cloud
-changes require separate actual receipts; none are implied by this source commit.
+The new independent online service/timer may be enabled only after every system
+has two verified local v3 points and a third verified point has actually pruned its
+older v3 archive. Legacy archives, all remote versions and metadata receipts are
+preserved. Each deletion requires fresh full readback of the exact remote version
+and matching isolated DB/Git/files/re-queried-reference evidence. At least two
+valid local v3 points remain. Unknown/failed history is preserved, never counted
+as a successful point. Keep the 5 GiB production free-space floor.
+
+Only the old timer is disabled; its unit/wrappers are retained. Never call or
+automatically reactivate its old routine, which stops applications. The new daily
+calendar is 03:15 plus up to 15 minutes randomized delay. Windows export runs as
+an independent secondary unit, retaining its original clean-repo, inode, SHA and
+capacity guards, plus headroom for the next primary capture. Secondary failure
+does not block the cloud chain. The Windows reader accepts strictly verified v3
+metadata without pretending it was offline; original ACK bytes remain unchanged.
+The legacy ACK-prune operation now reports historical preservation and delegates
+only new-v3 retention to the cloud chain; it deletes no native archives.
+
+## Actual installation and recovery evidence
+
+Normal registered SSH verified machine identity and kept all nine business
+containers healthy with restart count zero throughout observed rollout checks.
+The final helper payload was frozen from `5e7a509c063aebdab61732a07b07c4ce3508b1d7`;
+its content-addressed installed release is
+`a6de832052f14ef3417b0575ed366c8a3c9553a0941eaab716c5e90d627221ab`.
+Every wrapper upgrade used original-byte CAS and retained rollback copies; Runtime
+profile and reviewed plan were unchanged by helper installation. The protected
+plan separately gained the nine actual registered project IDs and garment's
+reviewed missing-key baseline/supplement. No business data or source OSS rights
+were migrated or changed.
+
+The target is the existing separate `zhuojianai-staging-backups-hz` bucket in
+`cn-hangzhou`, under the exact enterprise/environment backup prefix and per-app
+archive/manifest paths. The dedicated RAM identity cannot delete remote backups
+or access another enterprise. Real private/versioned upload probes included two
+multipart parts (8 MiB + 333 bytes) and exact-version full readback. Same-region
+off-server storage is not cross-region disaster recovery.
+
+The first nine points completed by 00:32:46 CST. The second complete generation
+completed at 00:45:34, leaving 12,564,684,800 free bytes. Culture and inspiration
+first archives were 805,684,967 and 1,974,032,390 bytes. Older first-generation
+proofs were genuinely re-restored and their DB references re-queried at
+00:47–00:50; all nine now have that evidence. The third generation completed at
+01:06:03: every application genuinely pruned one older verified v3 archive and
+retained two. Inspiration's 522 one-second samples measured minimum free disk
+6,333,534,208 bytes and minimum MemAvailable 1,628,909,568 bytes; post-run disk
+was 12,519,100,416 bytes. No free-space floor or archive-lifecycle optimization
+was needed. This verifies sustainability for the measured data size, not unlimited
+future business growth; future capacity failures preserve existing points.
+
+At 01:08:41, exact local SHA/size/remote/restore/prune gates reported two verified
+local points and one verified pruned point for each of the nine systems.
+`systemd-analyze verify` and the installed preflight passed. Only the old timer
+was disabled; the new timer is enabled, active and waiting, with first natural
+next run 2026-10-28 03:22:52 CST. Its LastTrigger is empty: the three manual
+verification generations are not falsely described as natural timer execution.
+Preflight pins both wrappers and all installed module bytes, plus the protected
+plan. CPU/IO weights, nice and idle IO reduce backup priority; no arbitrary
+memory hard limit was imposed. A final 01:10 readback verified all nine exact
+container IDs unchanged since the switch precheck, healthy with zero restarts,
+and the original Runtime admin helper SHA unchanged.
+
+Garment's original source already lacked 275 referenced attachments. The reviewed
+baseline permits only those exact key hashes (or a subset), never new missing
+references. Main-host historical backups supplied 55 exact SHA-256/size matches
+(32,464,688 bytes), relayed only into private backup staging and included in the
+new point. The live source remains unchanged. The remaining 220 references are
+recorded privately; the safe projection explicitly reports partial recovery,
+`reference_integrity=false` and `source_missing_reference_count=220`. Current
+source-bucket versioning was never enabled; other historical media is not thereby
+proven absent. No green complete-reference claim is made.
+
+A fresh exact relative-key-hash join found the recovered 55 comprise 54 confirmed
+and one pending record; the remaining 220 comprise one confirmed and 219 pending.
+The count coincidence does not mean all confirmed documents were recovered.
+The 55-blob supplement is a persistent protected plan input, not a temporary task
+cache: root-only directory/files, sealed manifest and every blob SHA were read back
+at 01:10. Missing/corrupt input rejects a new point and preserves prior evidence;
+it cannot silently downgrade to a 275-gap successful point.
+
+Safe receipts are in the task's private audit directory under
+`SaaS-platform/audit-2026-10-27/disaster-recovery-completion/alphabet/`, including
+`helper-final-evidence-upgrade.json`, `garment-partial-with-55-supplement.json`,
+`first-generation-ref-proof-inventory.json`, `online-cycle-2.json`,
+`windows-v3-compatibility-actual-reader.json` and
+`source-bucket-versioning-readonly.json`, `online-cycle-3-peak-and-retention.json`,
+`online-schedule-installed-actual.json`, `garment-55-recovery-status-hash-join.json`
+and `final-health-seal-and-safe-source.json`. No archive, credentials or user file
+body is committed here. Fixed-command metadata aggregation to the main host is
+separately installed by the platform owner; exact source/host/org/runtime/project
+identities remain stable.
 
 ## Verification
 
-Local targeted suite: 60 passed, 1 skipped (platform-specific existing transport test).
+Final targeted tests: Windows 74 passed / 3 POSIX skips; Linux root in an isolated
+`/tmp` copy with private venv 77 passed / no skips. This is local Linux evidence,
+not a GitHub check or a public stable Skill release.
 Tests include a live WAL snapshot with continued writes, FK failures, missing and
 corrupt references, traversal rejection, source mutation detection, actual Git
 bundle and schema-3 upload/readback/isolated restore, metadata-only observation,
 failed-latest/prior-point retention, wrapper preservation and Windows compatibility.
-Full Linux CI and actual enterprise rollout/restore are pending.
+Real points verify data/Git/config hashes and DB/file references in isolated
+directories. Full fresh-host service reconstruction, restored business execution,
+external NAS/Daoxun originals, Windows fresh-generation ACK and natural daily-timer
+execution are not claimed by these receipts. Platform desktop/mobile UI validation
+and the common Skill stable release are owned and reported separately by Root.
