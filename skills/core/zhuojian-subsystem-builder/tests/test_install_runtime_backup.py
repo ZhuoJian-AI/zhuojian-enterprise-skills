@@ -40,3 +40,34 @@ def test_install_refuses_unknown_directory_and_wrapper(tmp_path):
     wrapper.write_text('another application')
     with pytest.raises(RuntimeError, match='unknown backup CLI'):
         installer.install(source, root, wrapper, runner=lambda command: None)
+
+
+def test_companion_commands_switch_together_after_all_validation(tmp_path):
+    root=tmp_path/'managed';wrapper=tmp_path/'backup-cli';source=tmp_path/'runtime_backup_oss.py'
+    source.write_text('transport_source')
+    (tmp_path/'runtime_online_backup.py').write_text('online_source')
+    (tmp_path/'runtime_recovery_evidence.py').write_text('observer_source')
+    result=installer.install(source,root,wrapper,runner=lambda command:None)
+    online=tmp_path/'zhuojian-online-backup';observer=tmp_path/'zhuojian-recovery-evidence'
+    before={p:p.read_bytes() for p in [wrapper,online,observer]}
+    assert all(result['release'] in p.read_text() for p in before)
+    (tmp_path/'runtime_online_backup.py').write_text('new_online_source')
+    def fail(command):raise RuntimeError('dependency failed')
+    with pytest.raises(RuntimeError):installer.install(source,root,wrapper,runner=fail)
+    assert all(p.read_bytes()==content for p,content in before.items())
+    observer.write_text('unrelated observer command')
+    with pytest.raises(RuntimeError,match='unknown backup CLI'):
+        installer.install(source,root,wrapper,runner=lambda command:None)
+    assert wrapper.read_bytes()==before[wrapper] and online.read_bytes()==before[online]
+
+
+def test_missing_ensurepip_installs_only_into_private_environment(tmp_path,monkeypatch):
+    root=tmp_path/'managed';wrapper=tmp_path/'backup-cli';source=tmp_path/'source.py';source.write_text('fixture')
+    monkeypatch.setattr(installer.importlib.util,'find_spec',lambda name:None)
+    calls=[]
+    installer.install(source,root,wrapper,runner=lambda command:calls.append(command),index_url='https://mirrors.aliyun.com/pypi/simple')
+    assert '--without-pip' in calls[0]
+    install=calls[1]
+    assert '--python' in install and str(root) in install[install.index('--python')+1]
+    assert '--index-url' in install and 'https://mirrors.aliyun.com/pypi/simple' in install
+    assert '--break-system-packages' not in install
