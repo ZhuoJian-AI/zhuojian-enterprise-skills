@@ -84,3 +84,19 @@ def test_new_local_failed_upload_does_not_hide_older_verified_offsite_point(tmp_
     assert system['latest_job']['status']=='failed'
     assert system['latest_successful_point']['point_id']==old.name
     assert system['latest_successful_point']['offsite']['status']=='verified'
+
+
+def test_uploaded_new_point_with_failed_restore_preserves_older_recovery_proof(tmp_path):
+    profile,plan,new=fixture(tmp_path)
+    old=new.with_name('20261027T110000Z-aaaaaaaaaaaa.tar.gz');old.write_bytes(b'older')
+    meta=transport.read_json(new.with_suffix('.gz.json'));meta['archive']=old.name
+    transport.atomic_json(old.with_suffix('.gz.json'),meta)
+    for archive in (old,new):
+        remote={'archive':archive.name,'sha256':meta['sha256'],'applicationSlug':'example','offServer':True,'organizationId':profile['organizationId'],
+                'runtimeId':profile['runtimeId'],'environment':profile['environment'],'uploadedAt':'2026-10-27T11:02:00Z','fullReadbackAt':'2026-10-27T11:03:00Z','versionId':'exact-version'}
+        transport.atomic_json(archive.with_suffix('.gz.remote.json'),remote)
+    transport.atomic_json(old.with_suffix('.gz.restore.json'),{'archiveName':old.name,'sha256':meta['sha256'],'verifiedAt':'2026-10-27T11:04:00Z',
+        'businessDatabaseVerified':True,'gitVerified':True,'fileHashesVerified':True,'referenceIntegrityVerified':True})
+    transport.atomic_json(new.parent/'online-job.json',{'status':'failed','attempt_at':'2026-10-27T12:00:00Z','finished_at':'2026-10-27T12:02:00Z','error_code':'restore_failed','archive':new.name})
+    system=evidence.observe(profile,plan)['systems'][0]
+    assert system['latest_job']['error_code']=='restore_failed' and system['latest_successful_point']['point_id']==old.name
