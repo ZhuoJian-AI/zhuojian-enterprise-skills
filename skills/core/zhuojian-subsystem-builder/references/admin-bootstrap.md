@@ -190,6 +190,8 @@ POST  /api/v1/ecs-publisher/organizations/{organizationId}/runtimes/{runtimeId}/
 
 ## 共享 OSS 与机外备份初始化
 
+初始化或补齐既有主机保护时，同时按 [备份覆盖与恢复验收](recovery-acceptance.md) 盘点所有实际系统及数据库、附件、代码和配置。机外副本完整回读及隔离恢复完成后，再登记有效恢复点并接定时任务与平台安全投影；不能用 Runtime 健康、旧数据目录归档或任务 enabled 代替。负责人要求保持线上使用时，采用已验收的在线方法，不重跑会停业务的初始化或备份步骤。
+
 同一公司多人共用一台企业 ECS，允许获授权 Codex 使用 root。只在企业之间隔离云资源，不新增个人发布权限限制。初始化 AI 一次性绑定同地域共享业务 Bucket 与独立共享备份 Bucket：业务对象进入 `enterprises/<组织UUID>/<环境>/apps/<系统>/`，含配置秘密和 Git 的备份进入 `enterprises/<组织UUID>/<环境>/backups/applications/<系统>/`。两个身份均只允许本企业的相应前缀；不得把共享桶全量 AccessKey 放到企业 ECS。
 
 网关新安装默认 `enterprise-v1`，旧 `apps/` 安装和旧独立桶保持原状；需要迁移时先完成对象清单、复制、校验与专项原子切换。不能通过重跑首次登记或更换默认值来搬数据。
