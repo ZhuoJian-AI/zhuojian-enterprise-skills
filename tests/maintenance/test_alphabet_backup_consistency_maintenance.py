@@ -2,7 +2,7 @@ import importlib.util
 from pathlib import Path
 import pytest
 
-PATH=Path(__file__).parents[4]/'scripts/maintenance/upgrade_alphabet_backup_consistency_20261027.py'
+PATH=Path(__file__).resolve().parents[2]/'scripts/maintenance/upgrade_alphabet_backup_consistency_20261027.py'
 SPEC=importlib.util.spec_from_file_location('alphabet_consistency_maintenance',PATH)
 module=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(module)
 

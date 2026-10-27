@@ -5,11 +5,19 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "skills/core/zhuojian-subsystem-builder/**"
+      - "scripts/maintenance/upgrade_alphabet_backup_consistency_20261027.py"
+      - "scripts/maintenance/install_alphabet_online_schedule_20261028.py"
+      - "tests/maintenance/test_alphabet_backup_consistency_maintenance.py"
+      - "tests/maintenance/test_alphabet_online_schedule.py"
       - ".github/workflows/core-skill-ci.yml"
   push:
     branches: [main]
     paths:
       - "skills/core/zhuojian-subsystem-builder/**"
+      - "scripts/maintenance/upgrade_alphabet_backup_consistency_20261027.py"
+      - "scripts/maintenance/install_alphabet_online_schedule_20261028.py"
+      - "tests/maintenance/test_alphabet_backup_consistency_maintenance.py"
+      - "tests/maintenance/test_alphabet_online_schedule.py"
       - ".github/workflows/core-skill-ci.yml"
 
 permissions:
@@ -58,4 +66,7 @@ jobs:
           python -c "import runpy; assert runpy.run_path('tests/test_native_template_responsive.py')['browser_executable'](), 'Chrome/Chromium is required on the Windows runner'"
       - name: Run core test suite
         working-directory: skills/core/zhuojian-subsystem-builder
-        run: python -m pytest -q -ra
+        run: |
+          python -m pytest -q -ra
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pytest -q -ra ../../../tests/maintenance/test_alphabet_backup_consistency_maintenance.py ../../../tests/maintenance/test_alphabet_online_schedule.py

@@ -5,12 +5,14 @@ from pathlib import Path
 import sys
 import pytest
 
-sys.path.insert(0,str(Path(__file__).parents[1]/'scripts'))
+CORE=Path(__file__).resolve().parents[2]/'skills/core/zhuojian-subsystem-builder'
+sys.path.insert(0,str(CORE/'tests'))
+sys.path.insert(0,str(CORE/'scripts'))
 import runtime_backup_oss as transport
 from test_runtime_online_retention import seed
 from test_runtime_backup_oss import Backend
 
-PATH=Path(__file__).parents[4]/'scripts/maintenance/install_alphabet_online_schedule_20261028.py'
+PATH=Path(__file__).resolve().parents[2]/'scripts/maintenance/install_alphabet_online_schedule_20261028.py'
 spec=importlib.util.spec_from_file_location('alphabet_online_schedule',PATH)
 module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
 
