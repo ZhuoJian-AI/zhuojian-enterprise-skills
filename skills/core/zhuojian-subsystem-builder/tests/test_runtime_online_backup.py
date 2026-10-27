@@ -113,10 +113,23 @@ def test_stable_copy_preserves_source_and_detects_rewrite(tmp_path,monkeypatch):
 def test_isolated_contents_checks_database_and_every_manifest_member(tmp_path):
     root=tmp_path/'contents';root.mkdir();db=root/'data'/'app.db';sqlite_db(db)
     sha,size=transport.sha_file(db)
-    manifest={'files':{'data/app.db':{'sha256':sha,'bytes':size}},'databases':[{'member':'data/app.db'}],'references':[]}
-    assert all(online.verify_contents(root,manifest).values())
+    manifest={'files':{'data/app.db':{'sha256':sha,'bytes':size}},'databases':[{'member':'data/app.db','primary':True}],'references':[]}
+    checks=online.verify_contents(root,manifest)
+    assert all(checks[k] is True for k in ['database_integrity','file_hashes','reference_integrity'])
+    assert checks['source_missing_reference_count']==0
     db.write_bytes(b'corrupted')
     with pytest.raises(transport.BackupError,match='hash mismatch'):
+        online.verify_contents(root,manifest)
+
+
+def test_isolated_restore_requeries_actual_primary_database_refs(tmp_path):
+    root=tmp_path/'contents';root.mkdir();db=root/'data/app.db';sqlite_db(db,file_key='document')
+    body=root/'data/files/document';body.parent.mkdir(parents=True);body.write_bytes(b'document')
+    files={}
+    for name,path in [('data/app.db',db),('data/files/document',body)]:
+        sha,size=transport.sha_file(path);files[name]={'sha256':sha,'bytes':size}
+    manifest={'files':files,'databases':[{'member':'data/app.db','primary':True}],'references':[]}
+    with pytest.raises(transport.BackupError,match='recovered database reference set'):
         online.verify_contents(root,manifest)
 
 
@@ -124,6 +137,40 @@ def test_online_proof_cannot_be_replaced_with_offline_true(tmp_path):
     metadata={'schemaVersion':3,'consistentOfflineSnapshot':True,'consistency':{}}
     with pytest.raises(transport.BackupError,match='consistency metadata'):
         transport.validate_online_consistency(metadata,tmp_path/'unused',None,'example')
+
+
+def missing_baseline(keys):
+    hashes=sorted(hashlib.sha256(k.encode()).hexdigest() for k in keys)
+    return {'count':len(hashes),'relative_key_sha256':hashes,'hash_set_sha256':hashlib.sha256(json.dumps(hashes,separators=(',',':')).encode()).hexdigest(),'observed_at':'2026-10-27T16:15:00Z'}
+
+
+def test_known_missing_reference_subset_is_explicit_and_new_missing_is_rejected(tmp_path):
+    ref={'key':'known/missing','backend':'oss-gateway','bytes':8,'sha256':hashlib.sha256(b'document').hexdigest()}
+    baseline=missing_baseline(['known/missing','already/recovered'])
+    online.validate_missing_scope([ref],baseline)
+    with pytest.raises(transport.BackupError,match='new unknown'):
+        online.validate_missing_scope([{**ref,'key':'new/missing'}],baseline)
+    root=tmp_path/'contents';root.mkdir();db=root/'data/app.db';sqlite_db(db,file_key='known/missing',backend='oss-gateway')
+    sha,size=transport.sha_file(db)
+    manifest={'files':{'data/app.db':{'sha256':sha,'bytes':size}},'databases':[{'member':'data/app.db','primary':True}],
+              'references':[ref],'missing_references':[ref],'known_missing_reference_baseline':baseline}
+    checks=online.verify_contents(root,manifest)
+    assert checks['reference_integrity'] is False and checks['source_missing_reference_count']==1
+
+
+def test_supplement_is_bound_to_database_expected_sha_and_not_written_to_source(tmp_path):
+    root=tmp_path/'staging';root.mkdir();base=tmp_path/'supplement';base.mkdir()
+    blob=base/'blobs'/'content';blob.parent.mkdir();blob.write_bytes(b'document');blob.chmod(0o600)
+    ref={'key':'missing/document','backend':'oss-gateway','bytes':8,'sha256':hashlib.sha256(b'document').hexdigest()}
+    value=[{'relative_key_sha256':hashlib.sha256(ref['key'].encode()).hexdigest(),'content_sha256':ref['sha256'],'bytes':8,'blob_member':'blobs/content'}]
+    path=base/'manifest.json';transport.atomic_json(path,{'items':value})
+    config={'manifest':str(path),'manifest_sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
+    files={};restored=online.apply_recovery_supplement(root,[ref],files,config,floor=0)
+    assert len(restored)==1 and blob.read_bytes()==b'document'
+    assert (root/'oss/missing/document').read_bytes()==b'document'
+    assert not online.reference_gaps([ref],files)
+    with pytest.raises(transport.BackupError,match='database integrity'):
+        online.apply_recovery_supplement(tmp_path/'other',[{**ref,'sha256':'a'*64}],{},config,floor=0)
 
 
 @pytest.mark.parametrize('container_layer',[False,pytest.param(True,marks=pytest.mark.skipif(os.name=='nt',reason='Linux proc-root snapshot'))])

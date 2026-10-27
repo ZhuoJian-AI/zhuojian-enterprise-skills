@@ -351,8 +351,10 @@ def validate_online_consistency(metadata, archive_path, scope, slug):
     proof=metadata.get('consistency')
     if metadata.get('schemaVersion')!=3 or metadata.get('consistentOfflineSnapshot') is not False or not isinstance(proof,dict):
         raise BackupError('online backup consistency metadata is invalid')
-    if proof.get('method')!='sqlite_online_backup' or proof.get('businessServicesStopped') is not False or any(proof.get(k) is not True for k in ('databaseIntegrityVerified','fileHashesVerified','referencesVerified')) or not SHA.fullmatch(str(proof.get('manifestSha256',''))):
+    if proof.get('method')!='sqlite_online_backup' or proof.get('businessServicesStopped') is not False or any(proof.get(k) is not True for k in ('databaseIntegrityVerified','fileHashesVerified')) or not SHA.fullmatch(str(proof.get('manifestSha256',''))):
         raise BackupError('online backup integrity proof is incomplete')
+    partial=proof.get('referencesVerified') is False and proof.get('knownMissingBaselineVerified') is True and type(proof.get('sourceMissingReferenceCount')) is int and proof['sourceMissingReferenceCount']>0
+    if proof.get('referencesVerified') is not True and not partial:raise BackupError('online reference scope is not verified')
     with tarfile.open(archive_path,'r:gz') as archive:
         member=archive.getmember('manifest/recovery.json')
         if not member.isfile() or member.size>8*1024*1024:
@@ -365,6 +367,12 @@ def validate_online_consistency(metadata, archive_path, scope, slug):
               'runtime_id':scope.runtime,'environment':scope.environment,'application_slug':slug,'source_commit':metadata.get('commit')}
     if any(manifest.get(k)!=v for k,v in expected.items()) or not isinstance(manifest.get('files'),dict) or not isinstance(manifest.get('databases'),list) or not manifest['databases'] or not isinstance(manifest.get('references'),list):
         raise BackupError('online recovery manifest does not match this application')
+    if partial:
+        from runtime_online_backup import validate_missing_scope
+        missing=manifest.get('missing_references')
+        if not isinstance(missing,list) or len(missing)!=proof['sourceMissingReferenceCount']:
+            raise BackupError('partial online missing-reference scope differs')
+        validate_missing_scope(missing,manifest.get('known_missing_reference_baseline'))
     return proof
 
 
@@ -530,7 +538,9 @@ def stage_restore(scope,backend,slug,archive_name,destination):
         checks=verify_contents(target,recovery)
         result.update(businessDatabaseVerified=checks['database_integrity'],fileHashesVerified=checks['file_hashes'],
                       referenceIntegrityVerified=checks['reference_integrity'],verifiedAt=dt.datetime.now(dt.timezone.utc).isoformat(),
-                      productionServicesStarted=False,externalActionsExecuted=False)
+                      referencesRequeried=True,sourceMissingReferenceCount=checks['source_missing_reference_count'],
+                      sourceMissingBaselineVerified=checks['source_missing_baseline_verified'],productionServicesStarted=False,externalActionsExecuted=False)
+        if not checks['reference_integrity']:result['status']='isolated_restore_partial'
     atomic_json(destination/'restore-check.json',result)
     return result
 
@@ -564,6 +574,51 @@ def prune_local(scope,backend,slug,keep,apply=False):
     return result
 
 
+def prune_online_local(scope,backend,slug,keep=2,apply=False):
+    """Retain legacy/unknown points; prune only reverified online recovery bytes."""
+    valid_slug(slug)
+    if type(keep) is not int or keep<2:raise BackupError('keep at least two verified online recovery points')
+    root=scope.backups/slug
+    result={'applicationSlug':slug,'apply':apply,'keep':keep,'eligible':[],'deleted':[],'preserved':[]}
+    verified=[]
+    with publication_lock(root/'.online-prune.lock'):
+        for path in sorted(root.glob('*.tar.gz'),reverse=True):
+            try:
+                private_file(path)
+                metadata=read_json(path.with_suffix(path.suffix+'.json'))
+                if metadata.get('schemaVersion')!=3:
+                    result['preserved'].append({'archive':path.name,'reason':'legacy_schema_preserved'});continue
+                restore=read_json(path.with_suffix(path.suffix+'.restore.json'))
+                remote=validate_manifest(scope,slug,path.name,read_json(path.with_suffix(path.suffix+'.remote.json')))
+                known_partial=restore.get('referenceIntegrityVerified') is False and restore.get('sourceMissingBaselineVerified') is True and type(restore.get('sourceMissingReferenceCount')) is int and restore['sourceMissingReferenceCount']>0
+                if restore.get('archiveName')!=path.name or restore.get('sha256')!=metadata.get('sha256') or restore.get('versionId')!=remote['versionId'] or any(restore.get(k) is not True for k in ['businessDatabaseVerified','gitVerified','fileHashesVerified','referencesRequeried']) or (restore.get('referenceIntegrityVerified') is not True and not known_partial):
+                    raise BackupError('matching isolated restore proof is missing')
+                sha,size=sha_file(path)
+                if (sha,size)!=(metadata.get('sha256'),metadata.get('sizeBytes')) or (sha,size)!=(remote['sha256'],remote['sizeBytes']):
+                    raise BackupError('local online point no longer matches exact remote evidence')
+                verified.append((path,remote,path.stat()))
+            except Exception:
+                result['preserved'].append({'archive':path.name,'reason':'online_proof_unavailable'})
+        for path,remote,before in verified[keep:]:
+            result['eligible'].append(path.name)
+            if not apply:continue
+            try:
+                with publication_lock(path.with_suffix(path.suffix+'.publish.lock')):
+                    verify_remote(backend,remote)
+                    after=private_file(path)
+                    fields=lambda s:(s.st_dev,s.st_ino,s.st_size,s.st_mtime_ns,s.st_ctime_ns)
+                    if fields(before)!=fields(after):raise BackupError('local point changed while validating retention')
+                    receipt={'archive':path.name,'sha256':remote['sha256'],'versionId':remote['versionId'],
+                             'verifiedAt':dt.datetime.now(dt.timezone.utc).isoformat(),'bytes':remote['sizeBytes'],
+                             'isolatedRestoreMatched':True,'exactRemoteVersionReadBack':True,'cloudObjectDeleted':False}
+                    atomic_json(path.with_suffix(path.suffix+'.pruned.json'),receipt)
+                    path.unlink()
+                    result['deleted'].append({'archive':path.name,'bytes':remote['sizeBytes']})
+            except Exception:
+                result['preserved'].append({'archive':path.name,'reason':'retention_reverification_failed'})
+    return result
+
+
 def parser():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--runtime-profile',type=Path,default=Path('/etc/zhuojian/runtime.json'))
@@ -578,6 +633,7 @@ def parser():
     get=sub.add_parser('download');get.add_argument('application_slug');get.add_argument('--archive-name',required=True);get.add_argument('--destination',type=Path,required=True)
     stage=sub.add_parser('stage-restore');stage.add_argument('application_slug');stage.add_argument('--archive-name',required=True);stage.add_argument('--destination',type=Path,required=True)
     prune=sub.add_parser('prune-local');prune.add_argument('application_slug');prune.add_argument('--keep',type=int,default=7);prune.add_argument('--apply',action='store_true')
+    prune_online=sub.add_parser('prune-online');prune_online.add_argument('application_slug');prune_online.add_argument('--keep',type=int,default=2);prune_online.add_argument('--apply',action='store_true')
     sub.add_parser('probe')
     sub.add_parser('status')
     return p
@@ -634,6 +690,7 @@ def main(argv=None):
             verify_remote(backend,manifest);backend.assert_private(manifest['objectKey'],manifest['versionId']);result={'ok':True,'status':'verified','backup':manifest}
         elif args.command=='stage-restore':result=stage_restore(scope,backend,args.application_slug,args.archive_name,args.destination)
         elif args.command=='prune-local':result=prune_local(scope,backend,args.application_slug,args.keep,args.apply)
+        elif args.command=='prune-online':result=prune_online_local(scope,backend,args.application_slug,args.keep,args.apply)
         else:result=download(scope,backend,args.application_slug,args.archive_name,args.destination)
         print(json.dumps(result,ensure_ascii=False,sort_keys=True))
         return 0 if result.get('ok',True) else 2

@@ -249,9 +249,13 @@ def database_references(path):
             candidates = [c for c in columns if SQL_NAME.fullmatch(c) and (c in {'object_ref','stored_name','measurement_method_image','product_image_ref'} or c.endswith('_object_ref'))]
             for column in candidates:
                 where = ' AND deletion_state=\'active\'' if table == 'file_storage_uploads' and 'deletion_state' in columns else ''
-                rows = db.execute(f'SELECT DISTINCT "{column}" FROM "{table}" WHERE substr("{column}",1,6)=\'oss://\'{where} LIMIT ?', (MAX_FILES + 1,)).fetchall()
+                hint_columns=',content_hash,size_bytes' if column=='stored_name' and {'content_hash','size_bytes'}<=set(columns) else ''
+                rows = db.execute(f'SELECT DISTINCT "{column}"{hint_columns} FROM "{table}" WHERE substr("{column}",1,6)=\'oss://\'{where} LIMIT ?', (MAX_FILES + 1,)).fetchall()
                 if len(rows) > MAX_FILES: raise transport.BackupError('file reference bound exceeded')
-                refs.extend({'key': relative_key(r[0][6:]), 'backend': 'oss-gateway', 'bytes': None, 'sha256': None} for r in rows)
+                for row in rows:
+                    hint=row[1] if hint_columns and isinstance(row[1],str) and transport.SHA.fullmatch(row[1].lower()) else None
+                    size=row[2] if hint_columns and type(row[2]) is int and row[2]>=0 else None
+                    refs.append({'key':relative_key(row[0][6:]),'backend':'oss-gateway','bytes':size,'sha256':hint.lower() if hint else None})
         unique = {}
         for ref in refs:
             key = (ref['backend'], ref['key'])
@@ -264,11 +268,63 @@ def database_references(path):
 
 
 def verify_references(refs, files):
+    if reference_gaps(refs,files):
+        raise transport.BackupError('database file reference is missing or does not match captured bytes')
+
+
+def reference_gaps(refs,files):
+    missing=[]
     for ref in refs:
         member = ('oss/' if ref['backend'] == 'oss-gateway' else 'data/files/') + ref['key']
         found = files.get(member)
-        if found is None or any(ref[f] is not None and ref[f] != found[f] for f in ['bytes','sha256']):
-            raise transport.BackupError('database file reference is missing or does not match captured bytes')
+        if found is None:missing.append(ref)
+        elif any(ref[f] is not None and ref[f] != found[f] for f in ['bytes','sha256']):
+            raise transport.BackupError('database file reference does not match captured bytes')
+    return sorted(missing,key=lambda r:(r['backend'],r['key']))
+
+
+def validate_missing_scope(missing,baseline):
+    if not missing:return
+    if not isinstance(baseline,dict):raise transport.BackupError('unknown source file references are missing')
+    hashes=baseline.get('relative_key_sha256')
+    if not isinstance(hashes,list) or len(set(hashes))!=baseline.get('count') or any(not transport.SHA.fullmatch(str(h)) for h in hashes):
+        raise transport.BackupError('reviewed missing-reference baseline is invalid')
+    digest=hashlib.sha256(json.dumps(sorted(hashes),separators=(',',':')).encode()).hexdigest()
+    if digest!=baseline.get('hash_set_sha256') or not baseline.get('observed_at'):
+        raise transport.BackupError('reviewed missing-reference baseline digest differs')
+    allowed=set(hashes)
+    if any(r['backend']!='oss-gateway' or hashlib.sha256(r['key'].encode()).hexdigest() not in allowed for r in missing):
+        raise transport.BackupError('new unknown source file references are missing')
+
+
+def apply_recovery_supplement(root,refs,files,config,*,floor=FLOOR):
+    if not config:return []
+    path=Path(config.get('manifest',''));transport.private_file(path)
+    if path.stat().st_size>8*1024**2:raise transport.BackupError('recovery supplement metadata exceeds bound')
+    raw=path.read_bytes()
+    if hashlib.sha256(raw).hexdigest()!=config.get('manifest_sha256'):
+        raise transport.BackupError('recovery supplement differs from reviewed manifest')
+    value=json.loads(raw);items=value.get('items') if isinstance(value,dict) else value
+    if not isinstance(items,list) or len(items)>MAX_FILES:raise transport.BackupError('invalid recovery supplement')
+    gaps={hashlib.sha256(r['key'].encode()).hexdigest():r for r in reference_gaps(refs,files) if r['backend']=='oss-gateway'}
+    restored=[]
+    for item in items:
+        ref=gaps.get(item.get('relative_key_sha256'))
+        if ref is None:continue
+        if ref['sha256'] is None or ref['bytes'] is None or (item.get('content_sha256'),item.get('bytes'))!=(ref['sha256'],ref['bytes']):
+            raise transport.BackupError('supplement does not match captured database integrity metadata')
+        member=relative_key(item.get('blob_member'))
+        source=path.parent/member
+        if not source.resolve().is_relative_to(path.parent.resolve()) or source.is_symlink():
+            raise transport.BackupError('supplement blob escaped its reviewed directory')
+        transport.private_file(source)
+        target_member='oss/'+ref['key'];target=root/target_member
+        proof=copy_stable(source,target,floor=floor)
+        if (proof['sha256'],proof['bytes'])!=(ref['sha256'],ref['bytes']):
+            raise transport.BackupError('supplement blob hash differs from database expectation')
+        proof['capture_origin']='verified_recovery_supplement';files[target_member]=proof
+        restored.append({'key':ref['key'],'sha256':proof['sha256'],'bytes':proof['bytes'],'supplement_manifest_sha256':config['manifest_sha256']})
+    return restored
 
 
 class ReadonlyObjects:
@@ -353,9 +409,17 @@ def verify_contents(root, manifest):
         path = root / relative_key(member)
         if file_digest(path) != (expected['sha256'], expected['bytes']):
             raise transport.BackupError('isolated recovery member hash mismatch')
+    restored_references=[]
     for database in manifest['databases']:
         verify_sqlite(root / relative_key(database['member']))
-    verify_references(manifest['references'], files)
+        if database.get('primary') is True:
+            restored_references.extend(database_references(root/relative_key(database['member'])))
+    normalized=lambda rows:sorted(rows,key=lambda r:(r['backend'],r['key']))
+    if normalized(restored_references)!=normalized(manifest['references']):
+        raise transport.BackupError('recovered database reference set differs from manifest')
+    gaps=reference_gaps(manifest['references'],files)
+    validate_missing_scope(gaps,manifest.get('known_missing_reference_baseline'))
+    if gaps!=manifest.get('missing_references',[]):raise transport.BackupError('restored missing-reference set differs from captured scope')
     release=json.loads((root/'config/release.json').read_text()) if (root/'config/release.json').is_file() else None
     if release is not None and (release.get('applicationSlug')!=manifest.get('application_slug') or release.get('current',{}).get('commit')!=manifest.get('source_commit')):
         raise transport.BackupError('isolated release configuration does not match captured identity')
@@ -364,7 +428,8 @@ def verify_contents(root, manifest):
             runtime=json.loads((root/relative_key(member)).read_text())
             if any(runtime.get(a)!=manifest.get(b) for a,b in [('organizationId','organization_id'),('runtimeId','runtime_id'),('environment','environment')]):
                 raise transport.BackupError('isolated Runtime configuration identity differs')
-    return {'database_integrity': True, 'file_hashes': True, 'reference_integrity': True}
+    return {'database_integrity': True, 'file_hashes': True, 'reference_integrity': not gaps,'source_missing_reference_count':len(gaps),
+            'source_missing_baseline_verified':True}
 
 
 def capture_one(profile, slug, app_plan, *, objects=None, runtime_helper=None, floor=FLOOR):
@@ -462,12 +527,16 @@ def capture_one(profile, slug, app_plan, *, objects=None, runtime_helper=None, f
         sha, size = file_digest(root/'code/repository.bundle'); files['code/repository.bundle'] = {'sha256':sha, 'bytes':size}
         if release_path.read_bytes() != original_release or container_identity(release, profile) != identity:
             raise transport.BackupError('running release changed during online capture')
-        verify_references(references, files)
+        baseline=app_plan.get('known_missing_references')
+        validate_missing_scope(reference_gaps(references,files),baseline)
+        recovered=apply_recovery_supplement(root,references,files,app_plan.get('recovery_supplement'),floor=floor)
+        missing=reference_gaps(references,files);validate_missing_scope(missing,baseline)
         manifest = {'schema_version':1,'producer':MARKER,'organization_id':profile['organizationId'],'runtime_id':profile['runtimeId'],
                     'environment':profile['environment'],'application_slug':slug,'captured_at':captured_at,'source_commit':commit,
                     'files':files,'databases':databases,'references':references,'source':source_proof,
                     'configuration_targets':configuration_targets,
                     'data_root_permissions':source_permissions(data_root.stat()),
+                    'known_missing_reference_baseline':baseline,'missing_references':missing,'recovered_objects':recovered,
                     'oss_inventory_checked':objects is not None,'oss_object_count':len(inventory),'oss_object_bytes':sum(p['bytes'] for p in inventory.values()),
                     'limitations':['per_database_consistency','not_cross_database_atomic','external_sources_excluded','post_point_writes_excluded']}
         verify_contents(root, manifest)
@@ -492,8 +561,10 @@ def capture_one(profile, slug, app_plan, *, objects=None, runtime_helper=None, f
         metadata={'schemaVersion':3,'managedBy':MANAGED_BY,'applicationSlug':slug,'createdAt':utc_now(),'capturedAt':captured_at,
                   'commit':commit,'archive':archive.name,'sha256':sha,'sizeBytes':size,'consistentOfflineSnapshot':False,
                   'consistency':{'method':'sqlite_online_backup','databaseIntegrityVerified':True,'fileHashesVerified':True,
-                                 'referencesVerified':True,'businessServicesStopped':False,'manifestSha256':manifest_sha},
+                                 'referencesVerified':not missing,'businessServicesStopped':False,'manifestSha256':manifest_sha,
+                                 'sourceMissingReferenceCount':len(missing),'knownMissingBaselineVerified':True},
                   'source':source_proof,'offServer':False}
+        metadata['restoreRequiredFreeBytes']=size+sum(v['bytes'] for v in files.values())+2*files['code/repository.bundle']['bytes']+64*1024**2
         primary_members={d['member'] for d in databases if d['primary']}
         db_members={d['member'] for d in databases}
         def component(members,included=True):
@@ -504,6 +575,7 @@ def capture_one(profile, slug, app_plan, *, objects=None, runtime_helper=None, f
             'oss_files':component([n for n in files if n.startswith('oss/')],objects is not None),
             'code':component(['code/repository.bundle']),'config':component([n for n in files if n.startswith('config/')])}
         metadata['limitations']=manifest['limitations']+['runtime_services_not_started','image_bytes_not_exported']
+        if missing:metadata['limitations'].append('source_references_missing')
         os.replace(temp_archive,archive)
         transport.atomic_json(archive.with_suffix(archive.suffix+'.json'),metadata)
         return {'applicationSlug':slug,'archive':str(archive),'sha256':sha,'sizeBytes':size,'capturedAt':captured_at,'offServer':False}
@@ -570,12 +642,17 @@ def main(argv=None):
                                 job['phase']='restore';transport.atomic_json(backup_dir/'online-job.json',job)
                                 checks=Path('/srv/zhuojian/restore-checks/online')/slug
                                 checks.mkdir(parents=True,exist_ok=True,mode=0o700)
-                                ensure_space(checks,archive.stat().st_size*3)
+                                metadata=transport.read_json(archive.with_suffix(archive.suffix+'.json'))
+                                ensure_space(checks,metadata['restoreRequiredFreeBytes'])
                                 stage=checks/archive.name.removesuffix('.tar.gz')
                                 restored=transport.stage_restore(scope,backend,slug,archive.name,stage)
                                 restored.update(archiveName=archive.name,sha256=remote['sha256'],versionId=remote['versionId'])
                                 transport.atomic_json(archive.with_suffix(archive.suffix+'.restore.json'),restored)
                                 point['restoreVerified']=True
+                                point['referenceIntegrityVerified']=restored['referenceIntegrityVerified']
+                                point['sourceMissingReferenceCount']=restored['sourceMissingReferenceCount']
+                                point['restoreResult']='partial' if restored['sourceMissingReferenceCount'] else 'passed'
+                                point['retention']=transport.prune_online_local(scope,backend,slug,keep=2,apply=True)
                         result['backups'].append(point)
                     job.update(status='success',finished_at=utc_now(),phase='completed')
                 except Exception:
