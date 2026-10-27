@@ -40,3 +40,22 @@ def test_install_refuses_unknown_directory_and_wrapper(tmp_path):
     wrapper.write_text('another application')
     with pytest.raises(RuntimeError, match='unknown backup CLI'):
         installer.install(source, root, wrapper, runner=lambda command: None)
+
+
+def test_companion_commands_switch_together_after_all_validation(tmp_path):
+    root=tmp_path/'managed';wrapper=tmp_path/'backup-cli';source=tmp_path/'runtime_backup_oss.py'
+    source.write_text('transport_source')
+    (tmp_path/'runtime_online_backup.py').write_text('online_source')
+    (tmp_path/'runtime_recovery_evidence.py').write_text('observer_source')
+    result=installer.install(source,root,wrapper,runner=lambda command:None)
+    online=tmp_path/'zhuojian-online-backup';observer=tmp_path/'zhuojian-recovery-evidence'
+    before={p:p.read_bytes() for p in [wrapper,online,observer]}
+    assert all(result['release'] in p.read_text() for p in before)
+    (tmp_path/'runtime_online_backup.py').write_text('new_online_source')
+    def fail(command):raise RuntimeError('dependency failed')
+    with pytest.raises(RuntimeError):installer.install(source,root,wrapper,runner=fail)
+    assert all(p.read_bytes()==content for p,content in before.items())
+    observer.write_text('unrelated observer command')
+    with pytest.raises(RuntimeError,match='unknown backup CLI'):
+        installer.install(source,root,wrapper,runner=lambda command:None)
+    assert wrapper.read_bytes()==before[wrapper] and online.read_bytes()==before[online]
