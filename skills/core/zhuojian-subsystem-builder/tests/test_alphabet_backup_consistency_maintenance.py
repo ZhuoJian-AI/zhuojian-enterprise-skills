@@ -25,3 +25,10 @@ def test_policy_without_exporter_plain_helper_is_supported():
     source='import json\nMACHINE="fixed"\n\ndef now():\n    return "time"\n\ndef inspect(metadata):\n    assert metadata["consistentOfflineSnapshot"] is True\n'
     changed=module.render(source)
     assert changed.index('MACHINE=')<changed.index('def accepted_consistency(')<changed.index('def now(')
+
+
+def test_ack_policy_keeps_history_and_does_not_forge_acknowledgement():
+    source='import json\n\ndef now():\n    return "time"\n\ndef inspect(metadata):\n    assert metadata["consistentOfflineSnapshot"] is True\n\ndef prune_acknowledged():\n    dangerous.unlink()\n'
+    target=module.render_policy(source)
+    assert 'dangerous.unlink()' not in target and 'legacy_history_preserved' in target
+    assert 'windows-verified.json' not in target and 'verified_online_v3_transport' in target

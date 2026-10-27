@@ -2,7 +2,8 @@
 """Narrow reviewed compatibility patch for Alphabet's existing Windows exporter.
 
 Does not run backup/export/prune, touch Windows, change ACKs, or stop services.
-The two files remain identical except for an explicit online-consistency check.
+Existing ACKs remain genuine. Legacy archive deletion is disabled; the online
+transport alone owns verified v3 retention and preserves all schema2 history.
 """
 import argparse
 import ast
@@ -52,6 +53,28 @@ def render(source):
     return target
 
 
+def render_policy(source):
+    target=render(source)
+    node=next((n for n in ast.parse(target).body if isinstance(n,ast.FunctionDef) and n.name=='prune_acknowledged'),None)
+    if node is None:raise RuntimeError('unexpected legacy archive retention implementation')
+    lines=target.splitlines(keepends=True)
+    replacement='''def prune_acknowledged():
+    # ACK acceptance is unchanged; never let the old Windows policy delete
+    # legacy archives or compete with exact-version v3 cloud retention.
+    load_config()
+    controlled_directories()
+    result = {"observed_at": now(), "deleted_windows_verified_old_archives": [],
+              "retained_current_and_previous": True, "legacy_history_preserved": True,
+              "retention_owner": "verified_online_v3_transport",
+              "original_seven_or_source_touched": False}
+    atomic(ROOT / "last-prune.json", result)
+    return result
+'''
+    target=''.join(lines[:node.lineno-1])+replacement+''.join(lines[node.end_lineno:])
+    compile(target,'<reviewed-alphabet-backup-policy>','exec')
+    return target
+
+
 def atomic(path,data,mode):
     fd,name=tempfile.mkstemp(prefix='.consistency-',dir=path.parent)
     try:
@@ -72,7 +95,8 @@ def main():
         p=ROOT/name;info=p.lstat()
         assert stat.S_ISREG(info.st_mode) and info.st_uid==0 and not p.is_symlink() and info.st_mode&0o022==0
         original=p.read_bytes();assert hashlib.sha256(original).hexdigest()==expected
-        changes[name]=(original,render(original.decode()).encode(),stat.S_IMODE(info.st_mode))
+        renderer=render_policy if name=='backup_policy.py' else render
+        changes[name]=(original,renderer(original.decode()).encode(),stat.S_IMODE(info.st_mode))
     if args.apply:
         spec=importlib.util.spec_from_file_location('alphabet_backup_policy',ROOT/'backup_policy.py')
         policy=importlib.util.module_from_spec(spec);spec.loader.exec_module(policy)
