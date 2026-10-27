@@ -1,6 +1,7 @@
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import sqlite3
 import sys
@@ -124,14 +125,17 @@ def test_online_proof_cannot_be_replaced_with_offline_true(tmp_path):
         transport.validate_online_consistency(metadata,tmp_path/'unused',None,'example')
 
 
-def test_online_point_upload_readback_and_isolated_db_file_git_restore(tmp_path,monkeypatch):
+@pytest.mark.parametrize('container_layer',[False,pytest.param(True,marks=pytest.mark.skipif(os.name=='nt',reason='Linux proc-root snapshot'))])
+def test_online_point_upload_readback_and_isolated_db_file_git_restore(tmp_path,monkeypatch,container_layer):
     repo=tmp_path/'repository';repo.mkdir()
     online.run(['git','init',str(repo)])
     (repo/'source.py').write_text('print("never executed")\n')
     online.run(['git','-C',str(repo),'add','source.py'])
     online.run(['git','-C',str(repo),'-c','user.name=Test','-c','user.email=test@example.invalid','commit','-m','source'])
     commit=online.run(['git','-C',str(repo),'rev-parse','HEAD']).strip()
-    data=tmp_path/'data';sqlite_db(data/'subsystem.db',file_key='uploads/document')
+    data=tmp_path/'data';data.mkdir()
+    db_path=tmp_path/'container-layer.db' if container_layer else data/'subsystem.db'
+    sqlite_db(db_path,file_key='uploads/document')
     (data/'files/uploads').mkdir(parents=True);(data/'files/uploads/document').write_bytes(b'document')
     env=tmp_path/'app.env';env.write_text('EXAMPLE=fake-test-value\n');env.chmod(0o600)
     profile={'organizationId':'65130a23-b05e-4026-9615-761ab2d4193c','runtimeId':'example-runtime','enterpriseKey':'example','environment':'staging',
@@ -139,13 +143,14 @@ def test_online_point_upload_readback_and_isolated_db_file_git_restore(tmp_path,
              'backupStorage':{'provider':'aliyun-oss','namespaceMode':'enterprise-v1','bucket':'shared-backups','region':'cn-hangzhou','rootPrefix':'enterprises/65130a23-b05e-4026-9615-761ab2d4193c/staging/backups'}}
     release={'managedBy':online.MANAGED_BY,'applicationSlug':'example','containerName':'example','dataDir':str(data),'projectDir':str(repo),'envFile':str(env),'storageMode':'local-managed','current':{'commit':commit,'image':'example-image'}}
     path=tmp_path/'deployments/example/release.json';transport.atomic_json(path,release)
-    identity={'id':'container','pid':1,'running':True}
+    identity={'id':'container','pid':os.getpid(),'running':True}
     monkeypatch.setattr(online,'container_identity',lambda r,p:identity)
     def bundle(project,required,destination):
         online.run(['git','-C',str(project),'bundle','create',str(destination),'--all'])
         destination.chmod(0o600);digest,_=transport.sha_file(destination)
         return {'bundleMember':'code/repository.bundle','bundleSha256':digest,'headCommit':commit,'requiredReleaseCommit':required,'restoreVerified':True,'uncommittedStateIncluded':False,'workingTreeClean':True}
-    point=online.capture_one(profile,'example',{'primary_sqlite':'/data/subsystem.db'},runtime_helper=SimpleNamespace(backup_git_repository=bundle),floor=0)
+    plan={'primary_sqlite':str(db_path) if container_layer else '/data/subsystem.db','capture_container_layout':False}
+    point=online.capture_one(profile,'example',plan,runtime_helper=SimpleNamespace(backup_git_repository=bundle),floor=0)
     archive=Path(point['archive']);metadata=transport.read_json(archive.with_suffix('.gz.json'))
     assert metadata['schemaVersion']==3 and metadata['consistentOfflineSnapshot'] is False
     assert path.read_text()==json.dumps(release,sort_keys=True,ensure_ascii=False,separators=(',',':'))
