@@ -86,7 +86,10 @@ def observe(profile,plan,now=None):
             if metadata.get('schemaVersion') not in {2,3}:continue
             candidates.append(project_point(profile,slug,app,metadata,metadata_path.with_suffix('')))
             if len(candidates)>10000:raise transport.BackupError('recovery receipt bound exceeded')
-        latest=next((p for p in candidates if p['offsite']['status']=='verified'),candidates[0] if candidates else None)
+        # A newly uploaded point whose restore failed must not hide a prior
+        # cloud point with actual isolated recovery checks.
+        latest=next((p for p in candidates if p['offsite']['status']=='verified' and p['restore']['result'] in {'partial','passed'}),None)
+        if latest is None:latest=next((p for p in candidates if p['offsite']['status']=='verified'),candidates[0] if candidates else None)
         job={'status':'not_run','attempt_at':None,'finished_at':None,'next_run_at':None,'error_code':None}
         job_path=root/'online-job.json'
         if job_path.is_file():
