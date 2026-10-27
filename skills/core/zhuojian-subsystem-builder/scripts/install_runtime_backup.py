@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import os
 from pathlib import Path
 import stat
 import subprocess
 import tempfile
+from urllib.parse import urlsplit
 
 
 MARKER = 'zhuojian-runtime-backup-tools/v1'
@@ -51,7 +53,7 @@ def run(command):
         raise RuntimeError('backup dependency installation or import check failed; previous CLI remains installed')
 
 
-def install(source, root=Path('/opt/zhuojian/backup-tools'), wrapper=Path('/usr/local/sbin/zhuojian-backup-oss'), runner=run):
+def install(source, root=Path('/opt/zhuojian/backup-tools'), wrapper=Path('/usr/local/sbin/zhuojian-backup-oss'), runner=run, index_url=None):
     if source.is_symlink() or not source.is_file():
         raise RuntimeError('backup source must be a regular file')
     if root.exists() or root.is_symlink():
@@ -99,9 +101,21 @@ def install(source, root=Path('/opt/zhuojian/backup-tools'), wrapper=Path('/usr/
         else:
             atomic_write(script, content, 0o600)
     python = release / 'venv/bin/python'
+    has_ensurepip=importlib.util.find_spec('ensurepip') is not None
     if not python.exists():
-        runner(['python3', '-m', 'venv', str(release / 'venv')])
-    runner([str(python), '-m', 'pip', 'install', '--disable-pip-version-check', DEPENDENCY])
+        command=['python3','-m','venv']
+        if not has_ensurepip:command.append('--without-pip')
+        runner(command+[str(release/'venv')])
+    # Debian/Ubuntu may provide system pip without ensurepip. pip's supported
+    # --python mode targets only this private environment, never system packages.
+    pip_command=[str(python),'-m','pip'] if has_ensurepip else ['python3','-m','pip','--isolated','--python',str(python)]
+    pip_command+=['install','--disable-pip-version-check']
+    if index_url is not None:
+        parsed=urlsplit(index_url)
+        if parsed.scheme!='https' or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
+            raise RuntimeError('dependency index must be an HTTPS endpoint without credentials')
+        pip_command+=['--index-url',index_url]
+    runner(pip_command+[DEPENDENCY])
     runner([str(python), '-c', 'import oss2'])
     if len(sources)>1:
         modules=';'.join('import '+name.removesuffix('.py') for name in sources)
@@ -113,14 +127,18 @@ def install(source, root=Path('/opt/zhuojian/backup-tools'), wrapper=Path('/usr/
 
 
 if __name__ == '__main__':
+    import argparse
     import json
     try:
+        parser=argparse.ArgumentParser(description=__doc__)
+        parser.add_argument('--index-url',default=None)
+        args=parser.parse_args()
         if os.name != 'posix' or os.geteuid() != 0:
             raise RuntimeError('installer requires the authorized GNU/Linux Runtime root environment')
         # Serialize with Runtime upgrades and other installers.
         import runtime_backup_oss
         with runtime_backup_oss.publication_lock(Path('/run/lock/zhuojian-runtime-admin.lock')):
-            print(json.dumps(install(Path(__file__).with_name('runtime_backup_oss.py'))))
+            print(json.dumps(install(Path(__file__).with_name('runtime_backup_oss.py'),index_url=args.index_url)))
     except Exception as exc:
         print(json.dumps({'installed': False, 'error': str(exc)}))
         raise SystemExit(2)

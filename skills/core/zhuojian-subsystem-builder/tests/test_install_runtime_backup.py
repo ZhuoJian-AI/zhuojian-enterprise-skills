@@ -59,3 +59,15 @@ def test_companion_commands_switch_together_after_all_validation(tmp_path):
     with pytest.raises(RuntimeError,match='unknown backup CLI'):
         installer.install(source,root,wrapper,runner=lambda command:None)
     assert wrapper.read_bytes()==before[wrapper] and online.read_bytes()==before[online]
+
+
+def test_missing_ensurepip_installs_only_into_private_environment(tmp_path,monkeypatch):
+    root=tmp_path/'managed';wrapper=tmp_path/'backup-cli';source=tmp_path/'source.py';source.write_text('fixture')
+    monkeypatch.setattr(installer.importlib.util,'find_spec',lambda name:None)
+    calls=[]
+    installer.install(source,root,wrapper,runner=lambda command:calls.append(command),index_url='https://mirrors.aliyun.com/pypi/simple')
+    assert '--without-pip' in calls[0]
+    install=calls[1]
+    assert '--python' in install and str(root) in install[install.index('--python')+1]
+    assert '--index-url' in install and 'https://mirrors.aliyun.com/pypi/simple' in install
+    assert '--break-system-packages' not in install
