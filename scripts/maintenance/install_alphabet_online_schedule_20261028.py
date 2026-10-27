@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Install Alphabet's online-only cloud backup schedule after real point gates.
 
-Dry run by default. Keeps all old units and wrappers for exact rollback; never
+Dry run by default. Keeps old units and wrappers for reviewed rollback; never
 starts/stops business services, accepts Windows ACKs, or deletes archives.
 """
 import argparse
@@ -71,6 +71,10 @@ User=root
 UMask=0077
 Nice=10
 IOSchedulingClass=idle
+CPUWeight=20
+IOWeight=10
+MemoryAccounting=true
+CPUAccounting=true
 TimeoutStartSec=10800
 ExecStartPre=/usr/bin/python3 {preflight}
 ExecStart=/usr/local/sbin/zhuojian-online-backup --publish --verify-restore all
@@ -112,7 +116,8 @@ def command(*args,check=True):
 
 def regular(path,private=False):
     s=path.lstat()
-    assert stat.S_ISREG(s.st_mode) and s.st_uid==0 and not path.is_symlink() and s.st_mode&(0o077 if private else 0o022)==0
+    assert stat.S_ISREG(s.st_mode) and s.st_uid==0 and not path.is_symlink()
+    if os.name=='posix':assert s.st_mode&(0o077 if private else 0o022)==0
     return path.read_bytes()
 
 
@@ -125,6 +130,36 @@ def atomic(path,raw,mode):
         if os.path.exists(name):os.unlink(name)
 
 
+def point_gate(root,scope,slug,t):
+    valid=[];pruned=[];unverified=0
+    for meta_path in sorted(root.glob('*.tar.gz.json'),reverse=True):
+        try:
+            meta=json.loads(regular(meta_path,True))
+            if meta.get('schemaVersion')!=3:continue
+            archive=meta_path.with_suffix('')
+            proof=json.loads(regular(archive.with_suffix('.gz.restore.json'),True))
+            remote=t.validate_manifest(scope,slug,archive.name,json.loads(regular(archive.with_suffix('.gz.remote.json'),True)))
+            assert meta['archive']==archive.name and meta['applicationSlug']==slug
+            assert proof['archiveName']==archive.name and proof['sha256']==meta['sha256']==remote['sha256'] and proof['versionId']==remote['versionId']
+            assert all(proof.get(k) is True for k in ['businessDatabaseVerified','gitVerified','fileHashesVerified','referencesRequeried'])
+            assert proof.get('referenceIntegrityVerified') is True or (slug=='garment-production-collaboration' and proof.get('sourceMissingBaselineVerified') is True and 0<proof.get('sourceMissingReferenceCount',0)<=275)
+            assert remote.get('fullReadbackAt') and remote.get('offServer') is True and remote['versionId']!='null'
+            if archive.exists() or archive.is_symlink():
+                before=t.private_file(archive);sha,size=t.sha_file(archive);after=t.private_file(archive)
+                signature=lambda v:(v.st_dev,v.st_ino,v.st_size,v.st_mtime_ns,v.st_ctime_ns)
+                assert signature(before)==signature(after) and (sha,size)==(meta['sha256'],meta['sizeBytes'])==(remote['sha256'],remote['sizeBytes'])
+                valid.append(archive.name)
+            else:
+                p=json.loads(regular(archive.with_suffix('.gz.pruned.json'),True))
+                assert p['archive']==archive.name and p['sha256']==remote['sha256'] and p['versionId']==remote['versionId'] and p['bytes']==remote['sizeBytes']
+                assert p['isolatedRestoreMatched'] is True and p['exactRemoteVersionReadBack'] is True and p['cloudObjectDeleted'] is False and p['verifiedAt']
+                pruned.append(archive.name)
+        except (Exception,):
+            # Preserve failed/unknown history. It cannot count as usable proof.
+            unverified+=1
+    return {'verified_local_count':len(valid),'verified_pruned_count':len(pruned),'unverified_history_count':unverified}
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--apply',action='store_true');args=p.parse_args()
     assert os.geteuid()==0 and Path('/etc/machine-id').read_text().strip()==MACHINE
@@ -135,23 +170,11 @@ def main():
     sys.path.insert(0,str(Path(wrapper[3]).parent));import runtime_backup_oss as t
     plan_path=Path('/etc/zhuojian/backup-online-plan.json');plan_raw=regular(plan_path,True);plan=json.loads(plan_raw)
     pins={'plan_sha256':hashlib.sha256(plan_raw).hexdigest(),'wrappers':{n:hashlib.sha256(regular(Path('/usr/local/sbin')/n)).hexdigest() for n in ['zhuojian-online-backup','zhuojian-backup-oss','zhuojian-recovery-evidence']}}
-    gates={}
+    gates={};scope=t.BackupScope(profile)
     for slug in plan['applications']:
-        root=Path('/srv/zhuojian/backups')/slug;valid=[];pruned=[]
-        for meta_path in sorted(root.glob('*.tar.gz.json'),reverse=True):
-            meta=json.loads(regular(meta_path,True))
-            if meta.get('schemaVersion')!=3:continue
-            archive=meta_path.with_suffix('')
-            proof=json.loads(regular(archive.with_suffix('.gz.restore.json'),True))
-            remote=json.loads(regular(archive.with_suffix('.gz.remote.json'),True))
-            assert proof['archiveName']==archive.name and proof['sha256']==meta['sha256']==remote['sha256'] and proof['versionId']==remote['versionId']
-            assert all(proof.get(k) is True for k in ['businessDatabaseVerified','gitVerified','fileHashesVerified','referencesRequeried'])
-            assert proof.get('referenceIntegrityVerified') is True or (slug=='garment-production-collaboration' and proof.get('sourceMissingBaselineVerified') is True and 0<proof.get('sourceMissingReferenceCount',0)<=275)
-            assert remote.get('fullReadbackAt') and remote.get('offServer') is True and remote['versionId']!='null'
-            if archive.is_file():valid.append(archive.name)
-            elif archive.with_suffix('.gz.pruned.json').is_file():pruned.append(archive.name)
-        assert len(valid)>=2 and pruned,'two verified local points and a verified third-point prune required'
-        gates[slug]={'verified_local_count':len(valid),'verified_pruned_count':len(pruned)}
+        gate=point_gate(Path('/srv/zhuojian/backups')/slug,scope,slug,t)
+        assert gate['verified_local_count']>=2 and gate['verified_pruned_count']>=1,'two verified local points and a verified third-point prune required'
+        gates[slug]=gate
     assert len(gates)==9 and not command('systemctl','is-active','zhuojian-backup.service',check=False).stdout.strip() in {'active','activating'}
     rendered=units();paths={Path('/etc/systemd/system')/n:s.encode() for n,s in rendered.items()}
     assert all(not x.exists() and not x.is_symlink() for x in [ROOT,*paths])
@@ -174,8 +197,8 @@ def main():
                 command('systemctl','enable','--now',NEW)
             except BaseException:
                 command('systemctl','disable','--now',NEW,check=False)
-                if before_enabled=='enabled':command('systemctl','enable',OLD)
-                if before_active=='active':command('systemctl','start',OLD)
+                # Old native jobs stop business apps. Never reactivate them as
+                # an automatic failure fallback for the online-only contract.
                 raise
     print(json.dumps({'observed_at':dt.datetime.now(dt.timezone.utc).isoformat(),'applied':args.apply,'gates':gates,'units':{n:hashlib.sha256(v.encode()).hexdigest() for n,v in rendered.items()},'pins':pins,'previous_timer_enabled':before_enabled,'previous_timer_active':before_active,'business_services_stopped':False,'legacy_units_or_wrappers_modified':False,'old_timer_disabled_only':args.apply}))
 
