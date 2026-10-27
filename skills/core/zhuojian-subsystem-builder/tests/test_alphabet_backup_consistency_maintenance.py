@@ -19,3 +19,9 @@ def test_compatibility_preserves_old_points_and_requires_explicit_online_checks(
     assert not accept(metadata)
     assert 'def inspect(metadata):' in changed
     with pytest.raises(RuntimeError):module.render(changed)
+
+
+def test_policy_without_exporter_plain_helper_is_supported():
+    source='import json\nMACHINE="fixed"\n\ndef now():\n    return "time"\n\ndef inspect(metadata):\n    assert metadata["consistentOfflineSnapshot"] is True\n'
+    changed=module.render(source)
+    assert changed.index('MACHINE=')<changed.index('def accepted_consistency(')<changed.index('def now(')
