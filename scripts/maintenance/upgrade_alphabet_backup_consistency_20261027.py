@@ -5,6 +5,7 @@ Does not run backup/export/prune, touch Windows, change ACKs, or stop services.
 The two files remain identical except for an explicit online-consistency check.
 """
 import argparse
+import ast
 import contextlib
 import hashlib
 import importlib.util
@@ -40,10 +41,13 @@ def render(source):
     if source.count(CHECK)!=1 or 'def accepted_consistency(' in source:
         raise RuntimeError('unexpected existing Alphabet backup compatibility source')
     target=source.replace(CHECK,'assert accepted_consistency(metadata)')
-    # Both installed files define plain() before any execution entrypoint.
-    marker='\ndef plain(path):'
-    if target.count(marker)!=1:raise RuntimeError('unknown exporter/policy definition layout')
-    target=target.replace(marker,PREDICATE+marker,1)
+    # Insert after imports/constants, before the first top-level function. The
+    # exporter has plain(); the separately pinned policy uses another first def.
+    first=next((n for n in ast.parse(target).body if isinstance(n,ast.FunctionDef)),None)
+    if first is None:raise RuntimeError('unknown exporter/policy definition layout')
+    lines=target.splitlines(keepends=True)
+    offset=sum(len(line) for line in lines[:first.lineno-1])
+    target=target[:offset]+PREDICATE+'\n'+target[offset:]
     compile(target,'<reviewed-alphabet-backup-compat>','exec')
     return target
 
