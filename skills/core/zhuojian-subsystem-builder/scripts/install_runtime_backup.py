@@ -68,30 +68,47 @@ def install(source, root=Path('/opt/zhuojian/backup-tools'), wrapper=Path('/usr/
             raise RuntimeError('initialize the Runtime installation parent first')
         owned_directory(root)
         atomic_write(root / '.managed', MARKER.encode(), 0o600)
-    if wrapper.exists() or wrapper.is_symlink():
-        protected_file(wrapper)
-        text = wrapper.read_text()
-        prefix = WRAPPER_HEADER + 'exec "' + root.as_posix() + '/'
-        if not text.startswith(prefix) or not text.endswith('/runtime_backup_oss.py" "$@"\n'):
-            raise RuntimeError('refusing to overwrite an unknown backup CLI wrapper')
+    sources={'runtime_backup_oss.py':source}
+    wrappers={wrapper:'runtime_backup_oss.py'}
+    for name,cli in [('runtime_online_backup.py','zhuojian-online-backup'),('runtime_recovery_evidence.py','zhuojian-recovery-evidence')]:
+        candidate=source.with_name(name)
+        if candidate.exists() or candidate.is_symlink():
+            if candidate.is_symlink() or not candidate.is_file():raise RuntimeError('backup companion must be a regular source file')
+            sources[name]=candidate;wrappers[wrapper.parent/cli]=name
+    for path,name in wrappers.items():
+        if path.exists() or path.is_symlink():
+            protected_file(path)
+            text = path.read_text()
+            prefix = WRAPPER_HEADER + 'exec "' + root.as_posix() + '/'
+            if not text.startswith(prefix) or not text.endswith('/'+name+'" "$@"\n'):
+                raise RuntimeError('refusing to overwrite an unknown backup CLI wrapper')
     data = source.read_bytes()
-    digest = hashlib.sha256(data + DEPENDENCY.encode()).hexdigest()
+    payload=data+DEPENDENCY.encode()
+    for name,path in sorted(sources.items()):
+        if name!='runtime_backup_oss.py':payload+=name.encode()+path.read_bytes()
+    digest = hashlib.sha256(payload).hexdigest()
     release = root / digest
     owned_directory(release)
-    script = release / 'runtime_backup_oss.py'
-    if script.exists() or script.is_symlink():
-        protected_file(script)
-        if script.read_bytes() != data:
-            raise RuntimeError('existing backup release content differs')
-    else:
-        atomic_write(script, data, 0o600)
+    for name,path in sources.items():
+        script = release / name
+        content=path.read_bytes()
+        if script.exists() or script.is_symlink():
+            protected_file(script)
+            if script.read_bytes() != content:
+                raise RuntimeError('existing backup release content differs')
+        else:
+            atomic_write(script, content, 0o600)
     python = release / 'venv/bin/python'
     if not python.exists():
         runner(['python3', '-m', 'venv', str(release / 'venv')])
     runner([str(python), '-m', 'pip', 'install', '--disable-pip-version-check', DEPENDENCY])
     runner([str(python), '-c', 'import oss2'])
-    content = WRAPPER_HEADER + f'exec "{python.as_posix()}" "{script.as_posix()}" "$@"\n'
-    atomic_write(wrapper, content.encode(), 0o750)
+    if len(sources)>1:
+        modules=';'.join('import '+name.removesuffix('.py') for name in sources)
+        runner([str(python),'-c','import sys;sys.path.insert(0,'+repr(str(release))+');'+modules])
+    for path,name in wrappers.items():
+        content = WRAPPER_HEADER + f'exec "{python.as_posix()}" "{(release/name).as_posix()}" "$@"\n'
+        atomic_write(path, content.encode(), 0o750)
     return {'installed': True, 'cloudConfigured': False, 'scheduled': False, 'release': digest}
 
 
