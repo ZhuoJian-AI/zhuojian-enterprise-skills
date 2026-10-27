@@ -156,3 +156,41 @@ directories. Full fresh-host service reconstruction, restored business execution
 external NAS/Daoxun originals, Windows fresh-generation ACK and natural daily-timer
 execution are not claimed by these receipts. Platform desktop/mobile UI validation
 and the common Skill stable release are owned and reported separately by Root.
+
+## First natural daily generation, 2026-10-28
+
+The pending natural-cycle boundary above was closed by the original online timer,
+without a manual start or a schedule/code change. It triggered at 03:22:53 CST;
+invocation `e8d5d473ecc143b9b45cff7b19e5ac5b` finished successfully at 03:37:15,
+862.448399 seconds later. All nine newly captured points have matching point IDs,
+archive SHA, exact OSS versions/full readback and real isolated database, Git,
+file and restored-database reference checks. Eight reference sets are complete;
+garment retains the known 220 unresolved references and partial result. It did not
+silently revert to the old 275-gap point or claim complete references.
+
+Every application retained two local v3 points and genuinely pruned one eligible
+older v3 point after the required readback/restore checks. Cloud history and
+legacy schema-2 history remain. The 782 one-second samples measured minimum free
+space 6,330,667,008 bytes and minimum MemAvailable 1,603,526,656 bytes; final free
+space was 12,514,779,136 bytes. These are sampled observations, not an unlimited
+future capacity guarantee. All nine original business container IDs and PIDs,
+healthy state and zero restart counts remain; plan, code, wrapper and unit pins
+match the pre-run bytes. The metadata source naturally refreshed at 03:37:55 to
+all nine new points. Next timer observation was 2026-10-29 03:22:18 CST; the old
+service-stopping timer remains disabled.
+
+The separate Windows secondary export did not complete. Its new preflight refused
+capacity at 03:37:18 before the original exporter started: the configured 6 GiB
+reserve, at least 2.5 GiB export staging and 5,593,427,971-byte next-primary peak
+require at least 14,720,233,475 free bytes; only 12,515,344,384 were available.
+This is the added capacity guard's rejection, not evidence of a schema-3 reader
+failure or an offline Windows machine. No fresh secondary copy/ACK is claimed.
+The protection was not lowered, history was not deleted to force it through and
+the export was not retriggered. Primary OSS backup and recovery success is
+independent of this secondary capacity limit.
+
+Safe receipts are `alphabet/natural-first-cycle-accepted-safe.json`,
+`alphabet/natural-first-terminal-complete-metadata-safe.json` and
+`alphabet/windows-secondary-capacity-verdict-safe.json` under the task audit.
+They contain bounded metadata, not archive bodies or credentials. This natural
+run still does not certify full service boot or selective production writeback.
