@@ -163,7 +163,7 @@ def test_supplement_is_bound_to_database_expected_sha_and_not_written_to_source(
     blob=base/'blobs'/'content';blob.parent.mkdir();blob.write_bytes(b'document');blob.chmod(0o600)
     ref={'key':'missing/document','backend':'oss-gateway','bytes':8,'sha256':hashlib.sha256(b'document').hexdigest()}
     value=[{'relative_key_sha256':hashlib.sha256(ref['key'].encode()).hexdigest(),'content_sha256':ref['sha256'],'bytes':8,'blob_member':'blobs/content'}]
-    path=base/'manifest.json';transport.atomic_json(path,{'items':value})
+    path=base/'manifest.json';transport.atomic_json(path,{'schema_version':1,'objects':value})
     config={'manifest':str(path),'manifest_sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
     files={};restored=online.apply_recovery_supplement(root,[ref],files,config,floor=0)
     assert len(restored)==1 and blob.read_bytes()==b'document'

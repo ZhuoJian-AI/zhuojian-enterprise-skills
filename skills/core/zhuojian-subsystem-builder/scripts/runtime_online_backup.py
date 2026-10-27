@@ -304,7 +304,7 @@ def apply_recovery_supplement(root,refs,files,config,*,floor=FLOOR):
     raw=path.read_bytes()
     if hashlib.sha256(raw).hexdigest()!=config.get('manifest_sha256'):
         raise transport.BackupError('recovery supplement differs from reviewed manifest')
-    value=json.loads(raw);items=value.get('items') if isinstance(value,dict) else value
+    value=json.loads(raw);items=value.get('objects',value.get('items')) if isinstance(value,dict) else value
     if not isinstance(items,list) or len(items)>MAX_FILES:raise transport.BackupError('invalid recovery supplement')
     gaps={hashlib.sha256(r['key'].encode()).hexdigest():r for r in reference_gaps(refs,files) if r['backend']=='oss-gateway'}
     restored=[]
