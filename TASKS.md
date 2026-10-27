@@ -1,6 +1,5 @@
 # 当前任务
 
-- [ ] **ALPHABET-OFFSITE-DR-20261027** (@backup_placement_review)：在 `codex/alphabet-offsite-dr-20261027` 独立工作树实现并验证九应用不中断线上备份、企业前缀机外副本、OSS附件覆盖与隔离恢复证据；保留既有Windows链和所有业务权限。只改备份辅助代码、测试和本任务交接，通用Skill规范与版本发布由Root串行负责；接口/容量对齐前不部署。
 
 - [x] **ENTERPRISE-LOCAL-INTEGRATION-20261026 已发布、双账号同步并修复企业现场** (@codex-root)：PR98/main `120a2254`，PR/main CI 940通过/77跳过/1warning；core1.1.49/bundle52/Release423937379于15:02:05CST发布。11匿名资产、4latest、15selectors、原updater新装/48升级/CURRENT及legacy入口通过；两账号18路径备份/CAS限定同步及CURRENT49通过。161 Runtime投影于15:03:32安装，真实CLI与SaaS原始14项features完全一致，doctor与9业务健康通过，配置/容器未变；9仓库12活动工作树16文档已Git备份及FF修正。独立三系统流程评估通过；具体产品尺寸业务服务与真实页面验收仍由企业AI接续，未宣称已打通。见[最终交接](docs/handoff/2026-10-26_enterprise-local-integration.md#正式发布与安装结果)。
 
