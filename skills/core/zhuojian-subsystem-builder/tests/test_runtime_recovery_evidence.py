@@ -44,6 +44,15 @@ def test_failed_latest_job_retains_successful_point_and_hides_private_locators(t
     assert 'sensitive' not in text and 'secret' not in text and str(tmp_path) not in text and 'oss://' not in text
 
 
+def test_component_projection_drops_unknown_private_metadata(tmp_path):
+    profile,plan,archive=fixture(tmp_path)
+    path=archive.with_suffix('.gz.json');meta=transport.read_json(path)
+    meta['components']['database']['private_uri']='oss://never/expose'
+    meta['limitations']=['runtime_services_not_started','oss://never/expose']
+    transport.atomic_json(path,meta)
+    assert 'oss://' not in json.dumps(evidence.observe(profile,plan))
+
+
 def test_partial_restore_requires_same_point_and_keeps_service_limit(tmp_path):
     profile,plan,archive=fixture(tmp_path)
     receipt={'archiveName':archive.name,'sha256':'b'*64,'verifiedAt':'2026-10-27T12:10:00Z','businessDatabaseVerified':True,'gitVerified':True,'fileHashesVerified':True,'referenceIntegrityVerified':True}

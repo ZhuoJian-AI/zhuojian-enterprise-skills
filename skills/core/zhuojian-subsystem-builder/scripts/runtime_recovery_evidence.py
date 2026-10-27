@@ -34,6 +34,9 @@ def project_point(profile,slug,app,metadata,path):
         components['oss_files']={'included':False,'verified':None,'count':0,'bytes':0}
         if app.get('primary_sqlite','').startswith('/app/'):
             components['database']={'included':False,'verified':None,'count':0,'bytes':0}
+    else:
+        components={name:{field:components[name].get(field) for field in ['included','verified','count','bytes']}
+                    for name in ['database','local_files','oss_files','code','config']}
     offsite={'status':'pending' if profile.get('backupStorage') else 'not_configured','uploaded_at':None,'full_readback_at':None,'sha256':None,'version_pinned':None}
     remote_path=path.with_suffix(path.suffix+'.remote.json')
     if remote_path.is_file():
@@ -51,7 +54,7 @@ def project_point(profile,slug,app,metadata,path):
                     'file_hashes':receipt.get('fileHashesVerified'),'reference_integrity':receipt.get('referenceIntegrityVerified')}
             if all(v is True for v in checks.values()):
                 restore={'result':'partial','verified_at':receipt['verifiedAt'],**checks,'limitations':['restore_scope_limited','runtime_services_not_started','config_restore_not_tested']}
-    limits=list(metadata.get('limitations') or [])
+    limits=[v for v in (metadata.get('limitations') or []) if isinstance(v,str) and re.fullmatch(r'[a-z][a-z0-9_]{0,63}',v)]
     if version==2:limits+=['legacy_data_scope_unverified','oss_body_excluded']
     if offsite['status']!='verified':limits.append('offsite_not_verified')
     return {'point_id':path.name,'captured_at':metadata.get('capturedAt',metadata['createdAt']),'completed_at':metadata['createdAt'],
@@ -104,7 +107,9 @@ def main():
             if OUTPUT.parent.is_symlink() or info.st_uid!=0 or info.st_mode&0o022:
                 raise transport.BackupError('unsafe recovery projection directory')
         transport.atomic_json(OUTPUT,value)
-        print(json.dumps({'ok':True,'observed_at':value['observed_at'],'system_count':len(value['systems'])}))
+        # Dedicated SSH forced-command consumers receive exactly the frozen v1
+        # envelope; no summary wrapper or private paths are sent to stdout.
+        print(json.dumps(value,ensure_ascii=False,sort_keys=True))
         return 0
     except Exception:
         print(json.dumps({'ok':False,'error_code':'source_unavailable'}),file=sys.stderr);return 2
