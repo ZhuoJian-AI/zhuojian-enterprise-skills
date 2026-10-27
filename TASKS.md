@@ -1,6 +1,6 @@
 # 当前任务
 
-- [ ] **RECOVERY-EVIDENCE-CONTRACTS-20261027** (@codex-root)：统一企业 Runtime 与平台主机的备份验收标准；补充在线一致性快照、独立机外副本、OSS 附件集合及引用验证、逐系统恢复点和失败记录要求。保持企业及平台发布路径独立；规范、真实部署、恢复验证与管理员展示分别留证。配套 Alphabet 实现位于独立分支，合并后统一测试、稳定发布并限定同步两 Windows 账号。
+- [x] **RECOVERY-EVIDENCE-CONTRACTS-20261027 已发布、双账号同步，Alphabet 运行时已验** (@codex-root)：PR100/main `433b6696`，精确 PR/main CI通过；core1.1.50/bundle53/Release425783605于2026-10-28 01:36:47CST公开。11匿名资产、原updater新装/49升级/CURRENT及legacy入口均通过；两账号各16路径备份/CAS限定同步、范围外保持及CURRENT50已核。Alphabet九系统在线快照、机外完整读回、实际隔离恢复与三轮保留验收已完成；服装历史220缺失明确partial，原业务容器无重启。首次自然日程、主机完整服务重建、SaaS发布和选择性企业回写分别验收，不由Skill发布替代。见[正式发布交接](docs/handoff/2026-10-28_recovery-evidence-release.md)。
 
 - [x] **ENTERPRISE-LOCAL-INTEGRATION-20261026 已发布、双账号同步并修复企业现场** (@codex-root)：PR98/main `120a2254`，PR/main CI 940通过/77跳过/1warning；core1.1.49/bundle52/Release423937379于15:02:05CST发布。11匿名资产、4latest、15selectors、原updater新装/48升级/CURRENT及legacy入口通过；两账号18路径备份/CAS限定同步及CURRENT49通过。161 Runtime投影于15:03:32安装，真实CLI与SaaS原始14项features完全一致，doctor与9业务健康通过，配置/容器未变；9仓库12活动工作树16文档已Git备份及FF修正。独立三系统流程评估通过；具体产品尺寸业务服务与真实页面验收仍由企业AI接续，未宣称已打通。见[最终交接](docs/handoff/2026-10-26_enterprise-local-integration.md#正式发布与安装结果)。
 
