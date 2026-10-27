@@ -45,15 +45,19 @@ def project_point(profile,slug,app,metadata,path):
             uploaded=remote.get('uploadedAt');readback=remote.get('fullReadbackAt')
             offsite={'status':'verified' if uploaded and readback else 'unknown','uploaded_at':uploaded,'full_readback_at':readback,
                      'sha256':remote['sha256'],'version_pinned':bool(remote.get('versionId') and remote.get('versionId')!='null')}
-    restore={'result':'not_tested','verified_at':None,'database_integrity':None,'git_commit':None,'file_hashes':None,'reference_integrity':None,'limitations':[]}
+    restore={'result':'not_tested','verified_at':None,'database_integrity':None,'git_commit':None,'file_hashes':None,'reference_integrity':None,'limitations':[],'source_missing_reference_count':None}
     restored_path=path.with_suffix(path.suffix+'.restore.json')
     if restored_path.is_file():
         receipt=transport.read_json(restored_path)
         if receipt.get('archiveName')==path.name and receipt.get('sha256')==metadata['sha256'] and receipt.get('verifiedAt'):
             checks={'database_integrity':receipt.get('businessDatabaseVerified'),'git_commit':receipt.get('gitVerified'),
                     'file_hashes':receipt.get('fileHashesVerified'),'reference_integrity':receipt.get('referenceIntegrityVerified')}
-            if all(v is True for v in checks.values()):
-                restore={'result':'partial','verified_at':receipt['verifiedAt'],**checks,'limitations':['restore_scope_limited','runtime_services_not_started','config_restore_not_tested']}
+            count=receipt.get('sourceMissingReferenceCount')
+            known_missing=checks['reference_integrity'] is False and receipt.get('sourceMissingBaselineVerified') is True and type(count) is int and count>0
+            if all(v is True for v in checks.values()) or (known_missing and all(checks[k] is True for k in ['database_integrity','git_commit','file_hashes'])):
+                limits=['restore_scope_limited','runtime_services_not_started','config_restore_not_tested']
+                if known_missing:limits.append('source_references_missing')
+                restore={'result':'partial','verified_at':receipt['verifiedAt'],**checks,'limitations':limits,'source_missing_reference_count':count if type(count) is int else None}
     limits=[v for v in (metadata.get('limitations') or []) if isinstance(v,str) and re.fullmatch(r'[a-z][a-z0-9_]{0,63}',v)]
     if version==2:limits+=['legacy_data_scope_unverified','oss_body_excluded']
     if offsite['status']!='verified':limits.append('offsite_not_verified')
