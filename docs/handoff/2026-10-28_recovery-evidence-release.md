@@ -12,7 +12,7 @@ tests live outside the independently installable core Skill.
 
 Stable [bundle-v1.4.53](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/releases/tag/bundle-v1.4.53),
 Release 425783605, was published at 2026-10-27 17:36:47 UTC
-(2026-10-28 01:36:47 CST). Its immutable tag resolves to the merged source above.
+(2026-10-28 01:36:47 CST). Its published tag resolves to the merged source above.
 The clean LF build produced core ZIP SHA-256
 `3c6a1a76680c23289e6c87cc2d706eae8b587953cbe6723fac309be793382e8f`
 (809,154 bytes, 189 entries). All eleven official assets were anonymously
