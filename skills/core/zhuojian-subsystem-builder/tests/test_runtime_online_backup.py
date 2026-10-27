@@ -6,6 +6,7 @@ from pathlib import Path
 import sqlite3
 import sys
 import threading
+import subprocess
 from types import SimpleNamespace
 import io
 
@@ -145,6 +146,12 @@ def test_online_point_upload_readback_and_isolated_db_file_git_restore(tmp_path,
     path=tmp_path/'deployments/example/release.json';transport.atomic_json(path,release)
     identity={'id':'container','pid':os.getpid(),'running':True}
     monkeypatch.setattr(online,'container_identity',lambda r,p:identity)
+    if container_layer:
+        actual_snapshot=online.snapshot_container_sqlite
+        def fake_docker(command,**kwargs):
+            assert command[:4]==['docker','exec','example','python']
+            return subprocess.run([sys.executable]+command[4:],**kwargs)
+        monkeypatch.setattr(online,'snapshot_container_sqlite',lambda c,i,p,d,**kwargs:actual_snapshot(c,i,p,d,runner=fake_docker,**kwargs))
     def bundle(project,required,destination):
         online.run(['git','-C',str(project),'bundle','create',str(destination),'--all'])
         destination.chmod(0o600);digest,_=transport.sha_file(destination)

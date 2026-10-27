@@ -41,7 +41,7 @@ def project_point(profile,slug,app,metadata,path):
     remote_path=path.with_suffix(path.suffix+'.remote.json')
     if remote_path.is_file():
         remote=transport.read_json(remote_path)
-        if remote.get('archive')==path.name and remote.get('sha256')==metadata['sha256'] and remote.get('applicationSlug')==slug and remote.get('offServer') is True:
+        if remote.get('archive')==path.name and remote.get('sha256')==metadata['sha256'] and remote.get('applicationSlug')==slug and remote.get('offServer') is True and remote.get('organizationId')==profile['organizationId'] and remote.get('runtimeId')==profile['runtimeId'] and remote.get('environment')==profile['environment']:
             uploaded=remote.get('uploadedAt');readback=remote.get('fullReadbackAt')
             offsite={'status':'verified' if uploaded and readback else 'unknown','uploaded_at':uploaded,'full_readback_at':readback,
                      'sha256':remote['sha256'],'version_pinned':bool(remote.get('versionId') and remote.get('versionId')!='null')}
@@ -58,7 +58,7 @@ def project_point(profile,slug,app,metadata,path):
     if version==2:limits+=['legacy_data_scope_unverified','oss_body_excluded']
     if offsite['status']!='verified':limits.append('offsite_not_verified')
     return {'point_id':path.name,'captured_at':metadata.get('capturedAt',metadata['createdAt']),'completed_at':metadata['createdAt'],
-            'source_commit':metadata.get('commit'),'project_ids':[],'shared_archive_group':None,'archive_bytes':metadata.get('sizeBytes'),
+            'source_commit':metadata.get('commit'),'project_ids':[app['project_id']] if app.get('project_id') else [],'shared_archive_group':None,'archive_bytes':metadata.get('sizeBytes'),
             'components':components,'local_archive_exists':path.is_file() and not path.is_symlink(),
             'offsite':offsite,'restore':restore,'limitations':sorted(set(limits))}
 
@@ -75,23 +75,25 @@ def observe(profile,plan,now=None):
     for slug,app in sorted(plan['applications'].items()):
         transport.valid_slug(slug);root=backups/slug
         if root.is_symlink():raise transport.BackupError('recovery receipt directory cannot be a symlink')
-        latest=None
+        candidates=[]
         for metadata_path in sorted(root.glob('*.tar.gz.json'),reverse=True):
             metadata=transport.read_json(metadata_path)
             if not transport.ARCHIVE.fullmatch(metadata_path.name.removesuffix('.json')):continue
             if metadata.get('schemaVersion') not in {2,3}:continue
-            latest=project_point(profile,slug,app,metadata,metadata_path.with_suffix(''));break
+            candidates.append(project_point(profile,slug,app,metadata,metadata_path.with_suffix('')))
+            if len(candidates)>10000:raise transport.BackupError('recovery receipt bound exceeded')
+        latest=next((p for p in candidates if p['offsite']['status']=='verified'),candidates[0] if candidates else None)
         job={'status':'not_run','attempt_at':None,'finished_at':None,'next_run_at':None,'error_code':None}
         job_path=root/'online-job.json'
         if job_path.is_file():
             private=transport.read_json(job_path)
             job={k:private.get(k) for k in ['status','attempt_at','finished_at','error_code']}
             job['next_run_at']=None
-            if latest and private.get('archive')==latest['point_id'] and private.get('status')=='failed' and private.get('error_code')=='offsite_failed':
+            if latest and latest['offsite']['status']!='verified' and private.get('archive')==latest['point_id'] and private.get('status')=='failed' and private.get('error_code')=='offsite_failed':
                 latest['offsite']['status']='failed'
         systems.append({'system_id':source+':'+slug,'source_id':source,'host_id':host,'name':app['name'],'scope':'enterprise',
                         'organization_id':profile['organizationId'],'enterprise_key':profile['enterpriseKey'],'runtime_id':profile['runtimeId'],
-                        'project_id':None,'application_slug':slug,'environment':profile['environment'],'observed_at':now,
+                        'project_id':app.get('project_id'),'application_slug':slug,'environment':profile['environment'],'observed_at':now,
                         'latest_job':job,'latest_successful_point':latest})
     return {'schema_version':1,'observed_at':now,'systems':systems}
 

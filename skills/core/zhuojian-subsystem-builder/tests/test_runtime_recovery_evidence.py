@@ -61,3 +61,26 @@ def test_partial_restore_requires_same_point_and_keeps_service_limit(tmp_path):
     assert restore['result']=='partial' and 'runtime_services_not_started' in restore['limitations']
     receipt['sha256']='c'*64;transport.atomic_json(archive.with_suffix('.gz.restore.json'),receipt)
     assert evidence.observe(profile,plan)['systems'][0]['latest_successful_point']['restore']['result']=='not_tested'
+
+
+def test_registered_project_mapping_is_taken_from_plan(tmp_path):
+    profile,plan,archive=fixture(tmp_path)
+    plan['applications']['example']['project_id']='registered-project:unrelated-to-slug'
+    system=evidence.observe(profile,plan)['systems'][0]
+    assert system['project_id']=='registered-project:unrelated-to-slug'
+    assert system['latest_successful_point']['project_ids']==['registered-project:unrelated-to-slug']
+
+
+def test_new_local_failed_upload_does_not_hide_older_verified_offsite_point(tmp_path):
+    profile,plan,new=fixture(tmp_path)
+    old=new.with_name('20261027T110000Z-aaaaaaaaaaaa.tar.gz');old.write_bytes(b'older')
+    meta=transport.read_json(new.with_suffix('.gz.json'));meta.update(archive=old.name,createdAt='2026-10-27T11:01:00Z',capturedAt='2026-10-27T11:00:00Z')
+    transport.atomic_json(old.with_suffix('.gz.json'),meta)
+    remote={'archive':old.name,'sha256':meta['sha256'],'applicationSlug':'example','offServer':True,'organizationId':profile['organizationId'],
+            'runtimeId':profile['runtimeId'],'environment':profile['environment'],'uploadedAt':'2026-10-27T11:02:00Z','fullReadbackAt':'2026-10-27T11:03:00Z','versionId':'exact-older-version'}
+    transport.atomic_json(old.with_suffix('.gz.remote.json'),remote)
+    transport.atomic_json(new.parent/'online-job.json',{'status':'failed','attempt_at':'2026-10-27T12:00:00Z','finished_at':'2026-10-27T12:02:00Z','error_code':'offsite_failed','archive':new.name})
+    system=evidence.observe(profile,plan)['systems'][0]
+    assert system['latest_job']['status']=='failed'
+    assert system['latest_successful_point']['point_id']==old.name
+    assert system['latest_successful_point']['offsite']['status']=='verified'
