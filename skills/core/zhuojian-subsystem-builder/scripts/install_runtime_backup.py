@@ -72,11 +72,14 @@ def install(source, root=Path('/opt/zhuojian/backup-tools'), wrapper=Path('/usr/
         atomic_write(root / '.managed', MARKER.encode(), 0o600)
     sources={'runtime_backup_oss.py':source}
     wrappers={wrapper:'runtime_backup_oss.py'}
-    for name,cli in [('runtime_online_backup.py','zhuojian-online-backup'),('runtime_recovery_evidence.py','zhuojian-recovery-evidence')]:
+    for name,cli in [('runtime_online_backup.py','zhuojian-online-backup'),('runtime_recovery_evidence.py','zhuojian-recovery-evidence'),('runtime_storage_bootstrap.py','zhuojian-storage-bootstrap')]:
         candidate=source.with_name(name)
         if candidate.exists() or candidate.is_symlink():
             if candidate.is_symlink() or not candidate.is_file():raise RuntimeError('backup companion must be a regular source file')
             sources[name]=candidate;wrappers[wrapper.parent/cli]=name
+    plan_source = source.parent.parent / 'assets/admin-runtime/host/runtime_backup_plan.py'
+    if plan_source.is_file() and not plan_source.is_symlink():
+        sources['runtime_backup_plan.py'] = plan_source
     for path,name in wrappers.items():
         if path.exists() or path.is_symlink():
             protected_file(path)

@@ -26,6 +26,8 @@ services:
       - /var/lib/zhuojian-storage-gateway:/var/lib/zhuojian-storage-gateway
       - /etc/zhuojian/storage-apps:/etc/zhuojian/storage-apps
       - /etc/zhuojian/oss-gateway.env:/run/secrets/zhuojian-oss-gateway.env:ro
+      - /etc/zhuojian/oss-business-lease:/run/secrets/zhuojian-oss-business:ro
+      - /run/zhuojian-oss-lease/business:/run/zhuojian-oss-lease/business:ro
       - /etc/zhuojian/runtime.json:/run/zhuojian/runtime.json:ro
     networks:
       - storage

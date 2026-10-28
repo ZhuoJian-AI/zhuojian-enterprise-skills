@@ -56,9 +56,7 @@ class GatewaySettings:
             internal_url=internal_url.rstrip("/"),
             root_prefix=root_prefix,
             oss_secrets_file=Path(
-                os.environ.get(
-                    "OSS_SECRETS_FILE", "/run/secrets/zhuojian-oss-gateway.env"
-                )
+                configured_credentials_file()
             ),
             max_upload_bytes=_positive_int("GATEWAY_MAX_UPLOAD_BYTES", 512 * 1024**2),
             spool_memory_bytes=_positive_int("GATEWAY_SPOOL_MEMORY_BYTES", 8 * 1024**2),
@@ -137,6 +135,21 @@ class OssCredentials:
     access_key_id: str
     access_key_secret: str
     security_token: str | None = None
+    source_file: Path | None = None
+    credential_provider: str | None = None
+    expires_at: str | None = None
+
+
+def configured_credentials_file() -> str:
+    fallback = os.environ.get('OSS_SECRETS_FILE', '/run/secrets/zhuojian-oss-gateway.env')
+    path = os.environ.get('GATEWAY_RUNTIME_PROFILE')
+    if path:
+        _require_root_metadata_file(Path(path), 'Runtime profile')
+        profile = json.loads(Path(path).read_text(encoding='utf-8'))
+        binding = profile.get('platformStorageBinding') or {}
+        if binding.get('credentialProvider') == 'platform-sts-v1' and binding.get('business') is not None:
+            return '/run/secrets/zhuojian-oss-business/credentials.env'
+    return fallback
 
 
 def load_oss_credentials(path: Path) -> OssCredentials:
@@ -186,6 +199,9 @@ def load_oss_credentials(path: Path) -> OssCredentials:
         access_key_id=values["OSS_ACCESS_KEY_ID"],
         access_key_secret=values["OSS_ACCESS_KEY_SECRET"],
         security_token=values.get("OSS_SECURITY_TOKEN") or None,
+        source_file=path,
+        credential_provider=values.get('OSS_CREDENTIAL_PROVIDER'),
+        expires_at=values.get('OSS_EXPIRES_AT'),
     )
 
 

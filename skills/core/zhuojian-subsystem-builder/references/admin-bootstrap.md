@@ -190,6 +190,8 @@ POST  /api/v1/ecs-publisher/organizations/{organizationId}/runtimes/{runtimeId}/
 
 ## 共享 OSS 与机外备份初始化
 
+平台已部署存储机器接口时，优先按 [Runtime 存储初始化](runtime-storage-bootstrap.md) 在平台管理员“服务器”的企业初始化入口预绑定受控存储档案，再由企业 root 运行固定初始化工具。业务与备份分别领取本企业 STS，自动续期；企业负责人不持阿里云账号，也不提供平台 Token。下文人工创建 RAM 的流程仅供已有获权平台管理员维护旧部署，不转交企业负责人。Runtime 登记仍由管理员第一次签发，不以 root 密码冒充平台身份。
+
 初始化或补齐既有主机保护时，同时按 [备份覆盖与恢复验收](recovery-acceptance.md) 盘点所有实际系统及数据库、附件、代码和配置。机外副本完整回读及隔离恢复完成后，再登记有效恢复点并接定时任务与平台安全投影；不能用 Runtime 健康、旧数据目录归档或任务 enabled 代替。负责人要求保持线上使用时，采用已验收的在线方法，不重跑会停业务的初始化或备份步骤。
 
 同一公司多人共用一台企业 ECS，允许获授权 Codex 使用 root。只在企业之间隔离云资源，不新增个人发布权限限制。初始化 AI 一次性绑定同地域共享业务 Bucket 与独立共享备份 Bucket：业务对象进入 `enterprises/<组织UUID>/<环境>/apps/<系统>/`，含配置秘密和 Git 的备份进入 `enterprises/<组织UUID>/<环境>/backups/applications/<系统>/`。两个身份均只允许本企业的相应前缀；不得把共享桶全量 AccessKey 放到企业 ECS。

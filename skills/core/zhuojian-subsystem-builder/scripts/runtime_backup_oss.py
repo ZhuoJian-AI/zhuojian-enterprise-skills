@@ -20,6 +20,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 from urllib.parse import quote, urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 from urllib.error import HTTPError
@@ -104,6 +105,28 @@ def publication_lock(path):
         os.close(fd)
 
 
+@contextlib.contextmanager
+def publication_lock_wait(path, seconds=0):
+    """Bounded queueing for independent scheduled first backups; never stop apps."""
+    if type(seconds) is not int or not 0 <= seconds <= 6600:
+        raise BackupError('invalid_runtime_lock_wait')
+    deadline = time.monotonic() + seconds
+    while True:
+        lock = publication_lock(path)
+        try:
+            lock.__enter__()
+        except BlockingIOError:
+            if time.monotonic() >= deadline:
+                raise BackupError('runtime_operation_busy') from None
+            time.sleep(min(0.2, max(0, deadline - time.monotonic())))
+            continue
+        break
+    try:
+        yield
+    finally:
+        lock.__exit__(None, None, None)
+
+
 def sha_file(path):
     h = hashlib.sha256(); size = 0
     with path.open("rb") as stream:
@@ -130,6 +153,7 @@ def absolute_config_path(value, label):
 
 class BackupScope:
     def __init__(self, profile):
+        self.profile = profile
         try:
             self.organization = str(UUID(str(profile["organizationId"])))
         except (ValueError, TypeError, KeyError) as exc:
@@ -205,7 +229,12 @@ class OssBackend:
         if not values.get("OSS_ACCESS_KEY_ID") or not values.get("OSS_ACCESS_KEY_SECRET"):
             raise BackupError("backup credential fields are missing")
         token = values.get("OSS_SECURITY_TOKEN")
-        auth=oss2.StsAuth(values['OSS_ACCESS_KEY_ID'],values['OSS_ACCESS_KEY_SECRET'],token) if token else oss2.Auth(values['OSS_ACCESS_KEY_ID'],values['OSS_ACCESS_KEY_SECRET'])
+        self.platform_sts = values.get('OSS_CREDENTIAL_PROVIDER') == 'platform-sts-v1'
+        if self.platform_sts:
+            from runtime_storage_bootstrap import RuntimeCredentialsProvider
+            auth = oss2.ProviderAuth(RuntimeCredentialsProvider(scope.profile, 'backup', scope.credential_file))
+        else:
+            auth=oss2.StsAuth(values['OSS_ACCESS_KEY_ID'],values['OSS_ACCESS_KEY_SECRET'],token) if token else oss2.Auth(values['OSS_ACCESS_KEY_ID'],values['OSS_ACCESS_KEY_SECRET'])
         self.sdk = oss2
         self.bucket = oss2.Bucket(auth, endpoint, scope.bucket, connect_timeout=30)
         self.endpoint_host=parsed.netloc
@@ -277,7 +306,9 @@ class OssBackend:
 
     def put_manifest(self,key,value):
         data=json_bytes(value)
-        result=self.bucket.put_object(key,data,headers={"Content-Type":"application/json","x-oss-server-side-encryption":"AES256","x-oss-object-acl":"private","x-oss-forbid-overwrite":"true"})
+        headers={"Content-Type":"application/json","x-oss-server-side-encryption":"AES256","x-oss-forbid-overwrite":"true"}
+        if not getattr(self,'platform_sts',False):headers['x-oss-object-acl']='private'
+        result=self.bucket.put_object(key,data,headers=headers)
         return self.version(result)
 
     def upload(self,key,path,size,sha,journal):
@@ -300,7 +331,9 @@ class OssBackend:
             raise BackupError('previously uploaded object is no longer discoverable; do not create a replacement version')
         if not upload_id:
             atomic_json(journal,{**identity,"phase":"initiating"})
-            result=self.bucket.init_multipart_upload(key,headers={"Content-Type":"application/gzip","x-oss-meta-sha256":sha,"x-oss-server-side-encryption":"AES256","x-oss-object-acl":"private","x-oss-forbid-overwrite":"true"})
+            headers={"Content-Type":"application/gzip","x-oss-meta-sha256":sha,"x-oss-server-side-encryption":"AES256","x-oss-forbid-overwrite":"true"}
+            if not getattr(self,'platform_sts',False):headers['x-oss-object-acl']='private'
+            result=self.bucket.init_multipart_upload(key,headers=headers)
             upload_id=result.upload_id
             atomic_json(journal,{**identity,"phase":"uploading","uploadId":upload_id})
         parts=[]

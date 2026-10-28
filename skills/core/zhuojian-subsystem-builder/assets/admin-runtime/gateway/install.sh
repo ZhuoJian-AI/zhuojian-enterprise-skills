@@ -110,6 +110,17 @@ done
     die "$SECRETS_FILE must already be owned by root:root with mode 0600"
 [ -s "$SECRETS_FILE" ] || die "$SECRETS_FILE must be populated before installation"
 
+# Dedicated business-only directory binds allow atomic lease renewal. No
+# Runtime registration key or backup credential directory enters the gateway.
+for lease_directory in /etc/zhuojian/oss-business-lease /run/zhuojian-oss-lease/business; do
+    if [ -e "$lease_directory" ] || [ -L "$lease_directory" ]; then
+        [ -d "$lease_directory" ] && [ ! -L "$lease_directory" ] && \
+        [ "$(stat -c '%u:%g:%a' -- "$lease_directory")" = "0:0:700" ] || die "unsafe business lease directory"
+    else
+        install -d -o root -g root -m 0700 "$lease_directory"
+    fi
+done
+
 # Identity comes from the initialized Runtime, never an application parameter.
 # Existing OSS profiles without namespaceMode retain their legacy key prefix.
 # Fail before replacing a running gateway when the trusted identity is missing.
