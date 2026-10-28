@@ -115,7 +115,9 @@ def publication_lock_wait(path, seconds=0):
         lock = publication_lock(path)
         try:
             lock.__enter__()
-        except BlockingIOError:
+        except (BlockingIOError, BackupError) as exc:
+            if not lock_is_busy(exc):
+                raise
             if time.monotonic() >= deadline:
                 raise BackupError('runtime_operation_busy') from None
             time.sleep(min(0.2, max(0, deadline - time.monotonic())))
@@ -125,6 +127,11 @@ def publication_lock_wait(path, seconds=0):
         yield
     finally:
         lock.__exit__(None, None, None)
+
+
+def lock_is_busy(exc):
+    return isinstance(exc, BlockingIOError) or (
+        isinstance(exc, BackupError) and isinstance(exc.__cause__, (BlockingIOError, PermissionError)))
 
 
 def sha_file(path):

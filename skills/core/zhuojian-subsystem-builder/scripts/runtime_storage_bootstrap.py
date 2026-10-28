@@ -600,10 +600,12 @@ def main(argv=None):
                     profile = refresh_binding(profile)
             else:
                 try:
-                    with transport.publication_lock(Path('/run/lock/zhuojian-runtime-admin.lock')):
+                    with transport.publication_lock_wait(Path('/run/lock/zhuojian-runtime-admin.lock'), 0):
                         profile = transport.read_json(PROFILE, allow_metadata_read=True)
                         profile = refresh_binding(profile)
-                except BlockingIOError:
+                except transport.BackupError as exc:
+                    if str(exc) != 'runtime_operation_busy':
+                        raise
                     # Renewal/reporting do not need to mutate the Runtime while
                     # a long online job owns its lock; per-signature renewal
                     # still checks the live binding revision and fixed scope.

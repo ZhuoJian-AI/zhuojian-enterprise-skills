@@ -432,6 +432,29 @@ def test_first_backup_waits_for_existing_runtime_work_without_stopping_it(tmp_pa
         thread.join(3)
 
 
+def test_lease_refresh_and_report_continue_while_backup_owns_runtime_lock(tmp_path, monkeypatch, capsys):
+    p = profile(tmp_path)
+    p['platformStorageBinding'] = bootstrap.validate_binding(p, binding(p))
+    path = tmp_path / 'etc' / 'runtime.json'
+    write_json(path, p)
+    monkeypatch.setattr(bootstrap, 'PROFILE', path)
+    monkeypatch.setattr(bootstrap, 'os', SimpleNamespace(name='posix', geteuid=lambda: 0))
+    @contextlib.contextmanager
+    def busy(_path):
+        try:
+            raise BlockingIOError('test lock held')
+        except BlockingIOError as exc:
+            raise transport.BackupError('another publisher is handling this recovery point') from exc
+        yield
+    monkeypatch.setattr(transport, 'publication_lock', busy)
+    calls = []
+    monkeypatch.setattr(bootstrap, 'renew', lambda _p, purpose: calls.append(purpose))
+    monkeypatch.setattr(bootstrap, 'report', lambda _p: {'reported': True})
+    assert bootstrap.main(['refresh']) == 0
+    assert calls == ['backup']
+    assert json.loads(capsys.readouterr().out)['report']['reported'] is True
+
+
 @pytest.mark.skipif(os.name != 'posix' or getattr(os, 'geteuid', lambda: 1)() != 0, reason='root Unix peer and socket permissions')
 def test_business_socket_accepts_only_fixed_business_request(tmp_path):
     p = profile(tmp_path)
