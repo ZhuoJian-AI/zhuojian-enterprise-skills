@@ -31,4 +31,8 @@
 
 ## 发布边界
 
+### 最终逻辑候选的本地结果
+
+功能提交 `f7676a8` 与锁包装修复 `e04b099` 已推送，Draft PR104。e04b099 的 Windows 核心全套 **993 passed / 80 skipped / 1 warning，48.37秒**；同源 WSL root 受影响套件 **212 passed / 1 warning，6.96秒**，包括真实Unix peer/socket和flock争锁排队。Skill quick_validate通过。版本常量原断言50已同步51；初版有界锁未识别旧工具包装的BlockingIOError由实际POSIX测试抓到并修复，失败未抹除。正式CI与独立只读复核继续，尚未合并或发布。
+
 core候选1.1.51保持接入契约2.4/2.5。稳定Release、双账号限定同步、正式PR/main CI及现场安装由主任务另留回执。此处不宣称已发Release、已接入新企业或全部数据库适配完成。
