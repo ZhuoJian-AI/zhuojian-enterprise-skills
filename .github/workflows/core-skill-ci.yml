@@ -7,8 +7,10 @@ on:
       - "skills/core/zhuojian-subsystem-builder/**"
       - "scripts/maintenance/upgrade_alphabet_backup_consistency_20261027.py"
       - "scripts/maintenance/install_alphabet_online_schedule_20261028.py"
+      - "scripts/maintenance/upgrade_alphabet_storage_bootstrap_20261028.py"
       - "tests/maintenance/test_alphabet_backup_consistency_maintenance.py"
       - "tests/maintenance/test_alphabet_online_schedule.py"
+      - "tests/maintenance/test_alphabet_storage_bootstrap.py"
       - ".github/workflows/core-skill-ci.yml"
   push:
     branches: [main]
@@ -16,8 +18,10 @@ on:
       - "skills/core/zhuojian-subsystem-builder/**"
       - "scripts/maintenance/upgrade_alphabet_backup_consistency_20261027.py"
       - "scripts/maintenance/install_alphabet_online_schedule_20261028.py"
+      - "scripts/maintenance/upgrade_alphabet_storage_bootstrap_20261028.py"
       - "tests/maintenance/test_alphabet_backup_consistency_maintenance.py"
       - "tests/maintenance/test_alphabet_online_schedule.py"
+      - "tests/maintenance/test_alphabet_storage_bootstrap.py"
       - ".github/workflows/core-skill-ci.yml"
 
 permissions:
@@ -69,4 +73,4 @@ jobs:
         run: |
           python -m pytest -q -ra
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -m pytest -q -ra ../../../tests/maintenance/test_alphabet_backup_consistency_maintenance.py ../../../tests/maintenance/test_alphabet_online_schedule.py
+          python -m pytest -q -ra ../../../tests/maintenance/test_alphabet_backup_consistency_maintenance.py ../../../tests/maintenance/test_alphabet_online_schedule.py ../../../tests/maintenance/test_alphabet_storage_bootstrap.py

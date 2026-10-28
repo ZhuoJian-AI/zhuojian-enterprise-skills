@@ -25,6 +25,8 @@ zhuojian-storage-bootstrap configure --preserve-existing-schedule --existing-bac
 
 这只登记原定时器作状态查询，保留其日程、原计划与原缺失基线；初始化 AI 仍须实际验证其使用新版续期 provider 和既有备份路径。新安装的标准在线链仅替代已识别的旧 Runtime 停写 timer，不停止正在运行的业务容器。Scope 探针失败时保留原静态备份凭据；已有静态源身份继续兼容。
 
+保留日程前还要检查该 service 的实际 `ExecStartPre`、wrapper 和模块 pins。旧私有 preflight 可能固定旧 SDK、整个计划文件的字节 hash 或系统数量；自动登记即使只重排 JSON 也可能令原任务失败。平台维护 AI 须先为这类已审核链完成限定兼容升级：保留旧手工项目和历史缺失基线的逐项证明，允许受信 root helper 的有界新项，且仅在已核对的新工具整代安装后允许切 STS。不要删除旧保护或只更新 wrapper 后就换密钥；私有原配置、静态凭据、wrapper 与 pins 的回退快照另存 root 私有目录，不进入 Skill 或日志。
+
 ## STS 续期与网关
 
 备份使用官方 SDK `ProviderAuth`，每次签名（含分片、回读及历史版本读取）检查有效期，临期通过同一机器身份续期；不把 15 分钟临时 Token 当长期密钥。主机还以受控服务定期刷新并上报。业务网关通过只挂载给网关的 business-only Unix socket 按需续期，socket 固定业务用途且校验主机 root peer，不接受用途、对象前缀、路径或命令。网关不取得 Runtime 登记 key 或备份身份，业务容器不挂载 socket。

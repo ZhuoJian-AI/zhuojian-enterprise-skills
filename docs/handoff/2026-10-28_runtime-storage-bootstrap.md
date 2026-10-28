@@ -1,6 +1,6 @@
 # Runtime 存储预绑定、自动备份接入与首点验收
 
-本轮主责是企业 Runtime 与通用 Skill。SaaS 机器接口、平台管理员 Console/Control、云角色、服务器安装与稳定发布由主任务分别交付；本文件不把源码、测试或 Skill 版本当成线上安装证明。没有操作企业线上、云账号或真实凭据。
+本轮主责是企业 Runtime 与通用 Skill。SaaS 机器接口、平台管理员 Console/Control、云角色、服务器安装与稳定发布由主任务分别交付；本文件不把源码、测试或 Skill 版本当成线上安装证明。未修改企业线上配置、操作云账号或更换真实凭据；后文现场检查均为只读或内存 dry-run。
 
 ## 实现范围
 
@@ -36,3 +36,25 @@
 功能提交 `f7676a8` 与锁包装修复 `e04b099` 已推送，Draft PR104。e04b099 的 Windows 核心全套 **993 passed / 80 skipped / 1 warning，48.37秒**；同源 WSL root 受影响套件 **212 passed / 1 warning，6.96秒**，包括真实Unix peer/socket和flock争锁排队。Skill quick_validate通过。版本常量原断言50已同步51；初版有界锁未识别旧工具包装的BlockingIOError由实际POSIX测试抓到并修复，失败未抹除。正式CI与独立只读复核继续，尚未合并或发布。
 
 core候选1.1.51保持接入契约2.4/2.5。稳定Release、双账号限定同步、正式PR/main CI及现场安装由主任务另留回执。此处不宣称已发Release、已接入新企业或全部数据库适配完成。
+
+## 正式 PR CI 与现场固定链兼容
+
+PR104 已 Ready。原 head `e3fef773` 对应合成 merge `b57b9bc16e6a6deda0a9281c943c0888e1fe9298` 的正式 GitHub Windows CI run `40615596124` / job `122577225819` 成功：993 passed / 80 skipped / 1 warning（69.73秒），独立 maintenance 5 passed / 1 skipped。旧 skipped run 不计为通过。后续兼容适配另须验新 head，不将上述结果冒充新源码 CI。
+
+2026-10-28 只读核实 Alphabet 机器 `24b1027fbbb34fe080910773ec63ebc9`：自然日程仍是 `zhuojian-online-backup.timer`，03:15 加 15 分钟随机；timer SHA `ce0f86bd09b1830a33d393e4d95133508efcad8d0f8cd0ebc4f830874d0d4f89`，service SHA `e4a3c0ef98d58cfdec6e1463b15f906b58f4d75c963a1fe2477a25446c1d75ed`。原 wrapper 实际指向 `a6de832052f14ef3417b0575ed366c8a3c9553a0941eaab716c5e90d627221ab` 私有工具代；该 SDK 没有 STS provider。旧 ExecStartPre 不仅固定 wrappers/modules，还固定原 23,776字节 plan 的整文件 hash 和九项数量。新的 enroll 默认 JSON 序列化就会改变这个 hash，不能在未适配前运行 configure。
+
+专项维护候选 `scripts/maintenance/upgrade_alphabet_storage_bootstrap_20261028.py` 固定该机器、原 service/timer、旧 preflight/pins 与原九项手工计划。先安装兼容 preflight，仍允许完整旧静态工具代运行；工具切换必须整代吻合，混合或任意源码拒绝。`platform-sts-v1` 凭据仅允许新版 provider 整代，包含实际 daily CLI、备份/续期/计划模块及 Runtime helper。计划验收改为身份及原九项逐项 canonical hash，允许同一 root helper 创建的受限 SQLite 或 pending 追加项；原数据库路径、私有恢复文件和服装历史基线保持。原 Windows 次级导出容量预算与 5GiB 主备份底线按原代码保留。
+
+固定新版工具代为 `7ec8fd487f3f5dc870515f4a44cff5626b4fe9884d0ccd9baa76fa72b40a6632`，源于本候选原样 LF 文件。维护脚本默认 dry-run，`--apply` 仅在全局 Runtime 锁下更新该私有 preflight/pins，提前将原文件及原计划字节保存到其 `before-storage-bootstrap-v1/`，任何取消按原字节与模式 CAS 回退；不读取或更换云凭据，不操作 timer、业务服务或实际备份。原快照已存在、目标有漂移或任务正在运行时拒绝盲目重试。
+
+专项新增/旧 maintenance 在 Windows 22 passed / 2 skipped，WSL root 24 passed，包含实际私有文件和独立生成 preflight 子进程。新增 pending 不阻旧项、旧项变更/越界/非审核字段拒绝、旧 SDK 搭配 STS 拒绝、重命名前后中断回退及保留并发未知写入均已验。Alpha 无落文件 dry-run及新生成 preflight 的实际原静态代内存执行均通过；没有 apply、凭据切换或日程变更。新 preflight SHA `122fc681b9268f2ef669931abc2316e9bc269b809f8bf6a5cd848e393b8b5339`、新 pins SHA `206e59e9fc532bef913923d2a00f3eed6b54972f5118461592f32dc15f578f45`。独立代理重新从现场计算原四文件 SHA、九项及身份 canonical hash，并从 Git LF 字节重新计算新整代/module/helper pins，全部匹配；没有剩余阻断项。
+
+### Alphabet 接管与 daily 回退次序
+
+1. 平台接口/profile/绑定先通过。等待已有备份完成；在 root 私有目录保存原 `runtime.json`、`backup-oss.env`、Runtime helpers 和三个 daily wrappers 的字节/模式/hash，确认旧工具代仍保留。秘密不输出、不上 CI。
+2. 从同一审查源码执行上述维护脚本 dry-run、`--apply`。此时原静态 daily 仍应通过新 preflight。只复制本轮两个 host helper，再运行原 `install_runtime_backup.py` 安装新私有 SDK/四个 CLI；运行实际 `ExecStartPre`，确认全部新 pins，仍不换凭据。
+3. 执行 `zhuojian-storage-bootstrap configure --preserve-existing-schedule --existing-backup-timer zhuojian-online-backup.timer`。Alpha 的 business:null 保留旧业务 OSS。再次运行实际 preflight、核实原 timer/service 字节和原九项计划 canonical hash，然后运行真正 daily CLI 的机外回读/隔离恢复及跨 STS 有效期验证，才能宣称接管。
+4. 如需回退：先核实未知备份结果，等待任务退出；仅暂停本轮 refresh/lease 单元并确认没有新 initial-backup 作业，以 Runtime 锁保护配置恢复。先原子恢复原私有 `runtime.json` 和静态 `backup-oss.env`，再恢复原 helpers/三个 wrappers，最后从 `before-storage-bootstrap-v1/` 恢复原 plan 字节及 pins/preflight（只恢复语义相同的原计划或本 helper 的限定追加，其他手工改动拒绝覆盖）。每个写回须检查当前内容属于本次变更，遇其他修改保留并停止。保留新增系统的恢复点和回退前计划记录，新增系统在旧链回退期间明确待补。原静态 SDK 不得搭配已经过期的 STS 文件。
+5. 运行原 preflight 和限定 OSS 读取，确认原 daily timer 的启用/等待状态、SHA 与下一次触发；原业务容器身份和启动时间应保持。若为避免临界触发而短暂停 timer，须按其保存状态恢复。没有生产库回写、业务重启、删除恢复点或重新启用旧停写 timer。
+
+本段是候选安装与回退路径，尚未操作现场；正式 Release、双账号同步和主机采用仍由主任务单独留证。
