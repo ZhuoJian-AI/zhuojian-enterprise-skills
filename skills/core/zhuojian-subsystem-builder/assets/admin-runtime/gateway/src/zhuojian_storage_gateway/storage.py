@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+import json
+import socket
 from typing import BinaryIO, Protocol
 
 from .config import OssCredentials
@@ -13,6 +15,65 @@ class ObjectNotFound(Exception):
 
 class StorageUnavailable(Exception):
     pass
+
+
+class BusinessLeaseProvider:
+    """No Runtime key is mounted here; the host socket has one fixed purpose."""
+    def __init__(self, credentials: OssCredentials) -> None:
+        self.credentials = credentials
+
+    def get_credentials(self):
+        from oss2.credentials import Credentials
+        from .config import load_oss_credentials
+        current = load_oss_credentials(self.credentials.source_file) if self.credentials.source_file else self.credentials
+        if (current.endpoint, current.bucket, current.credential_provider) != (
+                self.credentials.endpoint, self.credentials.bucket, 'platform-sts-v1'):
+            raise StorageUnavailable('business lease scope changed')
+        try:
+            expiry = datetime.fromisoformat(str(current.expires_at).replace('Z', '+00:00'))
+            if expiry.tzinfo is None:
+                raise ValueError
+        except ValueError:
+            raise StorageUnavailable('business lease expiration is invalid') from None
+        now = datetime.now(timezone.utc)
+        if expiry <= now + timedelta(seconds=120):
+            try:
+                with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+                    client.settimeout(35)
+                    client.connect('/run/zhuojian-oss-lease/business/credentials.sock')
+                    client.sendall(b'GET\n')
+                    chunks = b''
+                    while not chunks.endswith(b'\n') and len(chunks) <= 65536:
+                        block = client.recv(min(4096, 65537 - len(chunks)))
+                        if not block:
+                            break
+                        chunks += block
+                if len(chunks) > 65536:
+                    raise ValueError
+                reply = json.loads(chunks)
+                fields = reply.get('credentials') or {}
+                expires = datetime.fromisoformat(str(fields.get('OSS_EXPIRES_AT')).replace('Z', '+00:00'))
+                if (reply.get('ok') is not True or fields.get('OSS_BUCKET') != current.bucket
+                        or fields.get('OSS_ENDPOINT') != current.endpoint or expires.tzinfo is None
+                        or expires <= now + timedelta(seconds=120)
+                        or not all(isinstance(fields.get(k), str) and fields[k] for k in
+                                   ('OSS_ACCESS_KEY_ID', 'OSS_ACCESS_KEY_SECRET', 'OSS_SECURITY_TOKEN'))):
+                    raise ValueError
+                return Credentials(fields['OSS_ACCESS_KEY_ID'], fields['OSS_ACCESS_KEY_SECRET'], fields['OSS_SECURITY_TOKEN'])
+            except (OSError, ValueError, TypeError):
+                if expiry <= datetime.now(timezone.utc):
+                    raise StorageUnavailable('business lease renewal is unavailable') from None
+        if not current.security_token:
+            raise StorageUnavailable('business lease token is unavailable')
+        return Credentials(current.access_key_id, current.access_key_secret, current.security_token)
+
+
+def create_oss_auth(credentials, sdk):
+    if credentials.credential_provider == 'platform-sts-v1':
+        return sdk.ProviderAuth(BusinessLeaseProvider(credentials))
+    if credentials.security_token:
+        return sdk.StsAuth(credentials.access_key_id, credentials.access_key_secret, credentials.security_token)
+    return sdk.Auth(credentials.access_key_id, credentials.access_key_secret)
 
 
 @dataclass(frozen=True)
@@ -54,14 +115,7 @@ class Oss2StorageAdapter:
     def __init__(self, credentials: OssCredentials) -> None:
         import oss2
 
-        if credentials.security_token:
-            auth = oss2.StsAuth(
-                credentials.access_key_id,
-                credentials.access_key_secret,
-                credentials.security_token,
-            )
-        else:
-            auth = oss2.Auth(credentials.access_key_id, credentials.access_key_secret)
+        auth = create_oss_auth(credentials, oss2)
         self._oss2 = oss2
         self._bucket = oss2.Bucket(auth, credentials.endpoint, credentials.bucket)
 

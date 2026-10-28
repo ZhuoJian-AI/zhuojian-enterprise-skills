@@ -317,17 +317,8 @@ def _assert_outside_prefix_denied(credentials: OssCredentials, run_id: str, root
     try:
         import oss2
 
-        if credentials.security_token:
-            auth = oss2.StsAuth(
-                credentials.access_key_id,
-                credentials.access_key_secret,
-                credentials.security_token,
-            )
-        else:
-            auth = oss2.Auth(
-                credentials.access_key_id,
-                credentials.access_key_secret,
-            )
+        from .storage import create_oss_auth
+        auth = create_oss_auth(credentials, oss2)
         bucket = oss2.Bucket(auth, credentials.endpoint, credentials.bucket)
         outside_prefixes = [f"zhuojian-policy-probe/{run_id}/"]
         if root_prefix.startswith("enterprises/"):

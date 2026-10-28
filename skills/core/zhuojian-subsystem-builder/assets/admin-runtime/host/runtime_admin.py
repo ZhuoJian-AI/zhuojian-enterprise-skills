@@ -18,6 +18,7 @@ import copy
 import datetime as dt
 import hashlib
 import ipaddress
+import importlib.util
 import json
 import os
 import re
@@ -2858,6 +2859,7 @@ def cmd_deploy(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, Any]
             # into a false deployment failure; the stopped, labeled container is
             # safe for a later exact cleanup.
             run(["docker", "rm", previous_name], check=False)
+    protection = enroll_deployed_backup(profile, slug, commit, paths)
     return {
         "ok": True,
         "applicationSlug": slug,
@@ -2868,7 +2870,43 @@ def cmd_deploy(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, Any]
         "status": "awaiting_platform_registration",
         "deploymentMode": "controlled-maintenance" if had_existing else "initial",
         "safetyBackup": marker.get("safetyBackup"),
+        "backupProtection": protection,
     }
+
+
+def backup_enrollment_module():
+    source = Path(__file__).with_name('runtime_backup_plan.py')
+    if not source.is_file() or source.is_symlink():
+        raise AdminError('backup enrollment helper is not installed')
+    spec = importlib.util.spec_from_file_location('zhuojian_runtime_backup_plan', source)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def enroll_deployed_backup(profile, slug, commit, paths=PATHS):
+    if not profile.get('platformStorageBinding', {}).get('enabled'):
+        return {'required': False, 'status': 'legacy_not_enforced'}
+    try:
+        helper = backup_enrollment_module()
+        plan = paths.runtime.parent / 'backup-online-plan.json'
+        with locked(paths):
+            helper.enroll(profile, plan_path=plan, selected=slug, require_new=True)
+            status = helper.protection_status(profile, slug, commit, plan_path=plan)
+        if status.get('status') != 'verified':
+            # The healthy business release remains running. Fixed root service
+            # performs the first cloud readback/isolated restore asynchronously.
+            result = run(['systemctl', 'start', '--no-block', f'zhuojian-initial-backup@{slug}.service'], check=False)
+            status['initialBackupQueued'] = result.returncode == 0
+        return status
+    except Exception:
+        # A daily backup may have claimed the lock after code deployment. The
+        # fixed first-backup job queues on that lock and enrolls before capture.
+        try:
+            queued = run(['systemctl', 'start', '--no-block', f'zhuojian-initial-backup@{slug}.service'], check=False).returncode == 0
+        except Exception:
+            queued = False
+        return {'required': True, 'status': 'pending_enrollment', 'initialBackupQueued': queued}
 
 
 STORAGE_ROTATION_PHASES = {"preparing", "prepared", "switching", "healthy", "committed"}
@@ -3724,7 +3762,10 @@ def cmd_verify_release(args: argparse.Namespace, paths: Paths = PATHS) -> dict[s
         release = load_release(slug, profile, paths)
         release = recover_pending_release_switch(release, profile, paths)
         identity = verify_release_runtime_identity(release, profile)
-    return {"ok": True, **identity}
+    protection = {'required': False, 'status': 'legacy_not_enforced'}
+    if profile.get('platformStorageBinding', {}).get('enabled'):
+        protection = backup_enrollment_module().protection_status(profile, slug, identity['commit'], plan_path=paths.runtime.parent / 'backup-online-plan.json')
+    return {"ok": True, **identity, 'backupProtection': protection}
 
 
 def parser() -> argparse.ArgumentParser:

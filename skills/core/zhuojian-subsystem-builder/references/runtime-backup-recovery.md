@@ -56,6 +56,8 @@ OSS_ACCESS_KEY_SECRET=<只写入受保护文件>
 
 ## 安装与配置
 
+平台已预绑定 Runtime 时，优先走 [受限身份自动领取及定时续期](runtime-storage-bootstrap.md)，无需企业负责人提供云账号或 Token。该路径接入新的在线定时链，并自动上报平台状态；下面的手工云凭据命令保留为已获权管理员的旧部署兼容入口。
+
 更新 Skill 和 Runtime helper 后，从该 Skill 根目录执行：
 
 ```sh
@@ -78,7 +80,7 @@ zhuojian-backup-oss list <applicationSlug>
 zhuojian-backup-oss verify <applicationSlug> --archive-name <恢复点>.tar.gz
 ```
 
-上传器要求 Runtime schemaVersion=2 sidecar：受控停写一致性归档、字节数、SHA-256、内嵌 `code/repository.bundle` 的哈希和实际恢复校验、仓库 HEAD 与运行 release commit。旧 schema1 的数据归档仍可按旧 Runtime 路径恢复，但不能被包装成包含 Git 的完整机外恢复点。
+上传器接受 Runtime schemaVersion=2 的受控停写一致性归档，或 schemaVersion=3 的真实在线 SQLite/文件/对象快照。两者均要求字节数、SHA-256、内嵌 `code/repository.bundle` 的哈希和实际恢复校验、仓库 HEAD 与运行 release commit；在线快照另核 manifest、数据库完整性和文件引用。不能把在线包伪装为停写包。旧 schema1 的数据归档仍可按旧 Runtime 路径恢复，但不能被包装成包含 Git 的完整机外恢复点。
 
 归档以有界分片上传，超过业务网关的 512 MiB 上限也可处理，不把整包读入内存。持久化 upload journal，并对同一恢复点加进程锁。有 uploadId 的中断重传同编号分片；完成请求超时先 HEAD/GET 核对，必要时只续原上传。初始化请求超时且 uploadId 未保存时，不盲目重提、也不扩大权限列举全桶；保留该恢复点及 journal，生成一个新 Runtime 恢复点继续上传，旧分片由既有 lifecycle 回收。
 
@@ -100,6 +102,8 @@ zhuojian-backup-oss stage-restore <applicationSlug> \
 OSS 业务附件不在普通 Runtime tar 中；跨业务附件的恢复点还需独立对象版本/清单和引用一致性验证。NAS/道讯原件保留本地源时不偷偷全量复制进备份桶；需按已确定数据边界验证读取链路。
 
 ## 自动备份与有限本地清理
+
+已配置平台存储绑定的新 Runtime 默认用 `zhuojian-storage-bootstrap` 在线链，不安装下面会继续调用旧 `backup-all` 的兼容 drop-in。已有经过验收的在线计划、源缺失集合和定时器由初始化 AI 精确保留并登记其真实 unit 名称。定时器、计划登记和凭据探针都不构成成功恢复点。
 
 逐系统完成真实上传和隔离恢复后，AI 可把随附的 `assets/admin-runtime/backup/20-off-server.conf` 精确安装到 `/etc/systemd/system/zhuojian-backup.service.d/20-off-server.conf`，核对原 unit 仍是登记的 `zhuojian-runtime backup-all`，运行 `systemd-analyze verify` 和 `systemctl daemon-reload`。不得覆盖同目录的其他 drop-in。它在已有备份服务结束后执行 `publish-latest`，某个系统本地失败也仍检查其他成功恢复点；失败保留本地并让服务状态可见。无需再建一个抢占停机窗口的备份定时器。
 

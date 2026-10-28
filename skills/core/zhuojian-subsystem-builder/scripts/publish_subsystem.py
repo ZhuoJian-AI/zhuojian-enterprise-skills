@@ -7,6 +7,7 @@ import argparse
 import contextlib
 import functools
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -241,6 +242,22 @@ def update_runtime_release_status(
         except FileNotFoundError:
             pass
         raise
+
+
+def require_initial_backup(profile, slug, commit, runtime_profile):
+    if not profile.get('platformStorageBinding', {}).get('enabled'):
+        return
+    candidates = [Path('/usr/local/lib/zhuojian/runtime_backup_plan.py'),
+                  Path(__file__).parent.parent / 'assets/admin-runtime/host/runtime_backup_plan.py']
+    source = next((p for p in candidates if p.is_file() and not p.is_symlink()), None)
+    if source is None:
+        raise SystemExit('首次备份验收工具尚未安装，不能将新系统报告为已保护')
+    spec = importlib.util.spec_from_file_location('zhuojian_publish_backup_plan', source)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    state = module.protection_status(profile, slug, commit, plan_path=Path(runtime_profile).parent / 'backup-online-plan.json')
+    if state.get('required') is True and state.get('status') != 'verified':
+        raise SystemExit('新系统当前提交的首次机外备份、完整回读和隔离恢复尚未通过；线上旧系统继续服务，由开发AI补齐适配并重试登记')
 
 
 def verify_running_container(release: dict, enterprise_key: str, application_slug: str) -> None:
@@ -597,6 +614,7 @@ def main() -> int:
     release = load_runtime_release(release_file, inferred_slug)
     running = release["current"]
     verify_running_container(release, str(profile.get("enterpriseKey") or ""), inferred_slug)
+    require_initial_backup(profile, inferred_slug, str(running['commit']), args.runtime_profile)
     if args.use_running_release:
         commit = str(running["commit"])
         # The public Manifest and managed container above are the registration
@@ -706,6 +724,11 @@ def main() -> int:
         summary["error"] = result.get("last_error") or "contract verification failed"
         print(json.dumps(summary, ensure_ascii=False))
         return 2
+    if profile.get('platformStorageBinding', {}).get('enabled'):
+        reporter = Path('/usr/local/sbin/zhuojian-storage-bootstrap')
+        if reporter.is_file() and not reporter.is_symlink():
+            report_result = subprocess.run([str(reporter), 'report'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=120)
+            summary['storageReport'] = 'reported' if report_result.returncode == 0 else 'pending_retry'
     print(json.dumps(summary, ensure_ascii=False))
     return 0
 

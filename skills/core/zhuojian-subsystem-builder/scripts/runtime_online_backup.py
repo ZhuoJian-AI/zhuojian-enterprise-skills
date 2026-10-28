@@ -334,7 +334,11 @@ class ReadonlyObjects:
         storage = profile.get('objectStorage') or {}
         if storage.get('provider') != 'aliyun-oss' or storage.get('mode') != 'gateway-api-v1':
             raise transport.BackupError('existing object storage identity is unsupported')
-        path = Path(storage.get('credentialRef', '/etc/zhuojian/oss-gateway.env'))
+        binding = profile.get('platformStorageBinding') or {}
+        leased = binding.get('business') if binding.get('credentialProvider') == 'platform-sts-v1' else None
+        if leased is not None and any(storage.get(k) != leased.get(k) for k in ('bucket', 'region', 'rootPrefix')):
+            raise transport.BackupError('business lease does not match existing storage')
+        path = Path('/etc/zhuojian/oss-business-lease/credentials.env') if leased is not None else Path(storage.get('credentialRef', '/etc/zhuojian/oss-gateway.env'))
         transport.private_file(path)
         values = {}
         for line in path.read_text().splitlines():
@@ -352,7 +356,11 @@ class ReadonlyObjects:
         expected = f"enterprises/{profile['organizationId']}/{profile['environment']}/apps"
         if prefix not in {'apps', expected}: raise transport.BackupError('unsupported object namespace')
         self.prefix = prefix + '/' + transport.valid_slug(slug) + '/'
-        auth = oss2.StsAuth(values['OSS_ACCESS_KEY_ID'], values['OSS_ACCESS_KEY_SECRET'], values['OSS_SECURITY_TOKEN']) if values.get('OSS_SECURITY_TOKEN') else oss2.Auth(values['OSS_ACCESS_KEY_ID'], values['OSS_ACCESS_KEY_SECRET'])
+        if values.get('OSS_CREDENTIAL_PROVIDER') == 'platform-sts-v1':
+            from runtime_storage_bootstrap import RuntimeCredentialsProvider
+            auth = oss2.ProviderAuth(RuntimeCredentialsProvider(profile, 'business', path))
+        else:
+            auth = oss2.StsAuth(values['OSS_ACCESS_KEY_ID'], values['OSS_ACCESS_KEY_SECRET'], values['OSS_SECURITY_TOKEN']) if values.get('OSS_SECURITY_TOKEN') else oss2.Auth(values['OSS_ACCESS_KEY_ID'], values['OSS_ACCESS_KEY_SECRET'])
         self.bucket = oss2.Bucket(auth, endpoint, storage['bucket'], connect_timeout=30)
         self.sdk = oss2
 
@@ -600,30 +608,37 @@ def main(argv=None):
     p.add_argument('--runtime-helper',type=Path,default=Path('/usr/local/lib/zhuojian/runtime_admin.py'))
     p.add_argument('--publish',action='store_true')
     p.add_argument('--verify-restore',action='store_true')
+    p.add_argument('--keep-local',type=int,default=2)
+    p.add_argument('--lock-wait-seconds',type=int,default=0)
     p.add_argument('application_slug',nargs='?',default='all')
     args=p.parse_args(argv)
     try:
         if os.name!='posix' or os.geteuid()!=0:raise transport.BackupError('online backup requires Runtime root')
+        if not 2 <= args.keep_local <= 14:raise transport.BackupError('online local retention must be between two and fourteen points')
         profile=transport.read_json(args.runtime_profile,allow_metadata_read=True); plan=transport.read_json(args.plan)
         for key in ['organizationId','runtimeId','environment']:
             if plan.get(key)!=profile.get(key):raise transport.BackupError('online plan belongs to another Runtime')
         applications=plan.get('applications')
-        if not isinstance(applications,dict) or not applications:raise transport.BackupError('online plan has no reviewed applications')
+        if not isinstance(applications,dict):raise transport.BackupError('online plan has no reviewed applications')
         if args.application_slug=='all':
             registered=set()
             releases=Path(profile.get('deployment',{}).get('deploymentsRoot','/srv/zhuojian/deployments'))
             for path in releases.glob('*/release.json'):
-                value=transport.read_json(path,allow_metadata_read=True)
+                try:
+                    value=transport.read_json(path,allow_metadata_read=True)
+                except (OSError,transport.BackupError):
+                    try:registered.add(transport.valid_slug(path.parent.name))
+                    except transport.BackupError:pass
+                    continue
                 if value.get('managedBy')==MANAGED_BY:registered.add(value.get('applicationSlug'))
-            if registered!=set(applications):raise transport.BackupError('online plan does not cover current registered applications')
-        selected=sorted(applications) if args.application_slug=='all' else [transport.valid_slug(args.application_slug)]
+        selected=sorted(registered | set(applications)) if args.application_slug=='all' else [transport.valid_slug(args.application_slug)]
         helper=load_runtime_helper(args.runtime_helper)
         result={'ok':True,'backups':[],'failed':[]}
         scope=transport.BackupScope(profile) if args.publish else None
         backend=transport.OssBackend(scope) if scope is not None else None
         if backend is not None:backend.assert_scope(scope);backend.require_versioning()
         if args.verify_restore and backend is None:raise transport.BackupError('isolated remote restore requires publication')
-        with transport.publication_lock(Path('/run/lock/zhuojian-runtime-admin.lock')):
+        with transport.publication_lock_wait(Path('/run/lock/zhuojian-runtime-admin.lock'), args.lock_wait_seconds):
             for slug in selected:
                 transport.valid_slug(slug)
                 backup_dir=Path(profile.get('deployment',{}).get('backupsRoot','/srv/zhuojian/backups'))/slug
@@ -631,8 +646,12 @@ def main(argv=None):
                 transport.atomic_json(backup_dir/'online-job.json',job)
                 stage=None
                 try:
+                    app = applications.get(slug)
+                    if not app or not app.get('primary_sqlite') or app.get('enrollment',{}).get('status','ready') != 'ready':
+                        job['phase'] = 'enrollment'
+                        raise transport.BackupError('application backup adapter is pending')
                     with transport.publication_lock(Path('/run/lock/zhuojian-online-backup.lock')):
-                        point=capture_one(profile,slug,applications[slug],runtime_helper=helper)
+                        point=capture_one(profile,slug,app,runtime_helper=helper)
                         archive=Path(point['archive']);job['archive']=archive.name
                         if backend is not None:
                             job['phase']='offsite';transport.atomic_json(backup_dir/'online-job.json',job)
@@ -652,11 +671,11 @@ def main(argv=None):
                                 point['referenceIntegrityVerified']=restored['referenceIntegrityVerified']
                                 point['sourceMissingReferenceCount']=restored['sourceMissingReferenceCount']
                                 point['restoreResult']='partial' if restored['sourceMissingReferenceCount'] else 'passed'
-                                point['retention']=transport.prune_online_local(scope,backend,slug,keep=2,apply=True)
+                                point['retention']=transport.prune_online_local(scope,backend,slug,keep=args.keep_local,apply=True)
                         result['backups'].append(point)
                     job.update(status='success',finished_at=utc_now(),phase='completed')
                 except Exception:
-                    code={'capture':'online_backup_failed','offsite':'offsite_failed','restore':'restore_failed'}.get(job['phase'],'backup_failed')
+                    code={'capture':'online_backup_failed','offsite':'offsite_failed','restore':'restore_failed','enrollment':'backup_plan_pending'}.get(job['phase'],'backup_failed')
                     job.update(status='failed',finished_at=utc_now(),error_code=code)
                     result['failed'].append({'applicationSlug':slug,'error_code':code,'localPreserved':True})
                 finally:
