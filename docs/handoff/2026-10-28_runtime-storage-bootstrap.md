@@ -58,3 +58,23 @@ PR104 已 Ready。原 head `e3fef773` 对应合成 merge `b57b9bc16e6a6deda0a928
 5. 运行原 preflight 和限定 OSS 读取，确认原 daily timer 的启用/等待状态、SHA 与下一次触发；原业务容器身份和启动时间应保持。若为避免临界触发而短暂停 timer，须按其保存状态恢复。没有生产库回写、业务重启、删除恢复点或重新启用旧停写 timer。
 
 本段是候选安装与回退路径，尚未操作现场；正式 Release、双账号同步和主机采用仍由主任务单独留证。
+
+## 正式稳定发布与安装准备回执
+
+以下11:35验收 checkpoint 更新前文候选状态，不代替仍在主任务中的 SaaS/STS 接管。
+
+- PR104 合并为 `ac317a998079349f86f12e1b819982599599a9dd`。精确 PR run `40623379457` 与 main push run `40623929106` 均成功：核心993 passed / 80 skipped / 1 warning；maintenance22 passed / 2 skipped。main job `122604236059` 实际检出的就是合并源。没有重跑无关套件来增加通过数。
+- [bundle-v1.4.54](https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/releases/tag/bundle-v1.4.54)，Release `426220999`，于2026-10-28 03:10:51 UTC（11:10:51 CST）正式发布，非 draft/prerelease，tag 解析为上述合并源。notes明确 SaaS0089仍在发布流程，预绑定及主机采用另验。
+- core1.1.51 ZIP 840,721字节、194项，SHA-256 `35c78320d33553f776fc6011a3227dd99bbb00ef67086374fe1823a276e3f7e6`。每项核对原样 Git LF 字节，SDK 整代准确为 `7ec8fd487f3f5dc870515f4a44cff5626b4fe9884d0ccd9baa76fa72b40a6632`。本机默认 `git archive` 会受 CRLF 转换影响，核对与传输使用单次 `-c core.autocrlf=false` 或该已验 ZIP，不修改全局 Git 配置。六个无关 ZIP及 bootstrap 经源子树/展开内容/元数据核对后保留前版官方原字节。
+- 十一项正式资产已无登录完整下载，大小、官方 digest 和本地候选 SHA 全匹配。未修改的公开 updater 使用默认 latest URL完成新装51、50→51升级及各 CURRENT；legacy按自己的 Skill 先 CURRENT1.2.0，再 `install-core` 迁移51。三份 canonical 安装各194项完全一致、零 extras。初次测试的过长审计目录触及 Windows 路径限制，短任务目录的完整复验通过，失败记录保留。
+- 两个真实 Windows 账号只写本次25个差异路径，20个旧文件各自先备份、5个新路径记录原不存在，逐文件 CAS及原子替换。原已存在的换行差异保留（分别6与1路径），每账号其余169个公共路径和 extras 均保持原字节或元数据；未覆盖整个 Skill、其他 Skill、凭据或全局规则。两边原 updater 均 `SKILL_UPDATE_CURRENT 1.1.51`。
+
+Alphabet准备安装另有以下真实结果，尚未切换存储身份或启动新备份：
+
+- 现役机器身份保持 `24b1027fbbb34fe080910773ec63ebc9`。准备前识别出其他受控业务发布已完成：inspiration `bdda3a63` 与 product-360 `5a86f0a4`，无 pending、锁空闲；保留这些当前版本，未用更早容器清单冒充本轮前后基线。
+- 原 profile、静态 backup env、helpers、wrappers、plan及 pins 已保存在 root-only 私有回退目录，原模式与 hash 有账；凭据没有离开主机或进入仓库。固定维护脚本已 apply，旧静态整代的真实 ExecStartPre先验通过。
+- stable54 原样两个 host helper和全套备份 CLI/私有 SDK 已安装，代码 hash及整代均匹配。Alpha 的严格私有 pins 使用 helper0700/planner0600，保留 root 调用能力；未运行整机初始化。实际 daily ExecStartPre通过新版完整 pins，五个 CLI `--help`通过。原静态 `Auth` 对现有备份命名空间的真实列表读取、桶版本控制检查成功，没有写云对象。
+- 本轮安装前后11容器的 ID/image/启动时间/重启数/健康状态完全相同，profile、原plan、backup env及业务OSS env均原字节相同，timer/service状态保持，安装后可用7,831,695,360字节。既存非业务容器原有 unhealthy保持，未声称11容器全健康。
+- **没有**运行 `configure`、换 STS、安装新定时链、执行新全量备份或生成新恢复点。旧静态日程继续；需等 SaaS0089上线且平台绑定真实 verified 后，再按前述接管步骤完成续期、机外回读与隔离恢复。原服装历史220缺失仍是 partial，不因工具更新变绿。
+
+公开回执不含私有配置或用户正文。详细安全元数据留在本任务 `runtime-release/` 与 `alpha-preparation/`，远端私有回退材料由平台 root管理；机外数据恢复、主机完整重建、生产回写和实体手机验收分别保留原边界。

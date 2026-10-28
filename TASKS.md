@@ -1,6 +1,6 @@
 # 当前任务
 
-- [ ] **RUNTIME-STORAGE-BOOTSTRAP-20261028** (@runtime_root_backup_audit)：实现企业 Runtime 使用既有机器凭据领取/续期受限业务与备份存储身份、可信系统备份接入与在线定时链；保持旧 release/存储及既有人工计划，未知数据库明确待补且其他系统继续。只修改通用 Skill/Runtime 与测试规范，不由本任务直接操作线上或云凭据；发布、双账号同步和真实主机验收由 root 协调。
+- [x] **RUNTIME-STORAGE-BOOTSTRAP-20261028 Skill已发布/双账号同步，Alpha工具准备完成** (@runtime_root_backup_audit)：PR104合并源`ac317a9`，core1.1.51/bundle54/Release426220999于2026-10-28 11:10:51CST公开；精确PR/main CI均核心993通过/80跳过、maintenance22通过/2跳过，POSIX受影响212及专项24通过。11匿名资产哈希、原updater新装/50升级/CURRENT/legacy迁移及三份194项比较通过；两账号各25路径备份/CAS同步，原换行及范围外内容保持，两边CURRENT51。Alpha已安装exact新版helper/SDK，实际daily preflight与旧静态云读取通过，profile/两env/计划/timer及本次窗口11容器保持。SaaS0089、verified binding、STS接管、新系统真实首点和新备份周期仍由root分别验收，不由本条勾选表示全部已保护；见[收尾回执](docs/handoff/2026-10-28_runtime-storage-bootstrap.md#正式稳定发布与安装准备回执)。
 
 - [x] **RECOVERY-EVIDENCE-CONTRACTS-20261027 已发布、双账号同步，Alphabet 运行时已验** (@codex-root)：PR100/main `433b6696`，精确 PR/main CI通过；core1.1.50/bundle53/Release425783605于2026-10-28 01:36:47CST公开。11匿名资产、原updater新装/49升级/CURRENT及legacy入口均通过；两账号各16路径备份/CAS限定同步、范围外保持及CURRENT50已核。Alphabet九系统在线快照、机外完整读回、实际隔离恢复与三轮保留验收已完成；服装历史220缺失明确partial，原业务容器无重启。首次自然日程、主机完整服务重建、SaaS发布和选择性企业回写分别验收，不由Skill发布替代。见[正式发布交接](docs/handoff/2026-10-28_recovery-evidence-release.md)。
 
