@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
   "skillName": "jupeng-customer-runtime-handover",
-  "skillVersion": "1.0.0",
+  "skillVersion": "1.0.1",
   "managedBy": "ZhuoJian-AI/zhuojian-enterprise-skills"
 }

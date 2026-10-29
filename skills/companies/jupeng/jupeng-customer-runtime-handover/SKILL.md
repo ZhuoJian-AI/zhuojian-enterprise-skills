@@ -17,8 +17,16 @@ Runtime 标准 SSH 22，Docker/Nginx/Compose/certbot 已安装；档案和登记
 当前登记域名后缀是 customer.121-43-59-104.sslip.io，属于接入验证域名。迁移到正式域名须按真实 DNS、HTTPS、Runtime 与应用归属流程操作，不只改字符串。Nginx 已将 server_names_hash_bucket_size 设为128以容纳该域名；原配置回退副本在root初始化目录。
 初始化探针只用 customer-probe-a / customer-probe-b，登记必须 disabled、无员工授权。不重用飓鹏共享机已有 runtime-probe-a / runtime-probe-b，也不为测试给真实员工授探针权限。
 
-## CRM 状态
-上传的是空客户引导源码和本机构建制品，不含真实客户、邮件、附件和密钥。现有代码仍有单人JSON存储、回环Origin、Windows受保护凭据和自有AI连接假设。必须按总Skill完成统一身份、逐业务操作授权、持久存储及SaaS模型委托适配后才能上线。安装Runtime、构建制品已上传或探针健康，都不代表客户业务已接入。保留旧本机及Sites入口，不以公开Vite端口代替企业发布。
+## CRM 状态（2026-10-29，本段只作交接，现场版本优先）
+客户CRM已以兼容模式接入：应用customer-crm，UUID 8d55cd16-b1a7-4db8-abf1-1dfccf74ff5c，入口 https://customer-crm.customer.121-43-59-104.sslip.io/crm。专属Runtime保持不变；实际运行版本在Runtime release.json核对。本次受测发布源码2b3bf965fc472100c43c3ddc7c3be293eedbb7e8，是协作库 apps/customer-crm-cloud 的部署投影；不把投影分支当原业务开发主分支。
+
+Gavin明确要求不改王进原有内容：apps/customer-crm业务树仍为136e823fbeebd8985fb8f069825e131cdbed77e8，与157b347基线一致。独立cloud目录加入SaaS2.5身份网关、实时授权、私有Node运行适配、Linux邮箱凭据、保存确认/版本/防重与审计。未改原页面、业务文案、计划和资料规则；原页面的Arvin等固定展示不是当前操作者身份，真实身份取外层底座栏及服务端稳定ID。
+
+源码为空客户库；原App空库直接读取customer.name会崩溃，外层仅增加首次真实客户建档入口，确认保存后再挂载原App，不注入示例客户。原本机模型配置、Windows外接盘/开机功能仍保留在原源码；云端不接收模型Key、不启动独立AI后台，顶部入口将目标带入底座同一个助手草稿，不能声称旧独立AI流程或外接盘能力已云化。Bridge刷新为保护原React草稿返回deferred，属于兼容模式。
+
+Node业务服务仅容器回环4317，Python身份网关8000由Runtime发布。本应用/data挂载包含身份SQLite、操作账本、crm/workspace.json、crm/files、crm/mail-archive和加密邮箱凭据；沿用原磁盘格式，未迁OSS。未知保存结果的pending账本会停止新写入，先核对实际业务回执再由负责人处理，不自动删除或重放。小机只组装已校验固定prebuilt镜像，完整本地构建配方在Dockerfile.build，镜像和源码来源见image-provenance.json；重新改代码后必须重建，不能复用旧prebuilt标签冒充新源码。
+
+王进（SaaS稳定用户ID 0aae9f16-bd00-42eb-8634-004884831f5f）仅新增客户CRM专用角色；原学习/员工角色保留，没有赋予全企业研发者或企业管理员。SaaS权限与customer01 SSH维护权限分开；全库操作范围固定只在本应用精确Action上。使用受控临时员工已核真实SaaS入口、工作区读取和统一助手草稿；王进本人现有账号实登、手机完整业务及WebKit以最新项目验收记录为准，不能把健康/登记/隔离测试替代本人业务验收。
 
 ## 备份和接续
 初始化前已对协作库全refs、上传制品和现有配置取受控快照，下载到获权管理员电脑并独立恢复文件、Git及全部refs。受控回执位于管理员本机 .codex/private/customer-initialization-20261029；服务器副本在 /root/customer-preinit-backups。原始归档可能含配置秘密，不放Git、公共交接包或回复。

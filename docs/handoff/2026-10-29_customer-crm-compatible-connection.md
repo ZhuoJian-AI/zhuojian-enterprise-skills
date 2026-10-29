@@ -1,0 +1,7 @@
+# Customer CRM compatibility connection
+
+Runtime jupeng-customer-hz-01 / 121.43.59.104 remains isolated from shared ERP. Existing customer business tree is unchanged at 136e823fbeebd8985fb8f069825e131cdbed77e8. Only apps/customer-crm-cloud was added in the authoritative server collaboration Git. Deployed projection 2b3bf965fc472100c43c3ddc7c3be293eedbb7e8; application customer-crm / 8d55cd16-b1a7-4db8-abf1-1dfccf74ff5c is registered and active.
+
+The handoff update describes current boundaries, not a new SaaS or app deployment. Ten isolated identity/authorization/idempotency groups passed, source/endpoint preflights passed, ordinary temporary employee real SSO and same-assistant draft transfer passed. Original empty database is preserved; only outer first-customer onboarding addresses original empty-view crash. No model Run was sent. Wang Jin has a project-specific grant preserving original roles. His own browser, full mobile business and WebKit remain separate acceptance items.
+
+The original standalone model setup and Windows-only operations remain original source, while the cloud boundary disallows model keys and arbitrary disk paths. Fixed local data is not OSS. Existing baseline offsite recovery remains; new application backup evidence belongs to the project latest records. Narrow catalog selectors unchanged. Only the dedicated handoff Skill version changes to1.0.1; core remains untouched.
