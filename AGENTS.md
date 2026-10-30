@@ -1,5 +1,11 @@
 # Repository Guide
 
+## 当前 CI 契约（2026-10-30）
+
+GitHub 仅保存源码。CI、候选源码核权、日志、制品和镜像由公司服务器执行和保存，入口与结果位置见 `.ci/project.json`。现行工作流位于 `.ci/workflows/`，原 `.github/workflows/` 保留兼容和历史检查源文件；GitHub Actions 已关闭，不得启用 hosted 核权、Actions 调度/制品、GHCR、Release 资产或提高 GitHub 预算。本文下方旧 GitHub CI/核权/资源配额要求以本条为准，历史回执保留。Windows 安装验证在开发人员 Windows 电脑按需进行，不为此常驻公司 Windows CI。
+
+AI 可使用已有 SSH 自主调试公司 CI，无须 runner 在线、重复联网核权或命令包装器。公司 CI 不设 CPU、内存、PID、线程、堆、I/O 配额和固定全局并发门禁；保留真实测试、任务数据归属、端口/数据库隔离及生产发布互斥。测试真实退出码和源码 SHA 写入公司回执；失败、取消或未运行不得报通过。日常日志和源码缓存留在公司 CI，生产主机仅按发布需要读取小型回执和指定制品/镜像。生产仍经原登记入口；CI 变更不代表业务已发布。
+
 Latest verified delivery is core **1.1.50 / bundle-v1.4.53**, merged source `433b6696` (PR #100), published 2026-10-28 01:36:47 CST, Release `425783605`. Exact PR/main CI, eleven anonymous asset hashes, the original public updater's fresh/49-upgrade/CURRENT paths and both accounts' 16-path scoped sync/CURRENT passed. Six unrelated Skill ZIPs and the bootstrap preserve the previous release bytes. The authorized Alphabet Runtime now has online, offsite, reference-checked recovery evidence for nine systems; garment remains partial with 220 pre-existing missing references. Main-host recovery and SaaS publication have separate receipts and are not certified by this Skill release. See the [release handoff](docs/handoff/2026-10-28_recovery-evidence-release.md). Entries below preserve historical checkpoints.
 
 Latest verified delivery is core **1.1.49 / bundle-v1.4.52**, source `120a2254` (PR #98), published 2026-10-26 15:02:05 CST. PR/main CI passed (940/77 skipped), anonymous assets/original updater and both accounts' 18-path scoped sync/CURRENT passed. The Runtime projection helper was installed and verified on the authorized enterprise host; 12 active worktrees had legacy integration rules repaired with Git/backups. Business integration remains a separate implementation and acceptance task. See the [final handoff](docs/handoff/2026-10-26_enterprise-local-integration.md#正式发布与安装结果). Entries below preserve historical checkpoints.
