@@ -29,6 +29,7 @@ jobs:
     - tests/test_zhuojian_handoff.py
     - tests/test_jupeng_handoff.py
     - .github/workflows/handoff-ci.yml
+    - .ci/**
   push:
     branches:
     - main
@@ -38,6 +39,7 @@ jobs:
     - tests/test_zhuojian_handoff.py
     - tests/test_jupeng_handoff.py
     - .github/workflows/handoff-ci.yml
+    - .ci/**
 env:
   OWN_CI: 'true'
   SAAS_CI_PROFILE: shared

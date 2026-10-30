@@ -22,6 +22,7 @@ jobs:
           echo "$RUNNER_TEMP/core-skill-venv/bin" >> "$GITHUB_PATH"
       - uses: actions/setup-node@v4
         with:
+          package-manager-cache: false
           node-version: '24'
       - name: Install gateway test dependencies
         working-directory: skills/core/zhuojian-subsystem-builder/assets/admin-runtime/gateway
