@@ -38,8 +38,25 @@ jobs:
       - name: Run original core and maintenance suites
         working-directory: skills/core/zhuojian-subsystem-builder
         run: |
-          python -m pytest -q -ra
-          python -m pytest -q -ra ../../../tests/maintenance/test_alphabet_backup_consistency_maintenance.py ../../../tests/maintenance/test_alphabet_online_schedule.py ../../../tests/maintenance/test_alphabet_storage_bootstrap.py
+          sudo -n env OWN_TEST_PYTHON="$RUNNER_TEMP/core-skill-venv/bin/python" OWN_TEST_RUN="$GITHUB_RUN_ID" PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 - <<'PY'
+          import os, shutil, subprocess
+          from pathlib import Path
+          run = os.environ['OWN_TEST_RUN']
+          assert run.isdigit()
+          root = Path('/root') / ('zhuojian-own-ci-core-' + run)
+          assert not root.exists() and not root.is_symlink()
+          root.mkdir(mode=0o700)
+          try:
+              python = os.environ['OWN_TEST_PYTHON']
+              subprocess.run([python, '-m', 'pytest', '-q', '-ra', '--basetemp', str(root/'core')], check=True)
+              subprocess.run([python, '-m', 'pytest', '-q', '-ra', '--basetemp', str(root/'maintenance'),
+                  '../../../tests/maintenance/test_alphabet_backup_consistency_maintenance.py',
+                  '../../../tests/maintenance/test_alphabet_online_schedule.py',
+                  '../../../tests/maintenance/test_alphabet_storage_bootstrap.py'], check=True)
+          finally:
+              assert root.parent == Path('/root') and not root.is_symlink()
+              shutil.rmtree(root)
+          PY
       - name: Remove only this task environment
         if: always()
         shell: python
