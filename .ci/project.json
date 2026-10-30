@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "provider": "own-ci",
+  "repository": "ZhuoJian-AI/zhuojian-enterprise-skills",
+  "source": "github-git-only",
+  "workflow_directory": ".ci/workflows",
+  "platforms": [
+    "company-linux"
+  ],
+  "receipts": "company-ci:runs/<run_id>/receipt.json",
+  "logs": "company-ci:runs/<run_id>/execution.log",
+  "artifacts": "company-ci:runs/<run_id>/artifacts",
+  "registry": "127.0.0.1:5000/zhuojian",
+  "github_actions": false,
+  "github_artifacts": false,
+  "github_packages": false,
+  "github_releases": false,
+  "workflow_mapping": {
+    ".github/workflows/core-skill-ci.yml": {
+      "linux": ".ci/workflows/core-skill-ci-linux.yml"
+    },
+    ".github/workflows/handoff-ci.yml": {
+      "linux": ".ci/workflows/handoff-ci-linux.yml"
+    }
+  }
+}
