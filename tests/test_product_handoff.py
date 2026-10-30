@@ -10,7 +10,7 @@ class ProductHandoffTests(unittest.TestCase):
  def test_only_exact_product_runtime_or_host_matches(self):
   with tempfile.TemporaryDirectory() as td:
    target=pathlib.Path(td);catalog=json.loads((ROOT/'catalog.json').read_text());entries={}
-   for name in ['jupeng-product-runtime-handover','jupeng-customer-runtime-handover','jupeng-readonly-runtime-handover']:
+   for name in ['zhuojian-subsystem-builder','jupeng-product-runtime-handover','jupeng-customer-runtime-handover','jupeng-readonly-runtime-handover']:
     entry,_=build_release.package_skill(ROOT,target,name=name,source=catalog['skills'][name],tag='local-test-only')
     entry['archiveUrl']=(target/(name+'-'+entry['skillVersion']+'.zip')).as_uri();entries[name]=entry
    cp=target/'catalog.json';cp.write_text(json.dumps({'schemaVersion':1,'channel':'stable','repository':updater.REPOSITORY,'skills':entries}))
