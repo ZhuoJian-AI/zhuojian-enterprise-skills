@@ -100,6 +100,19 @@
       "hosts": [
         "121.43.59.104"
       ]
+    },
+    "jupeng-product-runtime-handover": {
+      "path": "skills/companies/jupeng/jupeng-product-runtime-handover",
+      "kind": "handoff",
+      "enterpriseKeys": [
+        "jupeng"
+      ],
+      "runtimeIds": [
+        "jupeng-product-hz-01"
+      ],
+      "hosts": [
+        "47.98.203.195"
+      ]
     }
   }
 }
