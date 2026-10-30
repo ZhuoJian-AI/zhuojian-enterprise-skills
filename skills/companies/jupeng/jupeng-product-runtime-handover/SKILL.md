@@ -25,8 +25,16 @@ Runtime使用标准SSH22，Docker/Nginx/Compose/certbot已安装。标称2GiB、
 
 ## 数据与恢复边界
 
+本机Runtime首次创建Secret时未自动注入DATABASE_PATH；产品适配/镜像已明确/data默认值，三个现有应用私有环境也已固定DATABASE_PATH=/data/subsystem.db。新增应用必须读回实际路径与挂载，不能假设默认值安全。产品库已从旧容器/app原库保全迁移，并经过真实受控换容器及记录保留验证。
+
 身份会话/确认/请求账本是/data/subsystem.db；原产品共享业务及图片、供应商附件正文在同一挂载旁的/data/product.sqlite。实际路径以release和容器挂载回读为准，不能只备份模板files目录。业务写入与持久回执共用product.sqlite事务，身份账本中断后同请求编号重试不会重复写入；不同数据库之间不宣称分布式原子事务。
 
 保留local-managed格式。尚未迁移OSS，不把SQLite附件正文当成已进文件网关。备份须用SQLite Online Backup API覆盖两个实际数据库，连同文件目录、私有配置、Runtime release与可恢复Git全部refs；内容只进获权私有机外位置。当前平台Runtime storage-profile机器路由返回404，自动云保护未配置；不能把磁盘timer或一次手工机外恢复称为自动OSS备份。恢复和未来预绑定均按现场能力重新核对，不轮换其他Runtime凭据。
 
 负责人仅需业务专用角色，既有学习/员工角色保留，不因维护权限授全企业研发者或管理员。临时验收账号必须在结束后撤权停用，真实负责人本人登录、改密和真机验收单列；隔离授权模拟、技术预检和真实SaaS验收不能互相替代。
+
+## 本次有效恢复点入口
+
+2026-10-30产品应用运行投影为f927c8cd5969b81d03074debfca9827d8f894074；仅作本轮证据，后续以实际release为准。两位临时验收账号已撤权停用，两个虚构业务样例已精确清理，未导入真实业务资料。
+
+服务器/root/product-backups保存本轮手工在线恢复点及metadata，旧容器数据库迁移保全在/root/product-database-migration。管理员本机.codex/private/product-initialization-20261030保存独立下载归档、恢复回执和恢复目录；含私有配置，不复制进Git或员工资料。两个实际SQLite库、必要配置、文件及协作/runtime两份Git bundle已完成机外摘要验证与隔离还原；这不是持续自动云备份或整机生产切回验收。
