@@ -113,6 +113,32 @@
       "hosts": [
         "47.98.203.195"
       ]
+    },
+    "jupeng-finance-runtime-handover": {
+      "path": "skills/companies/jupeng/jupeng-finance-runtime-handover",
+      "kind": "handoff",
+      "enterpriseKeys": [
+        "jupeng"
+      ],
+      "runtimeIds": [
+        "jupeng-finance-sg-01"
+      ],
+      "hosts": [
+        "47.237.128.65"
+      ]
+    },
+    "jupeng-order-runtime-handover": {
+      "path": "skills/companies/jupeng/jupeng-order-runtime-handover",
+      "kind": "handoff",
+      "enterpriseKeys": [
+        "jupeng"
+      ],
+      "runtimeIds": [
+        "jupeng-order-hz-01"
+      ],
+      "hosts": [
+        "47.96.234.89"
+      ]
     }
   }
 }
