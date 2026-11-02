@@ -23,6 +23,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
     "action integration tests run in a project produced by scaffold_subsystem.py",
 )
 class ActionRouteTests(unittest.TestCase):
+    def test_assistant_sdk_dependency_is_a_real_public_javascript_asset(self):
+        response = self.client.get('/static/zhuojian-assistant.js')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('javascript', response.headers.get('content-type', ''))
+        self.assertIn('createAssistant', response.text)
+        self.assertNotIn('set-cookie', response.headers)
+
     @classmethod
     def setUpClass(cls):
         try:
@@ -917,7 +924,7 @@ class ActionRouteTests(unittest.TestCase):
                 remote.assert_not_called()
         self.assertEqual(self.identity_database_state(), before)
 
-    def test_identity_http_revoked_session_clears_cookie_and_rejects_reuse(self):
+    def test_identity_http_revoked_session_deletes_server_state_without_racing_new_cookie(self):
         before = self.identity_database_state()
         for status in (401, 403):
             for method, path, kwargs in self.identity_business_requests():
@@ -932,7 +939,7 @@ class ActionRouteTests(unittest.TestCase):
                                 method, path, headers=self.forged_identity_headers(), **kwargs,
                             )
                             self.assertEqual(response.status_code, status, response.text)
-                            self.assertIn("Max-Age=0", response.headers.get("set-cookie", ""))
+                            self.assertNotIn("set-cookie", response.headers)
                             remote.assert_called_once()
                             self.assertEqual(remote.call_args.args, (self.application.SSO_SESSION_CHECK_URL,))
                             self.assertEqual(remote.call_args.kwargs["json"]["user_id"], claims["sub"])
