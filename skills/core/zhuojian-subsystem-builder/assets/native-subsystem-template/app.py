@@ -270,6 +270,7 @@ class ServerSideSessionMiddleware:
             return
         session_id = self._cookie_id(scope)
         scope["session"] = self._load(session_id)
+        initial_encoded = json.dumps(scope["session"], ensure_ascii=False, separators=(",", ":"))
 
         async def send_with_session(message):
             nonlocal session_id
@@ -280,21 +281,33 @@ class ServerSideSessionMiddleware:
                     session_id = None
                 value = scope["session"]
                 headers = list(message.get("headers") or [])
-                if value:
-                    session_id = session_id or secrets.token_urlsafe(32)
+                if value and session_id is None:
+                    # Only a fresh/explicitly rotated SSO session may write a
+                    # browser cookie. A late response from the previous module
+                    # must never replace the newer launch's cookie.
+                    session_id = secrets.token_urlsafe(32)
                     self._save(session_id, value)
                     cookie = (
                         f"{self.cookie_name}={self._signed_value(session_id)}; Path=/; "
                         f"Max-Age={self.max_age}; HttpOnly; Secure; SameSite=None; Partitioned"
                     )
                     headers.append((b"set-cookie", cookie.encode("latin-1")))
+                elif value and session_id:
+                    encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+                    if encoded != initial_encoded:
+                        if len(encoded.encode()) > 512 * 1024:
+                            raise RuntimeError("SSO session exceeds the server-side size limit")
+                        # Update only a still-live row. Never resurrect a
+                        # session revoked/rotated while this request ran.
+                        with db() as connection:
+                            connection.execute(
+                                "UPDATE browser_sessions SET data=? WHERE session_hash=? AND expires_at>?",
+                                (encoded, self._digest(session_id), int(time.time())),
+                            )
                 elif session_id:
+                    # Server-side revocation is authoritative. Sending an
+                    # expired cookie here could erase a newer SSO cookie.
                     self._delete(session_id)
-                    cookie = (
-                        f"{self.cookie_name}=; Path=/; Max-Age=0; HttpOnly; "
-                        "Secure; SameSite=None; Partitioned"
-                    )
-                    headers.append((b"set-cookie", cookie.encode("latin-1")))
                 message["headers"] = headers
             await send(message)
 
@@ -3173,6 +3186,12 @@ def sso(request: Request, code: str, redirect: str, launch_nonce: str):
     response.headers["Cache-Control"] = "no-store"
     response.headers["Pragma"] = "no-cache"
     return response
+
+
+@app.get("/static/zhuojian-assistant.js")
+def assistant_entry_adapter():
+    # Fixed public helper; no application data or arbitrary filesystem route.
+    return FileResponse(ROOT / "static" / "zhuojian-assistant.js", media_type="text/javascript")
 
 
 @app.get("/static/zhuojian-navigation.js")
