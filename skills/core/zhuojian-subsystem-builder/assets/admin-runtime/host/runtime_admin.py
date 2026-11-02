@@ -2716,6 +2716,38 @@ def verify_release_runtime_identity(
     }
 
 
+def verify_unregistered_initial_replacement(
+    args: argparse.Namespace, release: dict[str, Any], profile: dict[str, Any], paths: Paths
+) -> dict[str, Any]:
+    """Permit a pinned initial-candidate repair only after live SaaS absence.
+
+    This does not alter the release, clear a switch marker, or open an entry.
+    Normal Docker identity, source ancestry, backup, maintenance, and recovery
+    checks still run in cmd_deploy. Previously registered releases must use the
+    ordinary publication/reconciliation path, never this initial-only repair.
+    """
+    if not getattr(args, "replace_unregistered_initial", False):
+        raise AdminError(
+            "current release still awaits SaaS registration; publish or reconcile it before deploying again"
+        )
+    if release.get("status") != "awaiting_platform_registration" or release.get("history"):
+        raise AdminError("initial replacement requires an unregistered first candidate with no release history")
+    identity = validated_recorded_release_identity(release, profile, required=True)
+    assert identity is not None
+    current_commit, _ = identity
+    if getattr(args, "expected_current_commit", None) != current_commit:
+        raise AdminError("initial replacement requires the exact expected current commit")
+    slug = validate_slug(release["applicationSlug"])
+    status, _ = platform_release_request(
+        profile, paths, "GET",
+        f"/api/v1/ecs-publisher/modules/{urllib.parse.quote(slug, safe='')}",
+        allow_not_found=True,
+    )
+    if status != 404:
+        raise AdminError("SaaS has a release record; publish or reconcile it instead of replacing an initial candidate")
+    return {"commit": current_commit, "platformModuleAbsent": True, "verifiedAt": utc_now()}
+
+
 def cmd_deploy(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, Any]:
     slug = validate_slug(args.application_slug)
     with locked(paths):
@@ -2738,10 +2770,9 @@ def cmd_deploy(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, Any]
         # Claim only an entirely new namespace or a record already owned by this
         # tool before installing an ACME challenge virtual host.
         release = provision_release(slug, profile, paths)
+        initial_replacement = None
         if release.get("current") and release.get("status") == "awaiting_platform_registration":
-            raise AdminError(
-                "current release still awaits SaaS registration; publish or reconcile it before deploying again"
-            )
+            initial_replacement = verify_unregistered_initial_replacement(args, release, profile, paths)
         nginx_path = Path(release["nginxConfig"])
         if not (cert_dir / "fullchain.pem").is_file():
             previous_nginx = replace_nginx(
@@ -2819,6 +2850,9 @@ def cmd_deploy(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, Any]
             committed = copy.deepcopy(release)
             previous = committed.get("current")
             history = list(committed.get("history") or [])
+            if initial_replacement and previous:
+                previous["registrationStatus"] = "never_registered"
+                committed["initialCandidateReplacement"] = initial_replacement
             if previous and previous.get("commit") != commit:
                 history.append(previous)
             committed["history"] = history
@@ -3207,6 +3241,8 @@ def cmd_rollback(args: argparse.Namespace, paths: Paths = PATHS) -> dict[str, An
                 raise AdminError("requested commit is not in this application's release history")
             target = matches[-1]
         target_commit = target.get("commit", "")
+        if target.get("registrationStatus") == "never_registered":
+            raise AdminError("an initial candidate that was never registered is not a healthy rollback target")
         image = target.get("image", "")
         expected_image = f"zhuojian/{profile['enterpriseKey']}/{slug}:{target_commit}"
         if not re.fullmatch(r"[0-9a-f]{40}", target_commit) or image != expected_image:
@@ -3835,6 +3871,10 @@ def parser() -> argparse.ArgumentParser:
     deploy.add_argument("application_slug")
     deploy.add_argument("--source-commit", help="build this exact task/worktree SHA without using mutable worktree bytes")
     deploy.add_argument("--expected-current-commit", help="preflight current SHA, or none for first deployment")
+    deploy.add_argument(
+        "--replace-unregistered-initial", action="store_true",
+        help="repair only a pinned first candidate after live SaaS module absence is verified",
+    )
     deploy.add_argument("--issue-certificate", action="store_true")
     deploy.add_argument("--email")
     deploy.add_argument("--health-timeout", type=int, default=60)

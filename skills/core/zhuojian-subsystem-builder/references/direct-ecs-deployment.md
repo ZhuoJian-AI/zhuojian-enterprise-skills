@@ -167,3 +167,14 @@ Authorization: Bearer <ECS Runtime 登记凭证>
 - `registration`：登记凭证失效、域名超范围或平台接口缺失时，首次发布的 SaaS 入口保持关闭；已有应用继续使用旧健康版本并标记候选失败。两种情况都不能自动扩大凭证。
 - `storage`：ECS、本地 Git、数据库或固定文件目录存在丢失风险时停止发布并完成同一恢复点的快照/备份；本地目录、磁盘阈值或权限未验证时不得把文件写入容器层或公开静态目录。
 - `object-storage`：环境明确选择 OSS 时，Bucket、网关或企业/系统前缀授权未通过则停止发布或迁移；已获权 AI 可维护 root 私有配置，但不得把 OSS 根凭据放进业务应用、仓库、日志或回复，也不得静默切回本地模式。
+
+
+## 首次候选未登记时的修复
+
+首次发布已启动候选，但登记前契约验证失败时，不手工改 release 状态或登记一个未通过验证的版本。修复并测试新源码后，可在本机运行：
+
+```text
+zhuojian-runtime deploy <applicationSlug> --source-commit <修复提交> --expected-current-commit <首次候选精确SHA> --replace-unregistered-initial
+```
+
+该入口只接受没有发布历史的首次候选，并通过已有 Runtime 身份实时验证 SaaS 模块不存在。平台已有记录、网络失败、身份不符或 SHA 变化都拒绝；源提交、Docker 身份、备份、受控维护和失败恢复继续使用原流程。从未登记的旧候选会保留历史标记，但不作为健康回退点。更新 Runtime helper 后才能使用此参数，不能只更新文档。
