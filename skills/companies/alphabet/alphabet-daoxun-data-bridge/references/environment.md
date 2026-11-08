@@ -1,5 +1,18 @@
 # 当前环境
 
+## 2026-11-08 当前经营库与服务器开发查询
+
+本节优先于下方历史验收。现役服务器47.97.90.161 / aifabei-hk-01，既有11433隧道与172.29.181.1:11433私网入口保持。原配置选中H_TRADE（11张表）；8849经营网关实际使用smartlink，包含1075张表（1张为系统标记）及18个业务视图。当前目录发现1092个非系统业务对象。
+
+已给现有专用只读登录建立smartlink用户映射，保留H_TRADE；实际权限[smartlink,SELECT=1,INSERT=0,UPDATE=0,DELETE=0,EXECUTE=0,db_owner=0,sysadmin=0]。原经营网关的sa身份未交给新工具或模型，ERP业务数据未改。
+
+通用查询只通过root0700命令`zhuojian-daoxun-readonly`，在独立临时维护容器执行；root-only配置为`/etc/zhuojian/integrations/daoxun-smartlink-readonly.env`，独立维护快照目录为`/srv/zhuojian/maintenance/daoxun-readonly`。服务器交接说明位于`/srv/zhuojian/handoffs/alphabet-daoxun-data-bridge/`。详见[通用查询](general-query.md)。
+
+承载模块的受管镜像为business-tools `710675c37c10ccd15c4a83e50061764841eb9f91`，2026-11-08已部署并登记healthy。员工Web服务未注入SQL配置、未连接SQL私网，通用SQL MCP目录为0且旧调用404；原21个固定业务查询保持。此前4bc8efb3额外开放的5个Action已撤下，不再以它们作为开发入口。
+
+维护容器目录分页、字段/主外键、参数化联表与聚合已实测。82项受影响隔离回归通过；1项旧兄弟源码互操作未运行，全量套件因外部测试依赖未完成。Skill安装不等于服务器授权；具体新应用及员工/WorkBuddy设备流程仍须按各自范围验收。
+
+
 ## 2026-10-25 源服务器已退订，SQL通道保持
 
 现役服务器仍为 `47.97.90.161` / `aifabei-hk-01`，运行九应用。原 `101.37.173.94` / `aifabei-hk-48` 已停止业务，并于2026-10-25 12:36:40 CST完成云端退订提交，供应商已显示退款成功；资源已于12:40:57在完整杭州实例清单中核验释放。不再把源作为新业务或隧道目标。原 Runtime 历史身份、两应用 `hk48` 网址和授权保留。

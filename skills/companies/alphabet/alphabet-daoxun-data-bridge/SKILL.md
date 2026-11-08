@@ -1,6 +1,6 @@
 ---
 name: alphabet-daoxun-data-bridge
-description: "在 Alphabet 当前 aifabei-hk-01 Runtime 主机上，通过既有反向隧道只读访问内网道讯 SQL Server 并开发、部署灼见子系统；按环境表区分SQL与已迁入看板的HTTP链路。用户提到道讯数据、H_TRADE、Alphabet 内网数据库或该反向隧道时使用。"
+description: "在 Alphabet 当前 aifabei-hk-01 Runtime 主机上，使用既有服务器开发授权，通过反向隧道只读查询道讯smartlink并开发、部署灼见子系统；区分经营库、H_TRADE与固定HTTP报表。用于服务器取数或子系统开发，不授予普通员工服务器权限。"
 ---
 
 # Alphabet 道讯数据子系统
@@ -8,6 +8,12 @@ description: "在 Alphabet 当前 aifabei-hk-01 Runtime 主机上，通过既有
 本 Skill 是当前企业环境的交接层。构建、部署、统一登录、角色授权、Manifest、Action、iframe Bridge、OSS 和 SaaS 登记必须同时使用 `$zhuojian-subsystem-builder`；本 Skill 只补充道讯数据通道的真实入口、只读边界和验收方法。
 
 本 Skill 由 `ZhuoJian-AI/zhuojian-enterprise-skills` 稳定目录托管。每次任务先让 `$zhuojian-subsystem-builder` 更新总 Skill 和本机交接 Skills；若本 Skill 被安装或更新，立即重新读取本文件及本次任务需要的 references，不使用更新前的交接事实。
+
+## 当前经营库与开发入口（2026-11-08）
+
+真实经营库是 `smartlink`，原 `H_TRADE` 仅11张表，不能作为完整经营数据源。已经获得服务器开发授权的 AI 使用服务器 `zhuojian-daoxun-readonly`，可发现全部业务表/视图、字段和主外键，并按需执行只读 SELECT/CTE/联表/聚合，不受原21个固定HTTP报表的范围限制。具体路径、参数、数据口径和真实验收见 [服务器通用只读查询](references/general-query.md)。
+
+本 Skill 是小白业务开发者的开发指引；安装 Skill 本身不授予 SSH/root 或数据库权限。员工 MCP 不开放通用 SQL，不能以员工插件替代开发环境既有服务器授权。新增业务系统仍落实自己的员工权限和数据范围。服务器维护能力、Skill同步、具体系统开发及业务员工验收分别报告。
 
 ## 版本声明
 
@@ -22,7 +28,7 @@ description: "在 Alphabet 当前 aifabei-hk-01 Runtime 主机上，通过既有
 - 道讯 SQL Server 位于 Alphabet 内网，内网服务器主动向杭州 `47.97.90.161` 建立反向 SSH 隧道。2026-09-29 已通过真实只读查询验收；实际落点仍须按环境表和现场核验。
 - ECS 上的入口是宿主机回环地址 `127.0.0.1:11433`；它转发到内网 SQL Server `1433`。
 - 杭州 ECS 直接访问 `10.0.0.181:1433` 失败是预期行为。这里没有整网 VPN、专线或网络磁盘，也不需要这些东西才能使用现有定点隧道。
-- ECS 已配置专用 SQL Server 只读身份；历史交接曾从宿主机和临时 Docker 容器执行真实 `SELECT`。本次杭州验收覆盖宿主机和 Docker 私网入口，没有部署最终 SQL consumer，不能替代未来最终应用镜像验收。该身份不是写入角色或数据库所有者。
+- ECS 已配置专用 SQL Server 只读身份；历史交接曾从宿主机和临时 Docker 容器执行真实 `SELECT`。2026-11-08已在smartlink验收服务器独立维护容器；原H_TRADE只读映射保留。维护查询不替代未来业务应用的最终镜像和员工验收。该身份不是写入角色或数据库所有者。
 - 凭证只保存在 ECS 的 root-only 集成配置中。本 Skill 不保存密码；不得把凭证写入 Skill、源码、Git、日志、Manifest、前端或回复。
 
 ## 工作流程
