@@ -1,6 +1,6 @@
 # 只读接入与验收
 
-当前 ECS 已保存专用 SQL Server 只读身份。仅通过 root-only 集成配置和应用受控 Secret 复用，不向负责人索要或展示密码。账号能够连接 `H_TRADE` 并执行所需 `SELECT`；它不依赖 Windows 管理员密码，也不能在前端或 SaaS Bridge 中出现。
+当前 ECS 已保存专用 SQL Server 只读身份。仅通过 root-only 集成配置和应用受控 Secret 复用，不向负责人索要或展示密码。当前经营库使用 `smartlink`；旧 `H_TRADE` 仅11张表，仍保留独立历史映射。2026-11-08服务器通用入口及专用只读身份已验收，见[通用查询](general-query.md)。该登录能够执行获授权的 `SELECT`；它不依赖 Windows 管理员密码，也不能在前端或 SaaS Bridge 中出现。
 
 ## 首次只读检查
 
