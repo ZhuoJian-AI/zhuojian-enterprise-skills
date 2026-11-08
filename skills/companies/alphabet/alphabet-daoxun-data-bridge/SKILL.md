@@ -1,6 +1,6 @@
 ---
 name: alphabet-daoxun-data-bridge
-description: "在 Alphabet 当前 aifabei-hk-01 Runtime 主机上，使用既有服务器开发授权，通过反向隧道只读查询道讯smartlink并开发、部署灼见子系统；区分经营库、H_TRADE与固定HTTP报表。用于服务器取数或子系统开发，不授予普通员工服务器权限。"
+description: "在 Alphabet 当前 aifabei-hk-01 Runtime 主机上，通过企业插件的研发者授权或既有服务器开发授权，只读查询道讯smartlink并开发灼见子系统；区分经营库、H_TRADE与固定HTTP报表。用于服务器取数或子系统开发，不授予普通员工服务器权限。"
 ---
 
 # Alphabet 道讯数据子系统
@@ -11,9 +11,9 @@ description: "在 Alphabet 当前 aifabei-hk-01 Runtime 主机上，使用既有
 
 ## 当前经营库与开发入口（2026-11-08）
 
-真实经营库是 `smartlink`，原 `H_TRADE` 仅11张表，不能作为完整经营数据源。已经获得服务器开发授权的 AI 使用服务器 `zhuojian-daoxun-readonly`，可发现全部业务表/视图、字段和主外键，并按需执行只读 SELECT/CTE/联表/聚合，不受原21个固定HTTP报表的范围限制。具体路径、参数、数据口径和真实验收见 [服务器通用只读查询](references/general-query.md)。
+真实经营库是 `smartlink`，原 `H_TRADE` 仅11张表，不能作为完整经营数据源。系统研发者通过同一企业插件发现 `business_tools.daoxun_sql.*` 查询与资料工具；已有服务器开发授权的 AI 也可使用服务器 `zhuojian-daoxun-readonly`，可发现全部业务表/视图、字段和主外键，并按需执行只读 SELECT/CTE/联表/聚合，不受原21个固定HTTP报表的范围限制。具体路径、参数、数据口径和真实验收见 [服务器通用只读查询](references/general-query.md)。
 
-本 Skill 是小白业务开发者的开发指引；安装 Skill 本身不授予 SSH/root 或数据库权限。员工 MCP 不开放通用 SQL，不能以员工插件替代开发环境既有服务器授权。新增业务系统仍落实自己的员工权限和数据范围。服务器维护能力、Skill同步、具体系统开发及业务员工验收分别报告。
+本 Skill 是小白业务开发者的开发指引；安装 Skill 本身不授予 SSH/root 或数据库权限。通用只读SQL可按SaaS有效角色和精确Action授权开放给系统研发者；这不授予root，也不能以读取Skill替代尚未提供的服务器执行能力。新增业务系统仍落实自己的员工权限和数据范围。服务器维护能力、Skill同步、具体系统开发及业务员工验收分别报告。
 
 ## 版本声明
 
