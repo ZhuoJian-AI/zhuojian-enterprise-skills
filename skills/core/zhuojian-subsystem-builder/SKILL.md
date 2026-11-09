@@ -80,6 +80,8 @@ python <skill>/scripts/e2e_acceptance.py --help
 
 新建、接入旧系统或修改登录、权限、人员归属时，必须读取 [统一身份的入口核查与验收](references/identity-acceptance.md)。核查全部实际业务入口而不只看 Manifest；旧密码/接口不能绕过 SaaS，操作者与被选择人员分开，真实业务表单和遗留项必须闭环，技术预检不能代替业务验收。
 
+修复手机钉钉、WebView 中“平台已登录，但业务页要求从 SaaS 打开”或 SSO 后仍返回 401 时，读取 [内嵌浏览器会话 Cookie](references/browser-session-cookies.md)。先核对换码、Cookie 签发与回传，再区分权限和会话传输；同站点兼容 Cookie 与原 Partitioned Cookie 引用同一服务端会话，保留实时授权及迟到响应保护。多个子系统复用旧模板时逐个修复部署，Skill 更新不能代替线上修复或真机验收。
+
 涉及员工选择、业务名单、账号绑定或历史身份修复时，同时读取 [员工目录与历史身份核查](references/employee-identity.md)。SaaS 稳定用户 ID 是员工身份来源，业务名单只管理参与、分组等业务状态；历史核查覆盖受影响名单及全部关联引用，不以局部修复代替完整核对。
 
 涉及企业通知或向员工发送消息时，读取 [通用消息委托与通知业务边界](references/message-delivery.md)。业务草稿、页面和记录留在子系统；SaaS 只提供目录、逐 Action 授权、可信确认、投递与回执，沿用原有角色授权入口。
