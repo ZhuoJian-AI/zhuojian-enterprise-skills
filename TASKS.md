@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **OPTIONAL-PLUGIN-RUNTIME-BOOTSTRAP-20261109** (@Codex-side)：补齐管理员按所选方式配置插件研发执行端的说明，分别报告SSH与插件链路就绪；保持既有SSH开发/发布、不自动改造服务器。同步个人副本、同源插件与正式分发，验证版本和真实加载。
+
 - [ ] **SKILL-STABLE-COOKIE-20261109** (@Codex)：完成 core1.1.54 正式稳定发布、公司同域目录与两账号完整升级，沿用公司CI/受保护分发，保留本地独立修改；不上传GitHub Release资产。Windows946项/210subtests通过，Linux与正式HTTPS安装待核验。
 
 - [x] **DINGTALK-SAMESITE-COOKIE-20261109** (@Codex)：完成同站点双 Cookie 模板、迟到响应/撤销保护回归与排障契约；Windows core 938 tests 和 210 subtests 通过，两账号限定同步及各 13 项验证通过。公共 1.1.54 为源码候选，尚未发布稳定包；企业运行时发布和真机验收另记。见 docs/handoff/2026-11-09_dingtalk-session-cookies.md。
