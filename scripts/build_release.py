@@ -107,6 +107,7 @@ def package_skill(
     source: dict,
     tag: str,
     download_base_url: str | None = None,
+    archive_prefix: str = "",
 ) -> tuple[dict, dict]:
     path_value = source.get("path")
     kind = source.get("kind")
@@ -142,7 +143,7 @@ def package_skill(
     required = {Path("SKILL.md"), Path("skill-version.json"), Path("CHANGELOG.md")}
     if not required.issubset({relative for relative, _ in files}):
         raise SystemExit(f"{name} 缺少已跟踪的必要文件")
-    archive_name = f"{name}-{version}.zip"
+    archive_name = f"{archive_prefix}{name}-{version}.zip"
     archive_path = output / archive_name
     with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
         for relative, mode in files:
@@ -172,6 +173,7 @@ def package_skill(
 def main() -> int:
     parser = argparse.ArgumentParser(description="构建企业 Skills 总仓库稳定版资产")
     parser.add_argument("--download-base-url", help="既有公司稳定分发下载目录的HTTPS地址")
+    parser.add_argument("--archive-prefix", choices=("", "skill-"), default="", help="公司分发白名单中的独立Skill资产前缀")
     parser.add_argument("--tag", required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--source-dir", type=Path, default=Path(__file__).resolve().parents[1])
@@ -209,7 +211,7 @@ def main() -> int:
         name = validate_name(raw_name)
         if not isinstance(source, dict):
             raise SystemExit(f"{name} 的目录记录无效")
-        release, metadata = package_skill(root, output, name=name, source=source, tag=args.tag, download_base_url=args.download_base_url)
+        release, metadata = package_skill(root, output, name=name, source=source, tag=args.tag, download_base_url=args.download_base_url, archive_prefix=args.archive_prefix)
         releases[name] = release
         metadata_by_name[name] = metadata
 
