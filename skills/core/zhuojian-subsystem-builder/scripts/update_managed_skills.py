@@ -22,10 +22,7 @@ from update_skill import validate_changelog
 
 
 REPOSITORY = "ZhuoJian-AI/zhuojian-enterprise-skills"
-CATALOG_URL = (
-    "https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/"
-    "releases/latest/download/catalog.json"
-)
+CATALOG_URL = "https://ai-platform.staging.zhuojianai.com/enterprise-plugin/updates/latest.json"
 RELEASE_PATH_PREFIX = "/ZhuoJian-AI/zhuojian-enterprise-skills/releases/download/"
 CORE_SKILL_NAME = "zhuojian-subsystem-builder"
 SEMVER_RE = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
@@ -93,12 +90,13 @@ def validate_download_url(
         return
     if allow_catalog_url and url == CATALOG_URL:
         return
-    if (
-        parsed.scheme != "https"
-        or parsed.hostname != "github.com"
-        or not parsed.path.startswith(RELEASE_PATH_PREFIX)
-    ):
-        raise ManagedUpdateError("更新地址必须是企业 Skills 总仓库的 GitHub Release HTTPS 地址")
+    trusted_archive = (
+        parsed.hostname == "ai-platform.staging.zhuojianai.com"
+        and parsed.path.startswith("/enterprise-plugin/updates/downloads/")
+    ) or (parsed.hostname == "github.com" and parsed.path.startswith(RELEASE_PATH_PREFIX))
+    if (parsed.scheme != "https" or not trusted_archive
+            or parsed.username or parsed.password or parsed.query or parsed.fragment):
+        raise ManagedUpdateError("更新地址必须是灼见企业 Skills 稳定分发 HTTPS 地址")
 
 
 def read_url(
@@ -152,6 +150,10 @@ def string_tuple(value: object, label: str) -> tuple[str, ...]:
 
 
 def validate_catalog(payload: dict, *, allow_test_url: bool) -> dict[str, SkillRelease]:
+    if "skillCatalog" in payload:
+        payload = payload["skillCatalog"]
+        if not isinstance(payload, dict):
+            raise ManagedUpdateError("稳定分发中的企业 Skill 目录格式无效")
     if (
         payload.get("schemaVersion") != 1
         or payload.get("channel") != "stable"

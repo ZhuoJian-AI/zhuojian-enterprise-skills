@@ -106,6 +106,7 @@ def package_skill(
     name: str,
     source: dict,
     tag: str,
+    download_base_url: str | None = None,
 ) -> tuple[dict, dict]:
     path_value = source.get("path")
     kind = source.get("kind")
@@ -158,7 +159,7 @@ def package_skill(
     release = {
         "skillName": name,
         "skillVersion": version,
-        "archiveUrl": f"https://github.com/{REPOSITORY}/releases/download/{tag}/{archive_name}",
+        "archiveUrl": f"{download_base_url}/{archive_name}" if download_base_url else f"https://github.com/{REPOSITORY}/releases/download/{tag}/{archive_name}",
         "archiveSha256": digest,
         "kind": kind,
         "enterpriseKeys": validate_string_list(source.get("enterpriseKeys", []), f"{name} enterpriseKeys"),
@@ -170,6 +171,7 @@ def package_skill(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="构建企业 Skills 总仓库稳定版资产")
+    parser.add_argument("--download-base-url", help="既有公司稳定分发下载目录的HTTPS地址")
     parser.add_argument("--tag", required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--source-dir", type=Path, default=Path(__file__).resolve().parents[1])
@@ -177,6 +179,14 @@ def main() -> int:
 
     if not TAG_RE.fullmatch(args.tag):
         raise SystemExit("--tag 格式无效")
+    if args.download_base_url:
+        from urllib.parse import urlsplit
+        parsed = urlsplit(args.download_base_url)
+        if (parsed.scheme != "https" or parsed.hostname != "ai-platform.staging.zhuojianai.com"
+                or not parsed.path.startswith("/enterprise-plugin/updates/downloads/")
+                or parsed.username or parsed.password or parsed.query or parsed.fragment):
+            raise SystemExit("正式资产地址必须是既有公司分发HTTPS目录")
+        args.download_base_url = args.download_base_url.rstrip("/")
     root = args.source_dir.expanduser().resolve()
     output = args.output_dir.expanduser().resolve()
     if Path(git(root, "rev-parse", "--show-toplevel")).resolve() != root:
@@ -199,7 +209,7 @@ def main() -> int:
         name = validate_name(raw_name)
         if not isinstance(source, dict):
             raise SystemExit(f"{name} 的目录记录无效")
-        release, metadata = package_skill(root, output, name=name, source=source, tag=args.tag)
+        release, metadata = package_skill(root, output, name=name, source=source, tag=args.tag, download_base_url=args.download_base_url)
         releases[name] = release
         metadata_by_name[name] = metadata
 

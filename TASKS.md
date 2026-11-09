@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **SKILL-STABLE-COOKIE-20261109** (@Codex)：完成 core1.1.54 正式稳定发布、公司同域目录与两账号完整升级，沿用公司CI/受保护分发，保留本地独立修改；不上传GitHub Release资产。Windows946项/210subtests通过，Linux与正式HTTPS安装待核验。
+
 - [x] **DINGTALK-SAMESITE-COOKIE-20261109** (@Codex)：完成同站点双 Cookie 模板、迟到响应/撤销保护回归与排障契约；Windows core 938 tests 和 210 subtests 通过，两账号限定同步及各 13 项验证通过。公共 1.1.54 为源码候选，尚未发布稳定包；企业运行时发布和真机验收另记。见 docs/handoff/2026-11-09_dingtalk-session-cookies.md。
 
 - [ ] **RUNTIME-STORAGE-BOOTSTRAP-20261028** (@runtime_root_backup_audit)：实现企业 Runtime 使用既有机器凭据领取/续期受限业务与备份存储身份、可信系统备份接入与在线定时链；保持旧 release/存储及既有人工计划，未知数据库明确待补且其他系统继续。只修改通用 Skill/Runtime 与测试规范，不由本任务直接操作线上或云凭据；发布、双账号同步和真实主机验收由 root 协调。
