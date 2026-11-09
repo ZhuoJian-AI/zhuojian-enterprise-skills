@@ -20,10 +20,7 @@ from urllib.parse import urlparse
 
 
 SKILL_NAME = "zhuojian-subsystem-builder"
-LATEST_MANIFEST_URL = (
-    "https://github.com/ZhuoJian-AI/zhuojian-enterprise-skills/"
-    "releases/latest/download/zhuojian-subsystem-builder-update-manifest.json"
-)
+LATEST_MANIFEST_URL = "https://ai-platform.staging.zhuojianai.com/enterprise-plugin/updates/latest.json"
 RELEASE_PATH_PREFIX = "/ZhuoJian-AI/zhuojian-enterprise-skills/releases/download/"
 SEMVER_RE = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 MAX_MANIFEST_BYTES = 256 * 1024
@@ -63,12 +60,13 @@ def validate_download_url(
         return
     if allow_latest_manifest and url == LATEST_MANIFEST_URL:
         return
-    if (
-        parsed.scheme != "https"
-        or parsed.hostname != "github.com"
-        or not parsed.path.startswith(RELEASE_PATH_PREFIX)
-    ):
-        raise UpdateError("更新地址必须是本 Skill 的 GitHub Release HTTPS 地址")
+    trusted_archive = (
+        parsed.hostname == "ai-platform.staging.zhuojianai.com"
+        and parsed.path.startswith("/enterprise-plugin/updates/downloads/")
+    ) or (parsed.hostname == "github.com" and parsed.path.startswith(RELEASE_PATH_PREFIX))
+    if (parsed.scheme != "https" or not trusted_archive
+            or parsed.username or parsed.password or parsed.query or parsed.fragment):
+        raise UpdateError("更新地址必须是灼见稳定分发 HTTPS 地址")
 
 
 def read_url(
@@ -178,6 +176,10 @@ def read_local_version(skill_dir: Path, *, bootstrap: bool) -> str | None:
 
 
 def validate_update_manifest(payload: dict, *, allow_test_url: bool) -> tuple[str, str, str]:
+    if "skillUpdates" in payload:
+        payload = payload["skillUpdates"].get(SKILL_NAME, {}) if isinstance(payload["skillUpdates"], dict) else {}
+        if not isinstance(payload, dict):
+            raise UpdateError("稳定分发中的 Skill 清单格式无效")
     if (
         payload.get("schemaVersion") != 1
         or payload.get("skillName") != SKILL_NAME

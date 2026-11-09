@@ -1,5 +1,9 @@
 # 当前任务
 
+- [ ] **SKILL-STABLE-COOKIE-20261109** (@Codex)：完成 core1.1.54 正式稳定发布、公司同域目录与两账号完整升级，沿用公司CI/受保护分发，保留本地独立修改；不上传GitHub Release资产。Windows946项/210subtests通过，Linux与正式HTTPS安装待核验。
+
+- [x] **DINGTALK-SAMESITE-COOKIE-20261109** (@Codex)：完成同站点双 Cookie 模板、迟到响应/撤销保护回归与排障契约；Windows core 938 tests 和 210 subtests 通过，两账号限定同步及各 13 项验证通过。公共 1.1.54 为源码候选，尚未发布稳定包；企业运行时发布和真机验收另记。见 docs/handoff/2026-11-09_dingtalk-session-cookies.md。
+
 - [ ] **RUNTIME-STORAGE-BOOTSTRAP-20261028** (@runtime_root_backup_audit)：实现企业 Runtime 使用既有机器凭据领取/续期受限业务与备份存储身份、可信系统备份接入与在线定时链；保持旧 release/存储及既有人工计划，未知数据库明确待补且其他系统继续。只修改通用 Skill/Runtime 与测试规范，不由本任务直接操作线上或云凭据；发布、双账号同步和真实主机验收由 root 协调。
 
 - [x] **RECOVERY-EVIDENCE-CONTRACTS-20261027 已发布、双账号同步，Alphabet 运行时已验** (@codex-root)：PR100/main `433b6696`，精确 PR/main CI通过；core1.1.50/bundle53/Release425783605于2026-10-28 01:36:47CST公开。11匿名资产、原updater新装/49升级/CURRENT及legacy入口均通过；两账号各16路径备份/CAS限定同步、范围外保持及CURRENT50已核。Alphabet九系统在线快照、机外完整读回、实际隔离恢复与三轮保留验收已完成；服装历史220缺失明确partial，原业务容器无重启。首次自然日程、主机完整服务重建、SaaS发布和选择性企业回写分别验收，不由Skill发布替代。见[正式发布交接](docs/handoff/2026-10-28_recovery-evidence-release.md)。

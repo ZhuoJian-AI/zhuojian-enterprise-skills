@@ -180,9 +180,10 @@ if invalid_credentials or len(SESSION_SECRET) < 32 or not EXPECTED_ORGANIZATION_
 
 
 class ServerSideSessionMiddleware:
-    """Keep claims server-side; the browser receives only a partitioned opaque SID."""
+    """Keep claims server-side with partitioned and same-site opaque SID cookies."""
 
     cookie_name = "zjsid"
+    same_site_cookie_name = "zjsid_same_site"
     max_age = 8 * 60 * 60
 
     def __init__(self, app):
@@ -211,15 +212,36 @@ class ServerSideSessionMiddleware:
         ).hexdigest()
         return session_id if hmac.compare_digest(signature, expected) else None
 
-    def _cookie_id(self, scope) -> str | None:
-        headers = dict(scope.get("headers") or [])
+    def _cookie_ids(self, scope) -> list[str]:
+        raw_cookie = b"; ".join(
+            value for name, value in scope.get("headers") or [] if name == b"cookie"
+        )
         cookie = SimpleCookie()
         try:
-            cookie.load(headers.get(b"cookie", b"").decode("latin-1"))
+            cookie.load(raw_cookie.decode("latin-1"))
         except CookieError:
-            return None
-        morsel = cookie.get(self.cookie_name)
-        return self._verified_id(morsel.value if morsel else None)
+            return []
+        candidates = []
+        for name in (self.same_site_cookie_name, self.cookie_name):
+            morsel = cookie.get(name)
+            session_id = self._verified_id(morsel.value if morsel else None)
+            if session_id and session_id not in candidates:
+                candidates.append(session_id)
+        return candidates
+
+    def _cookie_headers(self, session_id: str) -> list[tuple[bytes, bytes]]:
+        value = self._signed_value(session_id)
+        attributes = f"Path=/; Max-Age={self.max_age}; HttpOnly; Secure; "
+        # Preserve cross-site CHIPS and add a host-only cookie for same-site
+        # WebViews which discard SameSite=None/Partitioned cookies.
+        return [
+            (b"set-cookie", (
+                f"{self.cookie_name}={value}; {attributes}SameSite=None; Partitioned"
+            ).encode("latin-1")),
+            (b"set-cookie", (
+                f"{self.same_site_cookie_name}={value}; {attributes}SameSite=Lax"
+            ).encode("latin-1")),
+        ]
 
     def _load(self, session_id: str | None) -> dict:
         if session_id is None:
@@ -268,16 +290,24 @@ class ServerSideSessionMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        session_id = self._cookie_id(scope)
-        scope["session"] = self._load(session_id)
+        session_ids = self._cookie_ids(scope)
+        session_id = None
+        scope["session"] = {}
+        for candidate in session_ids:
+            value = self._load(candidate)
+            if value:
+                session_id = candidate
+                scope["session"] = value
+                break
         initial_encoded = json.dumps(scope["session"], ensure_ascii=False, separators=(",", ":"))
 
         async def send_with_session(message):
             nonlocal session_id
             if message["type"] == "http.response.start":
                 rotate = bool(scope.pop("rotate_session", False))
-                if rotate and session_id:
-                    self._delete(session_id)
+                if rotate:
+                    for previous_id in session_ids:
+                        self._delete(previous_id)
                     session_id = None
                 value = scope["session"]
                 headers = list(message.get("headers") or [])
@@ -287,11 +317,7 @@ class ServerSideSessionMiddleware:
                     # must never replace the newer launch's cookie.
                     session_id = secrets.token_urlsafe(32)
                     self._save(session_id, value)
-                    cookie = (
-                        f"{self.cookie_name}={self._signed_value(session_id)}; Path=/; "
-                        f"Max-Age={self.max_age}; HttpOnly; Secure; SameSite=None; Partitioned"
-                    )
-                    headers.append((b"set-cookie", cookie.encode("latin-1")))
+                    headers.extend(self._cookie_headers(session_id))
                 elif value and session_id:
                     encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
                     if encoded != initial_encoded:

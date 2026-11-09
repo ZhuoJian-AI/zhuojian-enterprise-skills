@@ -340,7 +340,7 @@ applicationSlug
 
 ### iframe SSO
 
-灼见先检查 `moduleKey` 的 `view` 权限，保存绑定用户会话、应用、模块、页面、`redirect`、`launch_nonce` 与 `auth_epoch` 的 120 秒单次短码，浏览器只把短码带到模块。模块后端使用自己的 `zjss_` 凭证 POST `/api/v1/subsystem-sso/exchange`；SaaS 原子消费后返回最终 claims。模块校验应用、企业、模块、跳转路径、nonce、有效期和页面/Action allowlist，把完整 claims 保存在服务端，只给浏览器设置短小的 `HttpOnly; Secure; SameSite=None; Partitioned` 会话标识，再 302 到不含短码的页面。短码只存哈希，刷新 iframe 必须重新签发。
+灼见先检查 `moduleKey` 的 `view` 权限，保存绑定用户会话、应用、模块、页面、`redirect`、`launch_nonce` 与 `auth_epoch` 的 120 秒单次短码，浏览器只把短码带到模块。模块后端使用自己的 `zjss_` 凭证 POST `/api/v1/subsystem-sso/exchange`；SaaS 原子消费后返回最终 claims。模块校验应用、企业、模块、跳转路径、nonce、有效期和页面/Action allowlist，把完整 claims 保存在服务端，只给浏览器设置短小的签名会话标识，再 302 到不含短码的页面。模板同时设置原 `HttpOnly; Secure; SameSite=None; Partitioned` Cookie 与独立 host-only `HttpOnly; Secure; SameSite=Lax` Cookie，二者引用同一个服务器会话，后者兼容同站点内嵌浏览器。只有新 SSO 或显式轮换可签发，普通/迟到响应不能覆盖新 Cookie 或复活已撤销会话。跨站点限制、排障与真机验收见 [内嵌浏览器会话 Cookie](browser-session-cookies.md)。短码只存哈希，刷新 iframe 必须重新签发。
 
 SSO 兑换结果包含 SaaS 针对当前子模块计算的最终页面、操作 allowlist 和数据范围。模块不得用部门责任、`accessRoles` 建议值或用户本人的 `departmentId` 替代：
 

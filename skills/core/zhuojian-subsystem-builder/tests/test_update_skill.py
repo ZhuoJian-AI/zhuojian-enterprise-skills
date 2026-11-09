@@ -105,7 +105,7 @@ def test_latest_url_is_allowed_only_for_the_stable_manifest() -> None:
         allow_test_url=False,
         allow_latest_manifest=True,
     )
-    with pytest.raises(update_skill.UpdateError, match="GitHub Release"):
+    with pytest.raises(update_skill.UpdateError, match="稳定分发"):
         update_skill.validate_download_url(
             update_skill.LATEST_MANIFEST_URL,
             allow_test_url=False,

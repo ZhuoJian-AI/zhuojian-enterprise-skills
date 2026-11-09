@@ -129,6 +129,17 @@ class FileRouteTests(unittest.TestCase):
             cls.application.shutil, "disk_usage", return_value=healthy_usage
         )
         cls.disk_usage_patcher.start()
+        # Route fixtures exercise recovery explicitly below. A live worker can
+        # acquire a real POSIX lock while a test temporarily mocks its release,
+        # leaving the cross-process lock test blocked indefinitely.
+        async def idle_recovery_loop():
+            await asyncio.Event().wait()
+
+        cls.recovery_patcher = mock.patch.object(
+            cls.application, "storage_recovery_loop", new=idle_recovery_loop
+        )
+        cls.recovery_patcher.start()
+        cls.addClassCleanup(cls.recovery_patcher.stop)
         cls.client_context = TestClient(
             cls.application.app,
             base_url="https://testserver",

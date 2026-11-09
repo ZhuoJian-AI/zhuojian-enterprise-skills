@@ -121,7 +121,7 @@ VIEWPORT_META = re.compile(
     re.IGNORECASE,
 )
 VIEWPORT_FIT_COVER = re.compile(r"\bviewport-fit\s*=\s*cover\b", re.IGNORECASE)
-CSS_BLOCK = re.compile(r"(?P<selectors>[^{}]+)\{(?P<body>[^{}]*)\}", re.DOTALL)
+CSS_BLOCK = re.compile(r"(?<![^{}])(?P<selectors>[^{}]+)\{(?P<body>[^{}]*)\}", re.DOTALL)
 ROOT_SELECTOR = re.compile(r"(?:^|,)\s*(?:html|body|#root|#app)(?=\s|,|$)", re.IGNORECASE)
 PIXEL_WIDTH = re.compile(r"(?:^|;)\s*(?P<property>min-width|width)\s*:\s*(?P<width>\d{3,})px", re.IGNORECASE)
 
