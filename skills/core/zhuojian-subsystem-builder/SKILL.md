@@ -9,7 +9,9 @@ description: "让 AI 把业务需求转成页面与统一助手可完成的业�
 
 每次调用本 Skill 时，同一轮先运行一次 `python <skill>/scripts/update_skill.py`，再运行一次 `python <skill>/scripts/update_managed_skills.py installed`。前者更新本 Skill，后者更新本机已经安装的企业交接 Skills。若任一命令输出 `SKILL_UPDATED` 或 `MANAGED_SKILLS_UPDATED`，先读取对应新版的版本记录，再重新读取新版 `SKILL.md` 和本次所需参考文件后继续；其他结果直接使用本地版本，细节见 [Skill 稳定版更新](references/skill-updates.md) 和 [企业交接 Skill 自动同步](references/managed-handoff-skills.md)。
 
-本 Skill 面向获授权的子系统开发环境，不作为员工企业插件分发。业务负责人说明想做什么、谁使用；仅首次接入新服务器时，由有权提供访问的负责人向开发环境提供 `IP + root + 密码`。公司名称只用于核对，服务器 Runtime 档案才是开发接入的企业身份来源。首次凭证授权当前开发环境长期登录该服务器；连接成功后建立并复用本机 SSH 访问记忆，后续不重复索要。员工使用通用企业插件只走 SaaS 企业 OAuth，不取得本 Skill、服务器凭证或开发环境访问记忆。不要让业务用户准备阿里云、OSS、GitHub、模型供应商或平台令牌，也不要让其选择技术方案。
+本 Skill 面向获授权的子系统开发者，可通过既有 SSH 开发环境使用，也可随企业插件向获权系统研发者提供。两种方式遵循同一开发与接入契约，按本次已确认的使用方式接入。业务负责人说明想做什么、谁使用；仅在选择 SSH 方式首次接入新服务器时，由有权提供访问的负责人向开发环境提供 `IP + root + 密码`。公司名称只用于核对，服务器 Runtime 档案才是开发接入的企业身份来源。首次凭证授权当前开发环境长期登录该服务器；连接成功后建立并复用本机 SSH 访问记忆，后续不重复索要。企业插件使用本人 SaaS OAuth 和当前角色，不向客户端交付服务器凭据或本机 SSH 访问档案。不要让业务用户准备阿里云、OSS、GitHub、模型供应商或平台令牌，也不要让其选择技术方案。
+
+SSH 直接开发部署与企业插件研发分别核验。原有 SSH + Runtime 方式继续可用，不以安装插件研发执行端作为开发、发布或初始化成功的通用前置条件。用户选择插件研发、或承诺同事仅通过插件即可部署时，读取 [可选的插件研发执行端接入](references/plugin-runtime-bootstrap.md)，由获权管理员 AI 完成对应服务器配置并验收；Runtime `doctor` 或 SSH 发布成功不证明插件链路就绪。Skill 更新本身不安装服务、不重发旧系统、不改变角色。
 
 同一企业的多位负责人可以授权各自 Codex 使用同一服务器 root，共同维护企业系统；不另设按负责人隔离的开发权限或逐次平台管理员审批。开发 Codex 的维护权限与员工插件的业务调用权限分开判断；已确认范围内可由 AI 自行实现并配置本企业的专用服务、文件交付和结果回读。读取 [企业服务器内业务服务对接](references/intra-enterprise-service-integration.md) 和 [同企业多人开发、Git 与备份](references/shared-enterprise-development.md)：开发AI自行处理项目、依赖、部署、已获权对接、备份和恢复，保留员工业务权限与企业边界；服务器Git是真源，机外恢复包保存提交历史、数据和必要配置。共享OSS按企业/环境/系统隔离，业务桶与备份桶分开，存储位置和最近有效恢复点须能由后续Codex查到。
 
@@ -115,6 +117,8 @@ python <skill>/scripts/e2e_acceptance.py --help
 - 新系统使用契约 `2.5`；已有 `2.4/2.5` 系统的普通维护保持原版本。`2.4 → 2.5` 只在用户明确要求迁移时执行。登录、权限和平台接入的技术细节由模板、Runtime 与 [平台接入协议](references/platform-contract.md) 自动落实，不转嫁给业务用户。
 
 ## 管理员模式
+
+先沿用本次已确认的接入方式；已有 SSH 开发无需切换。SSH 基础初始化继续执行下述流程；选择企业插件研发时，同时按 [插件研发执行端接入](references/plugin-runtime-bootstrap.md) 补齐该 Runtime 的服务端执行入口和真实客户端验收。交接分别列出“SSH 直接部署”和“插件研发部署”的已就绪、未配置或待验状态；未选择的方式不作为另一方式的阻塞条件。
 
 管理员只需为每台 ECS 初始化一次。按 [管理员与服务器初始化](references/admin-bootstrap.md) 完成 Runtime、Docker、域名、数据目录、监控、备份和平台登记；发现未初始化数据盘、磁盘告警或需要调整宿主机容量布局时，必须再按 [ECS 数据盘与容量迁移](references/data-disk-capacity.md) 执行只读盘点、授权确认、精确迁移和持久化验证；网络问题按 [SSH、VPN 与代理访问](references/ssh-access.md) 排查。初始化不能以 Runtime 健康为结束：必须继续执行 [企业交接 Skill 自动同步](references/managed-handoff-skills.md) 的“初始化后的强制收尾”，检查既有系统、数据通道和服务器特例。有特殊事实时自动创建或更新独立交接 Skill，以 `enterpriseKey + runtimeId` 为主、当前公网地址为兜底登记到唯一企业 Skills 总仓库，完成 PR、稳定 Release 和无缓存解析验证；没有特殊事实时不创建空壳 Skill，并明确报告“不需要专属交接 Skill”。管理员明确要求初始化该 ECS，即授权完成这项不含秘密的配套登记，不再另问“是否登记”。发布未成功时不得把初始化任务报告为全部完成。
 
