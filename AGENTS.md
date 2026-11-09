@@ -6,7 +6,7 @@ GitHub 仅保存源码。CI、候选源码核权、日志、制品和镜像由�
 
 AI 可使用已有 SSH 自主调试公司 CI，无须 runner 在线、重复联网核权或命令包装器。公司 CI 不设 CPU、内存、PID、线程、堆、I/O 配额和固定全局并发门禁；保留真实测试、任务数据归属、端口/数据库隔离及生产发布互斥。测试真实退出码和源码 SHA 写入公司回执；失败、取消或未运行不得报通过。日常日志和源码缓存留在公司 CI，生产主机仅按发布需要读取小型回执和指定制品/镜像。生产仍经原登记入口；CI 变更不代表业务已发布。
 
-Latest verified delivery is core **1.1.50 / bundle-v1.4.53**, merged source `433b6696` (PR #100), published 2026-10-28 01:36:47 CST, Release `425783605`. Exact PR/main CI, eleven anonymous asset hashes, the original public updater's fresh/49-upgrade/CURRENT paths and both accounts' 16-path scoped sync/CURRENT passed. Six unrelated Skill ZIPs and the bootstrap preserve the previous release bytes. The authorized Alphabet Runtime now has online, offsite, reference-checked recovery evidence for nine systems; garment remains partial with 220 pre-existing missing references. Main-host recovery and SaaS publication have separate receipts and are not certified by this Skill release. See the [release handoff](docs/handoff/2026-10-28_recovery-evidence-release.md). Entries below preserve historical checkpoints.
+Latest verified delivery is core **1.1.54 / bundle-v1.4.59**, merged source `2d7abcb5` (PR #115), distributed through the first-party HTTPS channel on 2026-11-09. Company Linux core1039 passed/60 skipped; real default-updater fresh installation and both accounts' CURRENT passed. Alphabet's server development kit also carries1.1.54 with its existing configuration preserved. This Skill release does not prove physical-phone acceptance or deploy other enterprises. See the [release handoff](docs/handoff/2026-11-09_first-party-stable54.md). Entries below preserve historical checkpoints.
 
 Latest verified delivery is core **1.1.49 / bundle-v1.4.52**, source `120a2254` (PR #98), published 2026-10-26 15:02:05 CST. PR/main CI passed (940/77 skipped), anonymous assets/original updater and both accounts' 18-path scoped sync/CURRENT passed. The Runtime projection helper was installed and verified on the authorized enterprise host; 12 active worktrees had legacy integration rules repaired with Git/backups. Business integration remains a separate implementation and acceptance task. See the [final handoff](docs/handoff/2026-10-26_enterprise-local-integration.md#正式发布与安装结果). Entries below preserve historical checkpoints.
 
@@ -57,7 +57,7 @@ Core 1.1.19 / bundle-v1.4.19 was published from merged source `6eba784` (PR #35)
 - Milestone merges must update `zhuojian-llm-wiki/cards/zhuojian-enterprise-skills.md`; Skill publication is separate from SaaS or subsystem deployment.
 - Work on a `codex/<description>` branch and merge through a reviewed pull request.
 - Never put passwords, SSH private keys, database credentials, tokens, customer data, or local access profiles in Git or Release assets.
-- Stable updates come only from immutable GitHub Releases. `main` is source, not an update channel.
+- Stable updates use the first-party HTTPS catalog with immutable versioned ZIPs and SHA256 verification. GitHub is source only; do not upload Release assets. `main` is not an update channel.
 - Keep `catalog.json` selectors narrow. Server-specific Skills need a `runtimeIds` or `hosts` selector; an enterprise-only selector is reserved for rules that truly apply to every server of that company.
 - Run the affected Skill tests and quick validation before merging.
 - Build a Release only from a clean merged `main` commit.
