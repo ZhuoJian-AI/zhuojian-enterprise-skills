@@ -48,8 +48,8 @@ jobs:
           root.mkdir(mode=0o700)
           try:
               python = os.environ['OWN_TEST_PYTHON']
-              subprocess.run([python, '-m', 'pytest', '-q', '-ra', '--basetemp', str(root/'core')], check=True)
-              subprocess.run([python, '-m', 'pytest', '-q', '-ra', '--basetemp', str(root/'maintenance'),
+              subprocess.run([python, '-m', 'pytest', '-p', 'no:cacheprovider', '-q', '-ra', '--basetemp', str(root/'core')], check=True)
+              subprocess.run([python, '-m', 'pytest', '-p', 'no:cacheprovider', '-q', '-ra', '--basetemp', str(root/'maintenance'),
                   '../../../tests/maintenance/test_alphabet_backup_consistency_maintenance.py',
                   '../../../tests/maintenance/test_alphabet_online_schedule.py',
                   '../../../tests/maintenance/test_alphabet_storage_bootstrap.py'], check=True)
