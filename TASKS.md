@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **INDEPENDENT-DEVELOPMENT-SKILL-20261112** (@Codex-root)：研发Skill独立分发，不再要求普通员工插件内置；保持通用Builder与企业交接解析、已有SSH/Runtime、默认更新器。限定更新说明/版本/回归及正式同域分发，双账号保留各自无关改动；不重发业务子系统。
+
 - [ ] **OPTIONAL-PLUGIN-RUNTIME-BOOTSTRAP-20261109** (@Codex-side)：补齐管理员按所选方式配置插件研发执行端的说明，分别报告SSH与插件链路就绪；保持既有SSH开发/发布、不自动改造服务器。同步个人副本、同源插件与正式分发，验证版本和真实加载。
 
 - [ ] **SKILL-STABLE-COOKIE-20261109** (@Codex)：完成 core1.1.54 正式稳定发布、公司同域目录与两账号完整升级，沿用公司CI/受保护分发，保留本地独立修改；不上传GitHub Release资产。Windows946项/210subtests通过，Linux与正式HTTPS安装待核验。
