@@ -7,6 +7,8 @@ description: "让 AI 把业务需求转成页面与统一助手可完成的业�
 
 本 Skill 是所有接入灼见 SaaS 的企业共用入口。企业、服务器、既有系统和数据通道的特殊事实必须放在中央目录登记的独立交接 Skill 中，不写入本 Skill。历史名称 `aifabei-subsystem-builder` 只作兼容迁移。
 
+本 Skill 独立于普通员工业务插件分发。研发者从企业网页“系统研发”下载并安装本 Skill，或继续使用已有独立安装；企业特例按真实 Runtime 的 enterpriseKey/runtimeId 解析交接 Skill，不按公司复制通用规范。旧完整插件升级前，研发者先补齐独立 Skill；不得删除独立 Skill、SSH 访问档案、原登录或业务数据。使用插件研发时读[独立 Skill 与研发通道](references/plugin-development.md)；包与说明可见不授予权限，旧插件、独立 Skill 和 SSH 的实际兼容与就绪分别核验。
+
 每次调用本 Skill 时，同一轮先运行一次 `python <skill>/scripts/update_skill.py`，再运行一次 `python <skill>/scripts/update_managed_skills.py installed`。前者更新本 Skill，后者更新本机已经安装的企业交接 Skills。若任一命令输出 `SKILL_UPDATED` 或 `MANAGED_SKILLS_UPDATED`，先读取对应新版的版本记录，再重新读取新版 `SKILL.md` 和本次所需参考文件后继续；其他结果直接使用本地版本，细节见 [Skill 稳定版更新](references/skill-updates.md) 和 [企业交接 Skill 自动同步](references/managed-handoff-skills.md)。
 
 本 Skill 面向获授权的子系统开发者，可通过既有 SSH 开发环境使用，也可随企业插件向获权系统研发者提供。两种方式遵循同一开发与接入契约，按本次已确认的使用方式接入。业务负责人说明想做什么、谁使用；仅在选择 SSH 方式首次接入新服务器时，由有权提供访问的负责人向开发环境提供 `IP + root + 密码`。公司名称只用于核对，服务器 Runtime 档案才是开发接入的企业身份来源。首次凭证授权当前开发环境长期登录该服务器；连接成功后建立并复用本机 SSH 访问记忆，后续不重复索要。企业插件使用本人 SaaS OAuth 和当前角色，不向客户端交付服务器凭据或本机 SSH 访问档案。不要让业务用户准备阿里云、OSS、GitHub、模型供应商或平台令牌，也不要让其选择技术方案。
