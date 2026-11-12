@@ -17,7 +17,7 @@ Skill 提供开发契约；SSH/Runtime 是直接维护入口；插件 OAuth 和�
 
 复用本机 Runtime 身份，先盘点现有研发服务、版本、配置及工作区。已经安装且实际链路可用时直接沿用；更新限于本次受影响的执行端，不重建企业、不重跑整机初始化、不重发业务子系统。
 
-当前执行端的权威实现和安装参数见 SaaS 仓库 [deploy/enterprise-development/README.md](https://github.com/ZhuoJian-AI/ai-platform/blob/main/deploy/enterprise-development/README.md)。管理员从已核验的源码/公司构建取得服务器 kit；按该版本的构建说明、`kit-manifest.json` 和安装器 `--help` 操作，不从本页猜测已发布下载地址或复制另一企业配置。执行包与客户端插件分别交付，插件含完整 Skill 不代表服务器已安装执行包。
+当前执行端的权威实现和安装参数见 SaaS 仓库 [deploy/enterprise-development/README.md](https://github.com/ZhuoJian-AI/ai-platform/blob/main/deploy/enterprise-development/README.md)。管理员从已核验的源码/公司构建取得服务器 kit；按该版本的构建说明、`kit-manifest.json` 和安装器 `--help` 操作，不从本页猜测已发布下载地址或复制另一企业配置。执行包与客户端插件分别交付，安装独立开发 Skill 或业务插件不代表服务器已安装执行包。
 
 接入时需要落实的结果：
 
