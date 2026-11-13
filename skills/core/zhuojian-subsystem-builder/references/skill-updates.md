@@ -6,8 +6,10 @@
 
 ```text
 python <skill>/scripts/update_skill.py
-python <skill>/scripts/update_managed_skills.py installed
+python <skill>/scripts/update_managed_skills.py --skills-dir <当前Skill的父目录> installed
 ```
+
+路径由 AI 按当前宿主自动定位，特别是 WorkBuddy 不默认使用 Codex 安装目录。
 
 - `SKILL_UPDATE_CURRENT`：直接继续。
 - `SKILL_UPDATED`：先读取新版 `skill-version.json`，再读取 `CHANGELOG.md` 中与该 `skillVersion` 对应的版本记录，最后重新读取新版 `SKILL.md` 和本次需要的参考文件后继续，不能混用新旧指令。

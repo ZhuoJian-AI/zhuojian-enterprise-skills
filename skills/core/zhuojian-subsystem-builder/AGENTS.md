@@ -18,7 +18,7 @@ python scripts/build_release.py --output-dir <temporary-directory>
 
 - `skillVersion` versions this repository; `contractRevision` versions SaaS integration. Never copy one into the other.
 - New subsystems default to contract `2.5`; ordinary maintenance preserves an existing supported revision.
-- Stable updates come from immutable GitHub Releases, never from `main`.
+- Stable updates come from the registered first-party HTTPS catalog and immutable versioned assets, never from `main`. GitHub is source only.
 - Do not place credentials, local environment files, release archives, or generated caches in Git.
 - Changes here do not authorize SaaS, ECS Runtime, or business-system deployments.
 

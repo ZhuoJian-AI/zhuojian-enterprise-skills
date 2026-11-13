@@ -1,64 +1,31 @@
-# 企业交接 Skill 自动同步
+# 企业交接 Skill 与自动更新
 
-## 目的
+通用 Builder 保存所有企业共用知识，独立交接 Skill 保存会影响判断的企业/服务器事实。中央目录属于 ZhuoJian-AI/zhuojian-enterprise-skills；正式资产在灼见同域 HTTPS 分发，GitHub 仅保存源码。交接是可查询的知识，不是另一套固定执行流程。
 
-`zhuojian-subsystem-builder` 是所有企业共用的 SaaS 与 ECS 契约。某家公司、某台服务器、某个既有系统或数据通道的特殊事实放在独立交接 Skill 中。业务负责人首次只接收总 Skill，并为新服务器提供一次 `IP + root + 密码`；不要求其创建 GitHub 仓库、选择交接包或维护版本。
+## 查更新与选择目标
 
-所有稳定版由唯一公共仓库 `ZhuoJian-AI/zhuojian-enterprise-skills` 发布。一个仓库可以包含多个独立 Skill；每个 Skill 保留自己的 `skillVersion`、更新记录、压缩包和 SHA-256。
+`python <skill>/scripts/update_managed_skills.py --skills-dir <当前Skill的父目录> installed` 更新本机已有且在中央目录登记的交接。AI 自行定位当前宿主的真实目录。没有安装过的企业交接需要 `resolve`，所以 CURRENT 不证明当前目标企业已有交接。
 
-## 每轮更新
-
-在登录任何服务器前运行：
+在已确认目标和现有授权内，结合 Runtime 档案、项目记录及主机身份选择匹配项：
 
 ```text
-python <skill>/scripts/update_skill.py
-python <skill>/scripts/update_managed_skills.py installed
+python <skill>/scripts/update_managed_skills.py --skills-dir <当前Skill的父目录> resolve --enterprise-key <企业key> --runtime-id <runtimeId> --host <目标主机>
 ```
 
-第一条更新总 Skill；第二条只更新本机已经安装并出现在稳定目录中的交接 Skill。更新失败时保留旧版；跨主版本只报告，不自动替换。
+有可信 Runtime 身份时优先使用。档案暂不可读或 doctor 无执行权时，可以先按已核实主机运行 `resolve --host <目标主机>`；不猜企业、不绕过权限、不把权限错误认作未初始化。共享主机须结合已知企业/Runtime 避免误选，查到的交接身份再与项目交叉核对；公司口述名称只作辅助。
 
-任一命令输出更新后，立即读取输出路径中的 `skill-version.json`、对应 `CHANGELOG.md` 版本段和新版 `SKILL.md`。同一轮不得继续使用已被替换的旧指令。
+匹配支持 Runtime 优先、主机兜底及真正适用整家企业的企业级条目；具体匹配以脚本和目录为准。读取输出安装路径里的新版入口，再按当前问题查参考；交接不授予 SSH、数据库或业务权限。无匹配项时继续已知且已获权工作；缺少环境事实时调查实际项目，不猜特殊配置。
 
-## 登录后的识别
+## 更新结果
 
-管理员初始化 ECS 时，非敏感 Runtime 档案固定记录 `enterpriseKey` 与 `runtimeId`。登录并通过 `zhuojian-runtime doctor` 后读取 `/etc/zhuojian/runtime.json`，不得输出其中的秘密引用或其他配置。然后运行：
+同主版本更新沿用现有签名来源/摘要、路径和原子安装校验；跨主版本报告可用升级。更新失败保留本地旧版，首次下载失败不冒称已掌握该企业环境。脚本默认安装在宿主 CODEX_HOME/skills；WorkBuddy 等其他安装位置按实际父目录传 `--skills-dir`，先看 `--help`。
 
-```text
-python <skill>/scripts/update_managed_skills.py resolve \
-  --enterprise-key <enterpriseKey> \
-  --runtime-id <runtimeId> \
-  --host <本次登录地址>
-```
+总 Skill 的更新说明见[稳定更新](skill-updates.md)。不是定时推送或当前聊天热刷新；公共目录发布、实际文件更新及宿主加载分别核验。
 
-匹配顺序是 `runtimeId`、主机地址、企业级无服务器限定规则。主机地址用于首次兜底；长期归属以 ECS 档案为准。用户顺手给出的公司名称只作一致性核对，不能覆盖服务器档案。二者不一致时停止选择交接 Skill并报告管理员。
+## 维护企业交接
 
-`resolve` 会安装尚不存在的交接 Skill，也会升级同主版本的旧副本。输出 `MANAGED_SKILLS_UPDATED` 后，立即读取输出路径中的交接 `SKILL.md` 和本次任务明确要求的 references；交接 Skill 补充总契约，不能取代或放宽总契约。
+初始化、接手旧系统或修改部署事实时，AI 根据实际需要维护已有交接，避免只有创建新 Runtime 才能补资料。读取服务器现有项目与实际数据/发布方式，以稳定事实和恢复线索为主；没有特例不创建空壳。新条目带准确 enterpriseKeys 和窄 runtimeIds/hosts，不能把一台服务器的特例套给公司全部主机。
 
-目录没有匹配项时继续使用总 Skill，并明确说明“管理员尚未为这台 ECS 登记专属交接 Skill”。目录声明了匹配项但下载、校验或安装失败时，不得猜测服务器特有规则；已有旧版可以继续使用，首次安装失败则停止依赖特殊环境的操作并通知管理员。
+使用唯一总仓库和现行公司 CI/正式 HTTPS 发布入口，遵循仓库的分支、评审及不可变包规则；旧 GitHub Release 步骤仅为历史。验证发布目录、下载摘要以及目标 Runtime/主机的真实 resolve。客户端尚未安装或加载就明确保留该状态。没有发布权限时先完成可审阅内容，不让小白准备 GitHub/平台令牌。
 
-## 初始化后的强制收尾
-
-管理员明确要求初始化一台 ECS 后，交接审计和必要的中央登记属于同一个初始化任务，不等待管理员再次提醒或确认。Runtime、Docker、域名、存储与最小应用验收成功，不代表初始化任务已经全部完成。
-
-先读取刚写入的 `/etc/zhuojian/runtime.json`，取得准确的 `enterpriseKey`、`runtimeId` 和当前公网地址，再只读检查该 ECS 的既有系统与集成。以下事实不能由通用 Runtime 自动推导，任一存在时都需要独立交接 Skill：
-
-- 已经运行、即将交给业务负责人维护的既有系统及其真实源码基线；
-- 专用数据库、API、网关、反向隧道、VPN、Docker 私网或固定端口；
-- 外部数据只读、允许写入、同步频率、业务截止日、字段口径等边界；
-- 特殊登录兼容、角色限制、存储现状、发布顺序、故障诊断或不可触碰的同机资源。
-
-只有通用 Runtime 能完整表达的新空白 ECS 不创建空壳交接 Skill。最终回复必须明确写出“未发现需要专属交接 Skill 的特殊事实，本次无需登记”，避免管理员以后误以为漏做。
-
-发现特殊事实时自动完成以下流程：
-
-1. 打开或克隆唯一公共仓库 `ZhuoJian-AI/zhuojian-enterprise-skills`，先读取仓库 `AGENTS.md`、最新 `catalog.json` 和同公司的现有 Skills。已有 Skill 覆盖同一环境时原地更新并递增 SemVer，不创建同义重复项。
-2. 在 `skills/companies/<enterpriseKey>/<skill-name>/` 创建公司前缀的唯一 Skill。至少包含 `SKILL.md`、`skill-version.json` 和 `CHANGELOG.md`；按需加入 `references/`、`scripts/` 与 `agents/openai.yaml`。只写入以后会改变 AI 判断的稳定事实，不复制通用搭建规则。
-3. `skill-version.json` 固定声明 `managedBy: ZhuoJian-AI/zhuojian-enterprise-skills`。在 `catalog.json` 中登记准确 `enterpriseKeys`，并优先写入本次 Runtime 的 `runtimeIds`；服务器公网地址写入 `hosts` 作为首次或换机前的兜底。不得仅凭公司名称把服务器特例加载到该公司的全部 ECS。
-4. 不把 ECS 密码、SSH 私钥、数据库凭证、令牌、客户数据、本机访问档案或 Secret 值放进仓库或发布包。交接 Skill 只记录凭证保存位置和复用方式；发现现有交接材料含秘密时先移除，再进入 Git 历史。
-5. 使用 `codex/<description>` 分支，精确暂存本次文件，运行受影响 Skill 测试、逐 Skill 快速校验、秘密扫描和 `git diff --check`，通过 PR 合并。不得直接推送 `main`，不得把无关改动带入提交。
-6. 从合并后的干净 `main` 构建下一个未占用的不可变 `bundle-v<version>`，发布每个 Skill 的独立 ZIP、SHA-256、稳定 `catalog.json` 和总 Skill 更新清单。Release 上传或校验失败时保留仓库源码，但必须报告“交接 Skill 尚未对业务负责人可用”，不能假装发布完成。
-7. 使用空临时 Skills 目录分别按新 `runtimeId` 和公网地址运行 `resolve`。两种方式都必须只安装该 ECS 应取得的交接 Skills，版本与摘要和 Release 一致；验证后再同步管理员本机副本。
-
-若管理员环境没有 GitHub 写权限，仍应在隔离分支或临时目录生成并校验不含秘密的交接 Skill 草稿，然后报告中央发布被 GitHub 写权限阻塞；不得向业务负责人索要 GitHub 账号，也不得把未发布草稿说成已经自动同步。
-
-旧 `ZhuoJian-AI/aifabei-subsystem-builder` 仓库保留历史升级桥梁；中央目录中的同名兼容 Skill 会继续把旧用户迁移到 `zhuojian-subsystem-builder`。后续正式总 Skill 和交接 Skill 都由企业 Skills 总仓库发布。
+凭据、本机 SSH 档案、内部网络与原始客户数据保留在其受保护来源；公共交接只保存获准发布的必要非秘密定位。新增企业知识不扩大维护者、普通员工或其他企业的授权。
