@@ -17,6 +17,7 @@
 
 ## 身份、权限与登录
 
+- [SaaS 授权有效、三方员工同步、旧账号与 C 端边界](employee-authority.md)
 - [统一身份的入口核查与验收](identity-acceptance.md)
 - [员工目录与历史身份核查](employee-identity.md)
 - [内嵌浏览器会话 Cookie](browser-session-cookies.md)

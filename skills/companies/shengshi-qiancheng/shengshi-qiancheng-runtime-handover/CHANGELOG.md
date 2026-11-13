@@ -1,3 +1,9 @@
+# Changelog
+
+## 1.0.1 - 2026-11-14
+
+- Clarify SaaS employee authority, stable cross-system identity links, preserved legacy and C-end access, and current runtime evidence. No fixed AI workflow or per-employee secondary whitelist.
+
 # 更新记录
 
 ## 1.0.0 - 2026-11-13
