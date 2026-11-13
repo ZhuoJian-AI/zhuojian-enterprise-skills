@@ -139,6 +139,20 @@
       "hosts": [
         "47.96.234.89"
       ]
+    },
+    "shengshi-qiancheng-runtime-handover": {
+      "path": "skills/companies/shengshi-qiancheng/shengshi-qiancheng-runtime-handover",
+      "kind": "handoff",
+      "enterpriseKeys": [
+        "shengshi-qiancheng"
+      ],
+      "runtimeIds": [
+        "shengshi-qiancheng-hz-01",
+        "1495fbb4-6f7e-49f1-887c-3f080f4a4424"
+      ],
+      "hosts": [
+        "118.31.111.74"
+      ]
     }
   }
 }

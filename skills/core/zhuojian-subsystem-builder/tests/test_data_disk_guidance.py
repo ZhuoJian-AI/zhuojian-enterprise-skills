@@ -12,9 +12,11 @@ def read(relative: str) -> str:
 
 def test_data_disk_guidance_is_routed_from_admin_entrypoints() -> None:
     skill = read("SKILL.md")
+    index = read("references/knowledge-index.md")
     bootstrap = read("references/admin-bootstrap.md")
 
-    assert "references/data-disk-capacity.md" in skill
+    assert "references/knowledge-index.md" in skill
+    assert "data-disk-capacity.md" in index
     assert "data-disk-capacity.md" in bootstrap
 
 
