@@ -4,12 +4,12 @@
 
 ## 查更新与选择目标
 
-`python <skill>/scripts/update_managed_skills.py installed` 更新本机已有且在中央目录登记的交接。没有安装过的企业交接需要 `resolve`，所以 CURRENT 不证明当前目标企业已有交接。
+`python <skill>/scripts/update_managed_skills.py --skills-dir <当前Skill的父目录> installed` 更新本机已有且在中央目录登记的交接。AI 自行定位当前宿主的真实目录。没有安装过的企业交接需要 `resolve`，所以 CURRENT 不证明当前目标企业已有交接。
 
 在已确认目标和现有授权内，结合 Runtime 档案、项目记录及主机身份选择匹配项：
 
 ```text
-python <skill>/scripts/update_managed_skills.py resolve --enterprise-key <企业key> --runtime-id <runtimeId> --host <目标主机>
+python <skill>/scripts/update_managed_skills.py --skills-dir <当前Skill的父目录> resolve --enterprise-key <企业key> --runtime-id <runtimeId> --host <目标主机>
 ```
 
 有可信 Runtime 身份时优先使用。档案暂不可读或 doctor 无执行权时，可以先按已核实主机运行 `resolve --host <目标主机>`；不猜企业、不绕过权限、不把权限错误认作未初始化。共享主机须结合已知企业/Runtime 避免误选，查到的交接身份再与项目交叉核对；公司口述名称只作辅助。

@@ -29,10 +29,10 @@ description: 在已获权的灼见企业服务器上开发、修复、部署子�
 
 ```text
 python <skill>/scripts/update_skill.py
-python <skill>/scripts/update_managed_skills.py installed
+python <skill>/scripts/update_managed_skills.py --skills-dir <当前Skill的父目录> installed
 ```
 
-更新后读取新版入口与本次需要的资料；网络失败可继续使用本地版本。`installed` 只检查已安装交接，不代表目标企业已经匹配；首次匹配使用 `resolve`。详见[稳定更新](references/skill-updates.md)。更新不是后台推送，不承诺当前聊天即时热刷新，也不部署业务系统。
+AI 自行替换实际路径；WorkBuddy 等宿主沿用当前 Skill 的真实安装父目录，不默认写入另一宿主。更新后读取新版入口与本次需要的资料；网络失败可继续使用本地版本。`installed` 只检查已安装交接，不代表目标企业已经匹配；首次匹配使用 `resolve`。详见[稳定更新](references/skill-updates.md)。更新不是后台推送，不承诺当前聊天即时热刷新，也不部署业务系统。
 
 ## 结果与边界
 
