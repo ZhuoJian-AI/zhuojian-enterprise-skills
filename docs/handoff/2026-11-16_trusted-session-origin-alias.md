@@ -1,0 +1,9 @@
+# Builder62：可信SSO来源贯通到iframe
+
+真实Scene验收证明61只修浏览器来源仍不够：SSO已验证实际父域别名，但模板bootstrap固定返回canonical，导致postMessage目标与父域不同。61/67和静态58仅保留源码/tag/CI，未活化、未安装服务器kit或双账号、未更新文件库；不重写旧tag，不将其CI成功称为完整交付。
+
+62在原SSO导航allowlist、Sec-Fetch-Dest、换码及claims校验全部成功后，将已验证referring_origin存入服务端会话。bootstrap先原实时身份/范围核权，再从该受控会话读取并复验HTTPS和原配置允许集合；不读取请求参数、正文、后续Origin/referrer补授权。缺绑定的旧会话及无效/已不允许的Origin返回409要求从SaaS重新打开；不猜canonical。原身份、角色、范围、账号与业务数据不清除。CSP的父域集合与既有SSO允许集合一致。
+
+回归实际执行生成模板的SSO→会话→bootstrap，覆盖canonical与配置别名、恶意来源不换码、失败claims不保存、9类缺失/污染会话拒绝及旧会话正常新SSO恢复。另把真实生成后端/其bootstrap与实际Chrome iframe连在一起，以缺失document.referrer分别在两个合法父域的电脑/手机模拟验证真实ready、加载解除、实际列表与无横溢出；这是隔离的合成模板环境，SaaS传输模拟，不能冒称真实员工或生产数据验收。原账号真实Scene验收由拥有方单列。
+
+保留61的当前Action初始化与可选SDK隔离：ready表示交互页面而非所有查询成功，write/upload-only不需额外query，读失败呈独立错误，刷新保留草稿。62/bundle68/static59的完整公司CI、正式分发、SaaS baked部署、默认更新器、两Windows/现役kit及客户端结果等待独立回执。

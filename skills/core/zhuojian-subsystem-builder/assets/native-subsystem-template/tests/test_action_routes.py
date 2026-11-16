@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import json
 import os
+import shutil
 import sqlite3
 import sys
 import tempfile
@@ -793,7 +794,7 @@ class ActionRouteTests(unittest.TestCase):
         self.assertEqual(owner, self.sso_claims["sub"])
 
     @contextmanager
-    def identity_client(self, *, display_name=None, authenticated=True):
+    def identity_client(self, *, display_name=None, authenticated=True, referring_origin=None):
         """Use real SSO/session handling; only the remote SaaS transport is simulated."""
         with self.TestClient(
             self.application.app, base_url="https://testserver",
@@ -829,7 +830,7 @@ class ActionRouteTests(unittest.TestCase):
                         "redirect": payload["redirect"],
                         "launch_nonce": payload["launch_nonce"],
                     }, headers={
-                        "Referer": self.application.SAAS_ORIGIN + "/terminal",
+                        "Referer": (referring_origin or self.application.SAAS_ORIGIN) + "/terminal",
                         "Sec-Fetch-Dest": "iframe",
                     }, follow_redirects=False)
                 self.assertEqual(response.status_code, 302, response.text)
@@ -838,6 +839,188 @@ class ActionRouteTests(unittest.TestCase):
                 self.application, "validate_live_session", self.real_validate_live_session,
             ):
                 yield client, claims
+
+    def test_bootstrap_preserves_verified_canonical_and_alias_sso_origin(self):
+        alias = "https://allowed-alias.test.example.com"
+        for origin in (self.application.SAAS_ORIGIN, alias):
+            with self.subTest(origin=origin), mock.patch.object(
+                self.application, "SAAS_ORIGINS", [alias],
+            ), self.identity_client(referring_origin=origin) as (client, claims):
+                checked = mock.Mock(status_code=200, content=b"{}")
+                checked.json.return_value = {"valid": True, "auth_epoch": 0,
+                    "effective_data_scope": claims["effectiveDataScope"]}
+                with mock.patch.object(self.application.httpx, "post", return_value=checked):
+                    response = client.get("/api/ui/bootstrap", params={
+                        "moduleKey": self.module_key, "pageKey": self.page_key,
+                        "platformOrigin": "https://untrusted.test",
+                    }, headers={"Referer": "https://untrusted.test/", "Origin": "https://untrusted.test"})
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(response.json()["platformOrigin"], origin)
+                for allowed in (self.application.SAAS_ORIGIN, alias):
+                    self.assertIn(allowed, response.headers["content-security-policy"])
+                with closing(sqlite3.connect(self.application.DB_PATH)) as connection:
+                    sessions = [json.loads(row[0]) for row in connection.execute("SELECT data FROM browser_sessions")]
+                stored = next(row for row in sessions if row.get("launchNonce") == claims["launchNonce"])
+                self.assertEqual(stored["platformOrigin"], origin)
+
+    def test_sso_unknown_origin_never_reaches_exchange_or_creates_session(self):
+        with self.identity_client(authenticated=False) as (client, claims), mock.patch.object(
+            self.application.httpx, "post",
+        ) as exchange:
+            response = client.get("/api/integration/sso", params={
+                "code": "zjsc_" + uuid4().hex + uuid4().hex,
+                "redirect": self.sso_exchange_payload["redirect"], "launch_nonce": claims["launchNonce"],
+                "platformOrigin": self.application.SAAS_ORIGIN,
+            }, headers={"Referer": "https://untrusted.test/", "Sec-Fetch-Dest": "iframe"}, follow_redirects=False)
+            self.assertEqual(response.status_code, 403, response.text)
+            exchange.assert_not_called()
+            self.assertFalse(client.cookies.get("zjsid"))
+            self.assertEqual(client.get("/api/ui/bootstrap", params={
+                "moduleKey": self.module_key, "pageKey": self.page_key,
+            }).status_code, 401)
+
+    def test_failed_sso_claims_do_not_persist_an_allowlisted_origin(self):
+        with self.identity_client(authenticated=False) as (client, claims):
+            invalid = {**self.sso_exchange_payload, "launch_nonce": claims["launchNonce"],
+                "claims": {**claims, "aud": "other-application"}}
+            remote = mock.Mock(status_code=200, content=b"{}", headers={"content-type": "application/json"})
+            remote.json.return_value = invalid
+            with mock.patch.object(self.application.httpx, "post", return_value=remote):
+                response = client.get("/api/integration/sso", params={
+                    "code": "zjsc_" + uuid4().hex + uuid4().hex,
+                    "redirect": invalid["redirect"], "launch_nonce": claims["launchNonce"],
+                }, headers={"Referer": self.application.SAAS_ORIGIN + "/terminal",
+                    "Sec-Fetch-Dest": "iframe"}, follow_redirects=False)
+            self.assertEqual(response.status_code, 403, response.text)
+            self.assertFalse(client.cookies.get("zjsid"))
+            with closing(sqlite3.connect(self.application.DB_PATH)) as connection:
+                sessions = [json.loads(row[0]) for row in connection.execute("SELECT data FROM browser_sessions")]
+            self.assertFalse(any(row.get("launchNonce") == claims["launchNonce"] for row in sessions))
+
+    def test_legacy_or_invalid_origin_requires_relaunch_without_canonical_fallback(self):
+        missing = object()
+        invalid_origins = (missing, "", None, 123, [self.application.SAAS_ORIGIN],
+            "http://saas.test.example.com", "https://untrusted.test",
+            self.application.SAAS_ORIGIN + "/path", "https://user:pass@saas.test.example.com")
+        for index, origin in enumerate(invalid_origins):
+            with self.subTest(case=index), self.identity_client() as (client, claims):
+                with closing(sqlite3.connect(self.application.DB_PATH)) as connection:
+                    rows = connection.execute("SELECT session_hash,data FROM browser_sessions").fetchall()
+                    session_hash, stored = next((row[0], json.loads(row[1])) for row in rows
+                        if json.loads(row[1]).get("launchNonce") == claims["launchNonce"])
+                    original = json.loads(json.dumps(stored))
+                    if origin is missing:
+                        stored.pop("platformOrigin")
+                    else:
+                        stored["platformOrigin"] = origin
+                    connection.execute("UPDATE browser_sessions SET data=? WHERE session_hash=?",
+                        (json.dumps(stored), session_hash));connection.commit()
+                checked = mock.Mock(status_code=200, content=b"{}")
+                checked.json.return_value = {"valid": True, "auth_epoch": 0,
+                    "effective_data_scope": claims["effectiveDataScope"]}
+                with mock.patch.object(self.application.httpx, "post", return_value=checked):
+                    response = client.get("/api/ui/bootstrap", params={
+                        "moduleKey": self.module_key, "pageKey": self.page_key,
+                        "platformOrigin": self.application.SAAS_ORIGIN,
+                    }, headers={"Referer": self.application.SAAS_ORIGIN + "/terminal"})
+                self.assertEqual(response.status_code, 409, response.text)
+                with closing(sqlite3.connect(self.application.DB_PATH)) as connection:
+                    retained = json.loads(connection.execute("SELECT data FROM browser_sessions WHERE session_hash=?",
+                        (session_hash,)).fetchone()[0])
+                for key in ("sub", "roleIds", "pageAccess", "authEpoch", "moduleKey", "launchNonce"):
+                    self.assertEqual(retained[key], original[key], key)
+                if origin is missing:
+                    alias = "https://allowed-alias.test.example.com"
+                    nonce = uuid4().hex
+                    renewed_claims = {**claims, "launchNonce": nonce, "jti": uuid4().hex,
+                        "iat": datetime.now(timezone.utc).isoformat(),
+                        "exp": (datetime.now(timezone.utc) + timedelta(seconds=90)).isoformat()}
+                    payload = {**self.sso_exchange_payload, "claims": renewed_claims, "launch_nonce": nonce}
+                    exchanged = mock.Mock(status_code=200, content=b"{}", headers={"content-type": "application/json"})
+                    exchanged.json.return_value = payload
+                    with mock.patch.object(self.application, "SAAS_ORIGINS", [alias]), mock.patch.object(
+                        self.application.httpx, "post", side_effect=[exchanged, checked],
+                    ):
+                        opened = client.get("/api/integration/sso", params={
+                            "code": "zjsc_" + uuid4().hex + uuid4().hex,
+                            "redirect": payload["redirect"], "launch_nonce": nonce,
+                        }, headers={"Referer": alias + "/terminal", "Sec-Fetch-Dest": "iframe"}, follow_redirects=False)
+                        self.assertEqual(opened.status_code, 302, opened.text)
+                        recovered = client.get("/api/ui/bootstrap", params={
+                            "moduleKey": self.module_key, "pageKey": self.page_key})
+                    self.assertEqual(recovered.status_code, 200, recovered.text)
+                    self.assertEqual(recovered.json()["platformOrigin"], alias)
+                    self.assertEqual(recovered.json()["actor"]["userId"], claims["sub"])
+
+    def test_verified_session_origin_reaches_real_iframe_without_referrer(self):
+        """Pair the real generated backend/bootstrap and browser, using only fake SaaS transport."""
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            self.skipTest("Playwright is required for paired template browser verification")
+        executable = next((str(path) for path in (
+            Path("C:/Program Files/Google/Chrome/Application/chrome.exe"),
+            Path("C:/Program Files (x86)/Google/Chrome/Application/chrome.exe"),
+            Path("/usr/bin/google-chrome"), Path("/usr/bin/chromium"),
+        ) if path.is_file()), None) or shutil.which("google-chrome") or shutil.which("chromium")
+        if not executable:
+            self.skipTest("Real Chrome/Chromium is required")
+        alias = "https://allowed-alias.test.example.com"
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True, executable_path=executable)
+            try:
+                for origin_index, origin in enumerate((self.application.SAAS_ORIGIN, alias)):
+                    for width, height in ((1440, 1000), (390, 844)):
+                        with self.subTest(origin=origin, width=width), mock.patch.object(
+                            self.application, "SAAS_ORIGINS", [self.application.SAAS_ORIGIN, alias],
+                        ), self.identity_client(referring_origin=origin) as (client, claims):
+                            checked = mock.Mock(status_code=200, content=b"{}")
+                            checked.json.return_value = {"valid": True, "auth_epoch": 0,
+                                "effective_data_scope": claims["effectiveDataScope"]}
+                            page_route = self.sso_exchange_payload["redirect"]
+                            parent_html = '''<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>body{margin:0}iframe{width:100vw;height:100vh;border:0}#mask{position:fixed;inset:0;background:white}</style>
+<iframe id="business" inert referrerpolicy="no-referrer" src="https://testserver__ROUTE__"></iframe><div id="mask">Loading</div>
+<script>const expected=__IDENTITY__;window.addEventListener('message',event=>{
+if(event.source!==business.contentWindow||event.origin!=='https://testserver')return;
+if(event.data.type==='zhuojian:ready'&&event.data.application_slug===expected.app&&event.data.launch_nonce===expected.nonce){business.inert=false;mask.hidden=true}
+});</script>'''.replace("__ROUTE__", page_route).replace("__IDENTITY__", json.dumps({
+                                "app": self.application.APP_SLUG, "nonce": claims["launchNonce"],
+                            }))
+                            context = browser.new_context(viewport={"width": width, "height": height},
+                                has_touch=width == 390, is_mobile=width == 390)
+                            page = context.new_page()
+                            def route_request(route):
+                                request = route.request
+                                if request.url == origin + "/fixture":
+                                    route.fulfill(status=200, content_type="text/html", body=parent_html)
+                                elif request.url.startswith("https://testserver/"):
+                                    headers = {key: value for key, value in request.headers.items() if key != "cookie"}
+                                    response = client.request(request.method, request.url,
+                                        headers=headers, content=request.post_data_buffer, follow_redirects=False)
+                                    route.fulfill(status=response.status_code, body=response.content, headers={
+                                        key: value for key, value in response.headers.items()
+                                        if key not in {"content-length", "set-cookie"}})
+                                else:
+                                    route.fulfill(status=404, body="Fixture route not registered")
+                            page.route("**/*", route_request)
+                            try:
+                                with mock.patch.object(self.application.httpx, "post", return_value=checked):
+                                    page.goto(origin + "/fixture")
+                                    page.wait_for_function("mask.hidden && !business.inert", timeout=5000)
+                                    frame = page.frame_locator("#business")
+                                    frame.locator("#status").filter(has_text="共 ").wait_for(timeout=5000)
+                                    self.assertEqual(frame.locator("body").evaluate("() => document.referrer"), "")
+                                    self.assertTrue(frame.locator("#refresh").is_enabled())
+                                    self.assertLessEqual(frame.locator("body").evaluate(
+                                        "() => document.documentElement.scrollWidth-document.documentElement.clientWidth"), 1)
+                                    if output := os.environ.get("NATIVE_ORIGIN_SCREENSHOTS"):
+                                        target = Path(output);target.mkdir(parents=True, exist_ok=True)
+                                        page.screenshot(path=str(target / f"origin-{origin_index}-{width}.png"))
+                            finally:
+                                context.close()
+            finally:
+                browser.close()
 
     def identity_business_requests(self, *, include_directory=False):
         context = {"moduleKey": self.module_key, "pageKey": self.page_key}
