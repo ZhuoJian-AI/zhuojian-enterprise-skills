@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **TRUSTED-SESSION-ORIGIN62-20261116** (@Codex-restore-shared-browser)：SSO原验证成功后持久化实际可信平台Origin，bootstrap只从受控会话读取/复验allowlist；补canonical/alias/旧会话/恶意来源回归。61/67和静态58仅保留未活化候选证据，不重写tag；62/68/静态59另做正式CI、分发与安装。
+
 - [ ] **TRUSTED-BOOTSTRAP-BRIDGE-20261116** (@Codex-restore-shared-browser)：修复原生模板referrer来源门禁及首屏ready/可选SDK耦合，保留Bridge身份/范围验证与草稿保护；公司真实行为回归、Builder61正式发行、SaaS内嵌与两Windows/现役kit/默认更新器同步，运行时发布单列。
 
 - [ ] **AUTHORITY-CLOSURE-20261116** (@codex-root)：按共同方案补齐员工单一授权接入与验收工具/模板，保持2.4/2.5和旧独立通道；完成必要源码、公司CI、正式发行、双账号及SaaS内嵌分发/受影响服务器kit核验。以真实运行修复为依据，不把Skill文档更新当业务已完成。
