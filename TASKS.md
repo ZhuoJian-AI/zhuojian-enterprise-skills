@@ -1,8 +1,8 @@
 # 当前任务
 
-- [ ] **TRUSTED-SESSION-ORIGIN62-20261116** (@Codex-restore-shared-browser)：SSO原验证成功后持久化实际可信平台Origin，bootstrap只从受控会话读取/复验allowlist；补canonical/alias/旧会话/恶意来源回归。61/67和静态58仅保留未活化候选证据，不重写tag；62/68/静态59另做正式CI、分发与安装。
+- [x] **TRUSTED-SESSION-ORIGIN62-20261116** (@Codex-restore-shared-browser)：core PR131/main3b97f9eb、bundle68与Skill62正式完成；公司exact-main1043/65skip+24、Windows1022/86skip，SaaS两内嵌JSON正式backend/worker已healthy。静态59原入口active/HTTPS36文件通过，同文件库v3，默认fresh/60升级/CURRENT、两Windows8路径及Alphabet原kit62均实证；Codex/WorkBuddy原生59加载独立验收通过。保留旧账号/数据/配置及本地补充，详见可信来源handoff正式结果；61/58从未活化，不重写tag。
 
-- [ ] **TRUSTED-BOOTSTRAP-BRIDGE-20261116** (@Codex-restore-shared-browser)：修复原生模板referrer来源门禁及首屏ready/可选SDK耦合，保留Bridge身份/范围验证与草稿保护；公司真实行为回归、Builder61正式发行、SaaS内嵌与两Windows/现役kit/默认更新器同步，运行时发布单列。
+- [x] **TRUSTED-BOOTSTRAP-BRIDGE-20261116** (@Codex-restore-shared-browser)：浏览器薄修已由后续真实Scene别名实证补全为62的服务端会话Origin贯通；61/bundle67/静态58只保留未活化候选，不称正式发行。全部后续源码、公司CI、正式分发、两Windows/现役kit/默认更新器与客户端加载结果归TRUSTED-SESSION-ORIGIN62，原Bridge身份/范围/草稿保护保持。
 
 - [ ] **AUTHORITY-CLOSURE-20261116** (@codex-root)：按共同方案补齐员工单一授权接入与验收工具/模板，保持2.4/2.5和旧独立通道；完成必要源码、公司CI、正式发行、双账号及SaaS内嵌分发/受影响服务器kit核验。以真实运行修复为依据，不把Skill文档更新当业务已完成。
 
