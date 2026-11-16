@@ -13,6 +13,7 @@ const turn = () => new Promise(resolve => setImmediate(resolve));
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
 
 async function fixture(options = {}) {
+  const parentOrigin = options.parentOrigin ?? origin;
   const elements = new Map(), events = new Map(), posts = [], calls = [], sdk = deferred();
   function element() { return { value: '', files: [], dataset: {}, hidden: false, disabled: false, textContent: '',
     children: [], addEventListener() {}, setAttribute() {}, append(...items) { this.children.push(...items); },
@@ -52,7 +53,7 @@ async function fixture(options = {}) {
   vm.runInContext(navigation.replace('export function', 'function') + '\nthis.navigationFactory = createNavigation;', context);
   vm.runInContext(inline.replaceAll('await import(', 'await importModule('), context);
   async function emit(data, overrides = {}) {
-    for (const fn of [...(events.get('message') || [])]) await fn({ source: parent, origin, data, ...overrides });
+    for (const fn of [...(events.get('message') || [])]) await fn({ source: parent, origin: parentOrigin, data, ...overrides });
   }
   const load = () => Promise.all([...(events.get('load') || [])].map(fn => fn()));
   return { context, elements, posts, calls, get, parent, emit, load, releaseSdk: sdk.resolve,
@@ -68,6 +69,13 @@ for (const referrer of ['', 'https://app.test/own-login', 'https://wrong.test/pa
   assert.equal(f.posts.find(item => item.data.type === 'zhuojian:context').data.page_key, 'orders.list');
   assert.equal(f.get('upload').hidden, true);
   assert.equal(f.get('refresh').hidden, false);
+}
+
+for (const platformOrigin of [origin, 'https://allowed-alias.test']) {
+  const f = await fixture({ parentOrigin: platformOrigin, bootstrap: { platformOrigin }, referrer: 'https://wrong.test/' });
+  await f.load(); await turn();
+  assert.ok(f.posts.some(item => item.data.type === 'zhuojian:ready'));
+  assert.ok(f.posts.every(item => item.target === platformOrigin), 'the exact server-bound alias, not a canonical constant, receives Bridge messages');
 }
 
 for (const platformOrigin of ['', 'http://platform.test', 'https://platform.test/path',

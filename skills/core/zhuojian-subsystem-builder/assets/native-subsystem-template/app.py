@@ -1126,7 +1126,7 @@ async def security_headers(request: Request, call_next):
                 content={"detail": "Same-origin UI request required"},
             )
     response = await call_next(request)
-    response.headers["Content-Security-Policy"] = "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-ancestors 'self' " + " ".join(SAAS_ORIGINS)
+    response.headers["Content-Security-Policy"] = "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-ancestors 'self' " + " ".join(sorted(set(SAAS_ORIGINS) | {SAAS_ORIGIN}))
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin"
     return response
@@ -2359,6 +2359,12 @@ def ui_bootstrap(request: Request, moduleKey: str, pageKey: str):
     ):
         raise HTTPException(403, "Page context mismatch")
     actor = validate_live_session(session, moduleKey, pageKey)
+    try:
+        platform_origin = canonical_https_origin(session.get("platformOrigin", ""), "SSO platform origin")
+    except (RuntimeError, ValueError, TypeError, AttributeError) as exc:
+        raise HTTPException(409, "Reopen this module from ZhuoJian SaaS to bind its platform origin") from exc
+    if platform_origin not in set(SAAS_ORIGINS) | {SAAS_ORIGIN}:
+        raise HTTPException(409, "SSO platform origin is no longer allowed; reopen this module from ZhuoJian SaaS")
     platform_ai_capabilities = []
     for action_key in page.get("actionKeys", []):
         action = ACTIONS.get(action_key)
@@ -2380,7 +2386,7 @@ def ui_bootstrap(request: Request, moduleKey: str, pageKey: str):
         "moduleName": module["name"],
         "pageName": page["name"],
         "launchNonce": session.get("launchNonce"),
-        "platformOrigin": SAAS_ORIGIN,
+        "platformOrigin": platform_origin,
         "navigationEntry": session.get("navigationEntry"),
         "actionKeys": list(page_access.get("actionKeys") or []),
         "platformAiCapabilities": platform_ai_capabilities,
@@ -3205,6 +3211,9 @@ def sso(request: Request, code: str, redirect: str, launch_nonce: str):
     session = validate_sso_exchange(
         exchange_sso_code(code, redirect, launch_nonce), redirect, launch_nonce
     )
+    # Persist only the existing allowlisted origin after code/claims verification.
+    # Browser bootstrap must not infer it again from a later request or referrer.
+    session["platformOrigin"] = referring_origin
     request.session.clear()
     request.session.update(session)
     request.scope["rotate_session"] = True
