@@ -1,5 +1,7 @@
 # 当前任务
 
+- [ ] **TRUSTED-BOOTSTRAP-BRIDGE-20261116** (@Codex-restore-shared-browser)：修复原生模板referrer来源门禁及首屏ready/可选SDK耦合，保留Bridge身份/范围验证与草稿保护；公司真实行为回归、Builder61正式发行、SaaS内嵌与两Windows/现役kit/默认更新器同步，运行时发布单列。
+
 - [ ] **AUTHORITY-CLOSURE-20261116** (@codex-root)：按共同方案补齐员工单一授权接入与验收工具/模板，保持2.4/2.5和旧独立通道；完成必要源码、公司CI、正式发行、双账号及SaaS内嵌分发/受影响服务器kit核验。以真实运行修复为依据，不把Skill文档更新当业务已完成。
 
 - [x] **APPLICATION-IDENTITIES-20261114** (@codex-root)：应用用户/平台主体契约、原账号客户与合作方、可信关联及可选客户端；保留员工SSO/角色/业务数据与原登录外观。短入口与知识导航，不规定AI流程；真实测试后正式分发、SaaS下载、两个账号及受影响研发kit更新验收。

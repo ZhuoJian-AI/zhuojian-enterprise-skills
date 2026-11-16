@@ -19,6 +19,19 @@ def test_navigation_adapter_behaviour():
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+def test_native_template_trusted_bootstrap_bridge():
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("Node.js is required for the native template runtime tests")
+    root = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        [node, str(root / "tests/native_template_bridge.mjs"),
+         str(root / "assets/native-subsystem-template/static/index.html")],
+        capture_output=True, text=True, timeout=30,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 def test_assistant_presence_adapter_behaviour():
     node = shutil.which("node")
     if not node:
