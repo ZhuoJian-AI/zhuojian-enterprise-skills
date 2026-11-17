@@ -1,6 +1,6 @@
 # 当前任务
 
-- [ ] **PERSONNEL-SYNC-20261117** (@codex-root)：复用已有 Runtime 和管理员插件，补统一人员同步接入参考、标准投递工具及能力投影；保留 SaaS 手工管理和既有正常同步。验证后按原渠道分发、双账号与受影响 kit 同步；不自动启用真实企业人员写入。
+- [ ] **PERSONNEL-SYNC-20261117** (@codex-root)：core63/PR133/main e12bef8b、bundle69/静态60、两账号12路径/CURRENT和Alphabet现役kit63已正式完成；公司1063/65skip+24、Windows1042/86skip、36项HTTPS及默认新装/60升级通过。SaaS源与567项CI已完成，实际baked/API仍待0098成对受保护发布；宿主60原生更新及真实来源启用不冒称完成。见docs/handoff/2026-11-17_personnel-sync.md。
 
 - [x] **TRUSTED-SESSION-ORIGIN62-20261116** (@Codex-restore-shared-browser)：core PR131/main3b97f9eb、bundle68与Skill62正式完成；公司exact-main1043/65skip+24、Windows1022/86skip，SaaS两内嵌JSON正式backend/worker已healthy。静态59原入口active/HTTPS36文件通过，同文件库v3，默认fresh/60升级/CURRENT、两Windows8路径及Alphabet原kit62均实证；Codex/WorkBuddy原生59加载独立验收通过。保留旧账号/数据/配置及本地补充，详见可信来源handoff正式结果；61/58从未活化，不重写tag。
 
