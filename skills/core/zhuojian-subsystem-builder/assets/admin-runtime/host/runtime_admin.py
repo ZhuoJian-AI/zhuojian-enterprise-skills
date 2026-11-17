@@ -85,6 +85,12 @@ ORIGIN_REGISTRATION_CAPABILITY = {
 # Exact public contracts advertised by the SaaS publisher. Do not infer support
 # from the presence of this local definition or pass through arbitrary fields.
 ADDITIONAL_PLATFORM_CAPABILITIES = {
+    "personnelSync": {
+        "supported": True, "version": 1,
+        "authentication": "runtime-with-explicit-directory-source-grant",
+        "batchEndpoint": "/api/v1/ecs-publisher/directory/{source_key}/batches",
+        "dryRun": True, "absenceIsDeparture": False,
+    },
     "integrationPlans": {
         "supported": True, "version": 1,
         "endpoint": "/api/v1/ecs-publisher/integration-plans",

@@ -89,6 +89,12 @@ def current_publisher_features():
     # Public GET /ecs-publisher/platform-capabilities contracts, including the
     # exact event-only scope. These are input fixtures, not assumed local grants.
     return {
+        "personnelSync": {
+            "supported": True, "version": 1,
+            "authentication": "runtime-with-explicit-directory-source-grant",
+            "batchEndpoint": "/api/v1/ecs-publisher/directory/{source_key}/batches",
+            "dryRun": True, "absenceIsDeparture": False,
+        },
         "integrationPlans": {
             "supported": True, "version": 1,
             "endpoint": "/api/v1/ecs-publisher/integration-plans",

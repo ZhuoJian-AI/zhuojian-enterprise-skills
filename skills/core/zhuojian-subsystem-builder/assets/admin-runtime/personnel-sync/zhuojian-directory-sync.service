@@ -1,0 +1,9 @@
+[Unit]
+Description=Synchronize the explicitly granted enterprise personnel source
+After=network-online.target
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/python3 /opt/zhuojian/enterprise-directory/directory_sync.py --config /etc/zhuojian/directory-sync.json
+# Collector and state stay on this enterprise host; no inbound listener.

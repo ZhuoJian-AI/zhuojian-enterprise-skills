@@ -1,0 +1,10 @@
+[Unit]
+Description=Deliver enterprise personnel changes and retry pending batches
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
