@@ -14,7 +14,8 @@ def test_runtime_release_does_not_require_per_version_admin_review() -> None:
     contract = _read("references/platform-contract.md")
 
     assert "不等待管理员逐版本审核" in skill
-    assert "新系统先只自动授权“系统研发者”" in skill
+    assert "这个系统已获权的管理员和开发者先验收" in skill
+    assert "--initial-access-policy disabled" in deployment
     assert "只有返回 `healthy` 才表示候选已验证并自动成为生效版本" in deployment
     assert "新系统返回 `pending_review` 属于正常结果" not in deployment
     assert "候选版本" in contract and "生效版本" in contract
