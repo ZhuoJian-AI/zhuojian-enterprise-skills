@@ -48,6 +48,8 @@ from storage import (
     storage_from_env,
 )
 
+import role_preview
+
 ROOT = Path(__file__).resolve().parent
 MANIFEST = json.loads((ROOT / "subsystem.json").read_text(encoding="utf-8"))
 APP_SLUG = MANIFEST["applicationSlug"]
@@ -288,6 +290,11 @@ class ServerSideSessionMiddleware:
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        if scope.get("path") == role_preview.PATH:
+            # Production session reads also clean up expired rows. Preview needs neither.
+            scope["session"] = {}
             await self.app(scope, receive, send)
             return
         session_ids = self._cookie_ids(scope)
@@ -1126,9 +1133,13 @@ async def security_headers(request: Request, call_next):
                 content={"detail": "Same-origin UI request required"},
             )
     response = await call_next(request)
-    response.headers["Content-Security-Policy"] = "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-ancestors 'self' " + " ".join(sorted(set(SAAS_ORIGINS) | {SAAS_ORIGIN}))
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-ancestors 'self' "
+        + " ".join(sorted(set(SAAS_ORIGINS) | {SAAS_ORIGIN})),
+    )
     response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["Referrer-Policy"] = "strict-origin"
+    response.headers.setdefault("Referrer-Policy", "strict-origin")
     return response
 
 
@@ -3249,6 +3260,14 @@ def availability_script():
 @app.get("/static/zhuojian-availability.css")
 def availability_styles():
     return FileResponse(ROOT / "static" / "zhuojian-availability.css", media_type="text/css")
+
+
+@app.api_route(role_preview.PATH, methods=["GET", "HEAD"])
+def preview_interface(request: Request):
+    return role_preview.reply(
+        request, page=ROOT / "static" / "index.html",
+        allowed_origins=set(SAAS_ORIGINS) | {SAAS_ORIGIN},
+    )
 
 
 @app.get("/")
