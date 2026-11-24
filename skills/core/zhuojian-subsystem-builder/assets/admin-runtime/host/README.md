@@ -182,6 +182,14 @@ env files are atomically repaired with the exact application origin and shared
 upload-lock path without printing their secrets. The tool refuses same-name resources
 that it did not create and never runs Docker prune or deletes unknown volumes.
 
+An independent employee workplace can retain the registered machine API.
+In the root-owned Runtime profile, list the exact employee HTTPS origins under
+platform.applicationPortalOrigins, keyed by application slug. Set
+platform.applicationSsoOrigins for each application that should exchange
+employee SSO tickets against its separate workplace. The exchange origin must
+be one of the application's explicitly allowed portal origins. Verify both the
+public iframe's ancestor policy and an employee SSO exchange after publishing.
+
 `rotate-app-storage` is the crash-resumable online rotation operation for a
 deployed OSS application. Before contacting the gateway it persists a random
 operation id, exact frozen image and deterministic rollback-container name in

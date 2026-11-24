@@ -208,6 +208,29 @@ def test_ensure_env_injects_runtime_saas_origin_and_upsert_is_fail_closed():
         )
 
 
+def test_application_sso_origin_can_move_without_changing_the_machine_api():
+    with tempfile.TemporaryDirectory() as directory:
+        paths = paths_for(Path(directory))
+        paths.apps_env.mkdir()
+        profile = profile_for(paths)
+        profile["platform"]["applicationPortalOrigins"] = {"new-app": ["https://formal.example.com"]}
+        profile["platform"]["applicationSsoOrigins"] = {"new-app": "https://formal.example.com/"}
+
+        payload = runtime_admin.ensure_env("new-app", profile, paths).read_bytes()
+        assert b"ZHUOJIAN_SAAS_ORIGIN=https://formal.example.com\n" in payload
+        assert b"ZHUOJIAN_SAAS_ORIGINS=https://portal.example.com,https://formal.example.com\n" in payload
+        assert runtime_admin.platform_origin(profile) == "https://portal.example.com"
+        assert runtime_admin.application_sso_origin(profile, "other-app") == "https://portal.example.com"
+
+        with mock.patch.object(Path, "is_file", return_value=True):
+            rendered = runtime_admin.nginx_text("new-app", 18001, profile, paths)
+        assert "frame-ancestors 'self' https://portal.example.com https://formal.example.com" in rendered
+
+        profile["platform"]["applicationSsoOrigins"]["new-app"] = "https://unknown.example.com"
+        with pytest.raises(runtime_admin.AdminError, match="explicitly allowed"):
+            runtime_admin.ensure_env("new-app", profile, paths)
+
+
 def test_existing_release_refreshes_public_origin_before_next_deploy():
     with tempfile.TemporaryDirectory() as directory:
         paths = paths_for(Path(directory))

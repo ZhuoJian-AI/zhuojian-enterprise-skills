@@ -251,6 +251,32 @@ def platform_origin(profile: dict[str, Any]) -> str:
     return f"https://{rendered_host}{f':{port}' if port is not None else ''}"
 
 
+def application_portal_origins(profile: dict[str, Any], slug: str) -> tuple[str, ...]:
+    primary = platform_origin(profile)
+    platform = profile["platform"]
+    aliases = platform.get("applicationPortalOrigins", {})
+    if not isinstance(aliases, dict):
+        raise AdminError("runtime platform.applicationPortalOrigins must be a mapping")
+    configured = aliases.get(slug, [])
+    if not isinstance(configured, list) or len(configured) > 4:
+        raise AdminError("application portal origins must be a short list of HTTPS origins")
+    normalized = [platform_origin({"platform": {"baseUrl": alias}}) for alias in configured]
+    return tuple(dict.fromkeys([primary, *normalized]))
+
+
+def application_sso_origin(profile: dict[str, Any], slug: str) -> str:
+    origins = application_portal_origins(profile, slug)
+    configured = profile["platform"].get("applicationSsoOrigins", {})
+    if not isinstance(configured, dict):
+        raise AdminError("runtime platform.applicationSsoOrigins must be a mapping")
+    if slug not in configured:
+        return origins[0]
+    origin = platform_origin({"platform": {"baseUrl": configured[slug]}})
+    if origin not in origins:
+        raise AdminError("application SSO origin must be an explicitly allowed portal origin")
+    return origin
+
+
 def normalize_aliyun_region(value: Any) -> str:
     """Canonicalize the accepted `oss-<region>` alias to Alibaba's region ID."""
 
@@ -1970,11 +1996,12 @@ def ensure_env_value(payload: bytes, key: str, value: str) -> bytes:
 def ensure_env(slug: str, profile: dict[str, Any], paths: Paths = PATHS) -> Path:
     slug = validate_slug(slug)
     target = paths.apps_env / f"{slug}.env"
-    saas_origin = platform_origin(profile)
+    saas_origin = application_sso_origin(profile, slug)
+    portal_origins = ",".join(application_portal_origins(profile, slug))
     public_origin = f"https://{expected_names(slug, profile, paths)['hostname']}"
     if target.exists() or target.is_symlink():
         previous = read_secure_application_env(target)
-        updated = upsert_env_value(previous, "ZHUOJIAN_SAAS_ORIGINS", saas_origin)
+        updated = upsert_env_value(previous, "ZHUOJIAN_SAAS_ORIGINS", portal_origins)
         updated = upsert_env_value(updated, "ZHUOJIAN_SAAS_ORIGIN", saas_origin)
         updated = upsert_env_value(updated, "ZHUOJIAN_PUBLIC_ORIGIN", public_origin)
         updated = upsert_env_value(
@@ -1999,7 +2026,7 @@ def ensure_env(slug: str, profile: dict[str, Any], paths: Paths = PATHS) -> Path
         "ZHUOJIAN_ORGANIZATION_ID": profile["organizationId"],
         "ZHUOJIAN_APPLICATION_SLUG": slug,
         "ZHUOJIAN_PUBLIC_ORIGIN": public_origin,
-        "ZHUOJIAN_SAAS_ORIGINS": saas_origin,
+        "ZHUOJIAN_SAAS_ORIGINS": portal_origins,
         "ZHUOJIAN_SAAS_ORIGIN": saas_origin,
         "ZHUOJIAN_MANIFEST_ACCESS_TOKEN": "zjmf_" + secrets.token_urlsafe(48),
         "ZHUOJIAN_SSO_EXCHANGE_TOKEN": "zjss_" + secrets.token_urlsafe(48),
@@ -2030,7 +2057,7 @@ def nginx_text(slug: str, port: int, profile: dict[str, Any], paths: Paths = PAT
     if not (cert_dir / "fullchain.pem").is_file() or not (cert_dir / "privkey.pem").is_file():
         raise AdminError(f"HTTPS certificate is missing for {host}; run certify first")
     listen4, listen6 = tls_listens(profile)
-    platform = platform_origin(profile)
+    portal_origins = " ".join(application_portal_origins(profile, slug))
     return f"""# Managed by {MANAGED_BY}; application={slug}
 server {{
     listen 80;
@@ -2047,7 +2074,7 @@ server {{
     ssl_certificate {cert_dir}/fullchain.pem;
     ssl_certificate_key {cert_dir}/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
-    add_header Content-Security-Policy \"frame-ancestors 'self' {platform}\" always;
+    add_header Content-Security-Policy \"frame-ancestors 'self' {portal_origins}\" always;
     add_header X-Content-Type-Options nosniff always;
     client_max_body_size {NGINX_CLIENT_MAX_BODY_SIZE};
     client_body_timeout 30s;
