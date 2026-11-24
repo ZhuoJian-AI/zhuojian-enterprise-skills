@@ -48,6 +48,8 @@ from storage import (
     storage_from_env,
 )
 
+import role_preview
+
 ROOT = Path(__file__).resolve().parent
 MANIFEST = json.loads((ROOT / "subsystem.json").read_text(encoding="utf-8"))
 APP_SLUG = MANIFEST["applicationSlug"]
@@ -186,8 +188,9 @@ class ServerSideSessionMiddleware:
     same_site_cookie_name = "zjsid_same_site"
     max_age = 8 * 60 * 60
 
-    def __init__(self, app):
+    def __init__(self, app, *, anonymous_path=None):
         self.app = app
+        self.anonymous_path = anonymous_path
 
     @staticmethod
     def _digest(session_id: str) -> str:
@@ -290,6 +293,11 @@ class ServerSideSessionMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
+        if self.anonymous_path and scope.get("path") == self.anonymous_path:
+            # Production session reads also clean up expired rows. Preview needs neither.
+            scope["session"] = {}
+            await self.app(scope, receive, send)
+            return
         session_ids = self._cookie_ids(scope)
         session_id = None
         scope["session"] = {}
@@ -341,7 +349,7 @@ class ServerSideSessionMiddleware:
 
 
 app = FastAPI(title=MANIFEST["applicationName"], docs_url=None, redoc_url=None)
-app.add_middleware(ServerSideSessionMiddleware)
+app.add_middleware(ServerSideSessionMiddleware, anonymous_path=role_preview.PATH)
 
 
 @contextmanager
@@ -1126,9 +1134,13 @@ async def security_headers(request: Request, call_next):
                 content={"detail": "Same-origin UI request required"},
             )
     response = await call_next(request)
-    response.headers["Content-Security-Policy"] = "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-ancestors 'self' " + " ".join(sorted(set(SAAS_ORIGINS) | {SAAS_ORIGIN}))
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-ancestors 'self' "
+        + " ".join(sorted(set(SAAS_ORIGINS) | {SAAS_ORIGIN})),
+    )
     response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["Referrer-Policy"] = "strict-origin"
+    response.headers.setdefault("Referrer-Policy", "strict-origin")
     return response
 
 
@@ -3249,6 +3261,14 @@ def availability_script():
 @app.get("/static/zhuojian-availability.css")
 def availability_styles():
     return FileResponse(ROOT / "static" / "zhuojian-availability.css", media_type="text/css")
+
+
+@app.api_route(role_preview.PATH, methods=["GET", "HEAD"])
+def preview_interface(request: Request):
+    return role_preview.reply(
+        request, page=ROOT / "static" / "index.html",
+        allowed_origins=set(SAAS_ORIGINS) | {SAAS_ORIGIN},
+    )
 
 
 @app.get("/")

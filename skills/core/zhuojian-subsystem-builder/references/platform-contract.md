@@ -631,3 +631,13 @@ SaaS 向目标模块投递时使用 `typ=zhuojian-event` JWT，并 POST：
 ```
 
 事件 JWT 必须绑定 `deliveryId/eventId/eventType/targetModuleKey`；若 JWT 还带 `sourceApplicationSlug`，它必须与请求体完全一致。目标模块只接受目标 `moduleKey` 在 Manifest `events.subscribes[]` 中明确订阅的 `eventType`，并再次核验企业标识、字段格式和带时区时间。目标模块按完整请求哈希同时绑定 `eventId` 与 `deliveryId`：完全相同的重复投递返回已处理状态，任一 ID 被复用于不同内容时返回 409，不得重复创建业务记录或静默接受冲突。
+
+## 角色界面预览
+
+新生成的原生模块提供工作台角色界面预览。角色、页面和 Action 由底座从现行授权计算。应用复用自己实际使用的 UI 渲染器，按同样的可见性条件切换按钮。预览只加载静态示例记录，提交、下载、外部跳转和业务请求在预览中禁用。企业人员和业务数据不得放进示例记录。
+
+已有应用接入时，在已登记 HTTPS 来源提供固定 /__zhuojian/role-preview。先由底座发送不带凭据的 HEAD。应用对精确的工作台 Origin 返回 Access-Control-Allow-Origin，暴露 Content-Security-Policy 和 X-ZhuoJian-Role-Preview，后者的值固定为 1。预览响应的 CSP 包含 connect-src 'none'、form-action 'none' 和 sandbox allow-scripts，并把 frame-ancestors 限于已登记工作台。服务端不检查、签发或刷新员工会话。GET 和 HEAD 可复用模板的 role_preview.py。
+
+底座在预览 iframe 的地址片段传递 channel、parent、module、page、role 和可重复的 action。role 是稳定角色键，旧应用迁移时可按其现行岗位配置显式映射。它和其余字段只决定界面示例，不能用于权限、身份或业务 Action 认证。应用仅接受自身已经实现的模块和页面，完成初始化后向 parent 指定的工作台来源发送 zhuojian:role-preview-ready，带 version=1 和同一 channel。正式业务入口继续用原 SSO 和逐请求核权。
+
+交付时用至少两个界面权限不同的角色验证同一页面，确认菜单和按钮随角色切换，操作不会请求业务接口，无授权角色不会显示页面。未实现此端点的存量项目仍可在工作台查看底座计算的菜单与操作。
