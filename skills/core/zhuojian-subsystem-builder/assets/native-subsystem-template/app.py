@@ -188,8 +188,9 @@ class ServerSideSessionMiddleware:
     same_site_cookie_name = "zjsid_same_site"
     max_age = 8 * 60 * 60
 
-    def __init__(self, app):
+    def __init__(self, app, *, anonymous_path=None):
         self.app = app
+        self.anonymous_path = anonymous_path
 
     @staticmethod
     def _digest(session_id: str) -> str:
@@ -292,7 +293,7 @@ class ServerSideSessionMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        if scope.get("path") == role_preview.PATH:
+        if self.anonymous_path and scope.get("path") == self.anonymous_path:
             # Production session reads also clean up expired rows. Preview needs neither.
             scope["session"] = {}
             await self.app(scope, receive, send)
@@ -348,7 +349,7 @@ class ServerSideSessionMiddleware:
 
 
 app = FastAPI(title=MANIFEST["applicationName"], docs_url=None, redoc_url=None)
-app.add_middleware(ServerSideSessionMiddleware)
+app.add_middleware(ServerSideSessionMiddleware, anonymous_path=role_preview.PATH)
 
 
 @contextmanager
