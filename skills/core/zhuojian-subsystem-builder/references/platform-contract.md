@@ -10,7 +10,7 @@ v2.5 把 Manifest、SSO、Action 和 Event 的凭证拆开，并把 SSO 改为�
 
 - `enterprise.key`：必须与当前 ECS Runtime 档案中的 `enterpriseKey` 一致。历史值 `aifabei` 规范化为 `alphabet`；其他企业使用管理员登记的稳定标识。
 - `applicationSlug`：独立模块系统、域名和发布单元。
-- `moduleKey`：业务大模块中的子模块标识，也是导航与授权边界。SaaS 按有效目录生成横向导航；嵌入时子系统隐藏重复模块导航，不隐藏页面内筛选与详情页签。
+- `moduleKey`：业务大模块中的子模块标识，也是导航与授权边界。SaaS 按获权模块目录生成[员工工作台导航](module-navigation-migration.md#员工工作台导航)。嵌入时子系统隐藏重复模块导航，保留页面内筛选与详情页签。
 - `pageKey`：子模块内稳定页面/工作上下文，也是最小可见边界。
 - `actionKey`：系统内全局唯一业务命令，也是最小操作边界。
 - `presentation.moduleNavigationTheme`：Skill 发布必检的应用级模块导航主题，四个受控颜色须与业务页面配色一致，不接受任意 CSS；SaaS 仅用于当前应用的模块导航、标题身份区、侧栏选中项及同一统一助手的入口、外框与输入控件，不影响回答／审批语义状态、其他系统或 iframe 内容。完整约束见 [模块导航与安全迁移](module-navigation-migration.md)。SaaS 对已登记旧版本保留缺失时的默认色回退，不代表新发布可省略。
